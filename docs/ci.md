@@ -63,15 +63,15 @@ it unchanged into any new reusable workflow.
 
 The caller stubs in `templates/workflows/` (`docs.yml`, `node.yml`,
 `python.yml`, `site.yml`) and the `ci.yml` files in `templates/starters/` pin
-`alawein/.github` itself with the placeholder SHA
-`0000000000000000000000000000000000000000`. Each carries a banner comment that
-says so. The placeholder fails on purpose, so no caller runs unpinned code. Do
-this once this repo has its first commit:
+`alawein/.github` itself. Done on 2026-09-30: they pin the first commit,
+`a2f16663330afe2bd8ac4ee548121f495e866e4c`, tagged `v1.0.0`, and the banner
+comment is gone. Before that they carried an all-zero placeholder SHA that
+failed on purpose, so no caller ran unpinned code. The steps, for the record:
 
 1. Get the SHA: `gh api repos/alawein/.github/commits/main --jq .sha`.
 2. Replace every all-zero SHA in the stubs and starters with it.
 3. Tag the commit `v1.0.0` so the `# v1.0.0` comment next to each pin is true.
-4. In a repo you create later, delete the banner comment in its stub.
+4. Later bumps follow "Bump a pin".
 
 ## Permission rules
 

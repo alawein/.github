@@ -30,5 +30,5 @@ the checksum from the release's `actionlint_<version>_checksums.txt` (or the ass
 ## Pins to this repo
 
 Caller stubs in `templates/workflows/` and the `ci.yml` files in `templates/starters/` pin
-`alawein/.github` itself. They carry an all-zero SHA until this repo has a first commit. Replace
-it with the real SHA (see [ci.md](ci.md), "After the first commit" and "Bump a pin").
+`alawein/.github` itself. They pin the first commit, `a2f16663330afe2bd8ac4ee548121f495e866e4c`
+(tag `v1.0.0`), verified 2026-09-30. To bump it, see [ci.md](ci.md), "Bump a pin".

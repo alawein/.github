@@ -237,7 +237,7 @@ repo.
 | `.lycheeignore` | Skips the banner images until they exist. Delete the line when they do |
 | task list | `package.json` scripts or a `justfile` with `lint`, `test`, `build`, `check`, `fix` |
 | lockfile | `package-lock.json` or `uv.lock`, committed. CI installs from it and fails without it |
-| `.github/workflows/ci.yml` | A stub that calls the shared workflows. Its pin starts as a placeholder |
+| `.github/workflows/ci.yml` | A stub that calls the shared workflows. Its pin is a full commit SHA of the kit |
 | `.github/dependabot.yml` | Weekly grouped updates for the package manager and for Actions |
 | `.github/CODEOWNERS` | The owner of every path |
 | one passing test | Even in a docs repo the link check plays this part |
@@ -402,5 +402,5 @@ software.
 The starters hold copies of the kit's workflow stubs, dependabot files,
 CODEOWNERS, README template, and the agent files in `templates/agent/`
 (`AGENTS.md`, `CLAUDE.md`, `lessons.md`). When one of those changes, copy it
-into the starters in the same pull request. The pins in each stub are
-placeholders until the kit has its first tagged commit.
+into the starters in the same pull request. The pins in each stub point at the
+kit's `v1.0.0` commit.

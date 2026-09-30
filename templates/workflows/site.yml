@@ -1,7 +1,3 @@
-# !!! PLACEHOLDER PIN !!! Every @0000000000000000000000000000000000000000 in this file
-# is a dummy and fails on purpose. After alawein/.github has its first commit, replace each
-# one with that commit's full 40-character SHA. See docs/ci.md, section "After the first commit".
-#
 # Class: site (Astro or other npm-built websites deployed on Vercel).
 # Copy to .github/workflows/ci.yml in the repo.
 #
@@ -29,22 +25,22 @@ concurrency:
 
 jobs:
   run-markdown-lint:
-    uses: alawein/.github/.github/workflows/lint-markdown.yml@0000000000000000000000000000000000000000 # v1.0.0
+    uses: alawein/.github/.github/workflows/lint-markdown.yml@a2f16663330afe2bd8ac4ee548121f495e866e4c # v1.0.0
 
   run-link-check:
-    uses: alawein/.github/.github/workflows/check-links.yml@0000000000000000000000000000000000000000 # v1.0.0
+    uses: alawein/.github/.github/workflows/check-links.yml@a2f16663330afe2bd8ac4ee548121f495e866e4c # v1.0.0
 
   run-actionlint:
-    uses: alawein/.github/.github/workflows/lint-actions.yml@0000000000000000000000000000000000000000 # v1.0.0
+    uses: alawein/.github/.github/workflows/lint-actions.yml@a2f16663330afe2bd8ac4ee548121f495e866e4c # v1.0.0
 
   run-pr-title:
     permissions:
       pull-requests: read
-    uses: alawein/.github/.github/workflows/pr-title.yml@0000000000000000000000000000000000000000 # v1.0.0
+    uses: alawein/.github/.github/workflows/pr-title.yml@a2f16663330afe2bd8ac4ee548121f495e866e4c # v1.0.0
 
   # Vercel (or another host) deploys the site. This job only proves that lint, tests and the build pass.
   run-node-ci:
-    uses: alawein/.github/.github/workflows/node-ci.yml@0000000000000000000000000000000000000000 # v1.0.0
+    uses: alawein/.github/.github/workflows/node-ci.yml@a2f16663330afe2bd8ac4ee548121f495e866e4c # v1.0.0
     with:
       node-version: lts/*
       run-lint: true
