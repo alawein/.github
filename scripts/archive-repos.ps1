@@ -95,17 +95,47 @@ function Stop-Run {
     exit $Code
 }
 
+# Writes every non-ASCII character of a JSON body as a \uXXXX escape, so the bytes sent are
+# plain ASCII whatever the console code page is. JSON readers decode the escape to the same text.
+function ConvertTo-AsciiJson {
+    param([string]$Json)
+    $sb = New-Object System.Text.StringBuilder
+    foreach ($ch in $Json.ToCharArray()) {
+        if ([int]$ch -gt 126) { [void]$sb.Append(('\u{0:x4}' -f [int]$ch)) } else { [void]$sb.Append($ch) }
+    }
+    return $sb.ToString()
+}
+
+# One form for comparing text read from the API with text from the map: composed Unicode,
+# LF line ends, no edge spaces. A null reads as empty.
+function Get-NormText {
+    param($Text)
+    if ($null -eq $Text) { return '' }
+    return ("$Text".Normalize([System.Text.NormalizationForm]::FormC) -replace "`r`n?", "`n").Trim()
+}
+
 # Runs gh. Body (JSON text) goes in through stdin. Returns Code, Http and Text.
+# Reads and writes are UTF-8 on purpose: the console code page (often OEM) would garble
+# an em dash or any other non-ASCII character in a description.
 function Invoke-Gh {
     param([string[]]$GhArgs, [string]$Body = '')
     $prev = $ErrorActionPreference
     $ErrorActionPreference = 'Continue'
+    $prevOut = $OutputEncoding
+    $prevCon = $null
+    $utf8 = New-Object System.Text.UTF8Encoding($false)
     try {
-        if ($Body) { $out = $Body | & $Gh @GhArgs --input - 2>&1 }
+        $OutputEncoding = $utf8
+        try { $prevCon = [Console]::OutputEncoding; [Console]::OutputEncoding = $utf8 } catch { $prevCon = $null }
+        if ($Body) { $out = (ConvertTo-AsciiJson $Body) | & $Gh @GhArgs --input - 2>&1 }
         else { $out = & $Gh @GhArgs 2>&1 }
         $code = $LASTEXITCODE
     }
-    finally { $ErrorActionPreference = $prev }
+    finally {
+        $ErrorActionPreference = $prev
+        $OutputEncoding = $prevOut
+        if ($prevCon) { try { [Console]::OutputEncoding = $prevCon } catch { $null = $_ } }
+    }
     $text = (($out | ForEach-Object { "$_" }) -join "`n")
     $http = ''
     if ($text -match 'HTTP (\d{3})') { $http = $Matches[1] }
@@ -113,13 +143,30 @@ function Invoke-Gh {
     return [pscustomobject]@{ Code = $code; Http = $http; Text = $text }
 }
 
-# Read one repo. Only a clean 404 means "not there". Any other failure stops the run.
+# Read one repo. A 404 means "not there". So does a redirect (301, 302, 307, 308): a renamed
+# repo answers on its old name with a redirect, so that name is no longer the repo's name.
+# Any other failure stops the run.
 function Get-Repo {
     param([string]$Name, [string]$Who = $Owner)
     $r = Invoke-Gh @('api', ('repos/{0}/{1}' -f $Who, $Name))
     if ($r.Code -eq 0) { return [pscustomobject]@{ Found = $true; Http = ''; Data = ($r.Text | ConvertFrom-Json) } }
-    if ($r.Http -ne '404') { Stop-Run ('HTTP ' + $r.Http + ' (exit ' + $r.Code + ') on read of ' + $Name) 2 }
+    if (@('404', '301', '302', '307', '308') -cnotcontains $r.Http) { Stop-Run ('HTTP ' + $r.Http + ' (exit ' + $r.Code + ') on read of ' + $Name) 2 }
     return [pscustomobject]@{ Found = $false; Http = $r.Http; Data = $null }
+}
+
+# Find the repo for a rename step, resuming a run that already renamed it. Tries the target
+# name first (a write to the old name of a renamed repo fails with HTTP 307), then the source
+# name. A read of the old name can follow the redirect, so the name the API reports wins.
+# Returns Found, Name (the name to write to now) and Data.
+function Resolve-Repo {
+    param([string]$From, [string]$To, [string]$Who = $Owner)
+    if ($From -cne $To) {
+        $n = Get-Repo $To $Who
+        if ($n.Found -and $n.Data.name -ceq $To) { return [pscustomobject]@{ Found = $true; Name = $To; Data = $n.Data } }
+    }
+    $o = Get-Repo $From $Who
+    if (-not $o.Found) { return [pscustomobject]@{ Found = $false; Name = ''; Data = $null } }
+    return [pscustomobject]@{ Found = $true; Name = "$($o.Data.name)"; Data = $o.Data }
 }
 
 # Read the Actions switch. Returns $true, $false, or $null when it cannot be read.
@@ -330,7 +377,7 @@ function Test-Repo {
     $bad = @()
     if ($d.name -cne $expName) { $bad += 'name' }
     if (-not $d.archived) { $bad += 'not archived' }
-    if ("$($d.description)" -cne $expDesc) { $bad += 'description' }
+    if ((Get-NormText $d.description) -cne (Get-NormText $expDesc)) { $bad += 'description' }
     if (-not (Test-SameSet @($d.topics) $expTop)) { $bad += 'topics' }
     if (-not $Back -and (Test-ClearsHomepage $M) -and "$($d.homepage)") { $bad += 'homepage not cleared' }
     if ($Back -and (Test-ClearsHomepage $M) -and "$($d.homepage)" -cne $M.old_homepage) { $bad += 'homepage not restored' }
@@ -470,12 +517,10 @@ foreach ($m in $doRows) {
 
     Write-Host ''
     Write-Host ('[{0}] {1} -> {2}' -f $m.batch, $fromName, $toName)
-    $cur = $fromName
-    $g = Get-Repo $fromName $Owner
-    if (-not $g.Found) {
-        if ($fromName -cne $toName) { $g = Get-Repo $toName $Owner; if ($g.Found) { $cur = $toName; Write-Host '    resume: already renamed' } }
-        if (-not $g.Found) { Stop-Run ('repo not found under ' + $Owner + ': ' + $fromName + ' or ' + $toName) 3 }
-    }
+    $g = Resolve-Repo $fromName $toName $Owner
+    if (-not $g.Found) { Stop-Run ('repo not found under ' + $Owner + ': ' + $fromName + ' or ' + $toName) 3 }
+    $cur = $g.Name
+    if ($fromName -cne $toName -and $cur -ceq $toName) { Write-Host '    resume: already renamed' }
     $d = $g.Data
     $before = @{ id = $d.id; name = $d.name; archived = $d.archived; description = "$($d.description)"; homepage = "$($d.homepage)"; topics = (@($d.topics) -join ';') } | ConvertTo-Json -Compress
     Write-Log $cur 'before' $true '' $before
@@ -487,7 +532,7 @@ foreach ($m in $doRows) {
         $cur = $toName
     }
 
-    if ("$($d.description)" -cne $toDesc) {
+    if ((Get-NormText $d.description) -cne (Get-NormText $toDesc)) {
         Send-Write $cur 'description' 'PATCH' ('repos/{0}/{1}' -f $Owner, $cur) (@{ description = $toDesc } | ConvertTo-Json -Compress)
     }
     else { Write-Host '    skip description (already set)' }
