@@ -1,0 +1,27 @@
+name: Task
+description: A planned piece of work with no user-facing bug or feature.
+title: "chore: "
+labels: ["chore"]
+body:
+  - type: textarea
+    id: goal
+    attributes:
+      label: Goal
+      description: What needs to happen, in one or two sentences.
+    validations:
+      required: true
+  - type: textarea
+    id: done-when
+    attributes:
+      label: Done when
+      description: A short checklist that shows the task is finished.
+      placeholder: |
+        - [ ] ...
+        - [ ] ...
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Context
+      description: Links, constraints, or related issues.

@@ -1,0 +1,83 @@
+name: CI
+
+# This repo tests its own reusable workflows by calling them from the same commit.
+# A called job reports as "<caller job> / <called job>", so four small gate jobs below
+# carry the exact check names the ruleset requires:
+#   markdown-lint, link-check, actionlint, pr-title
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  run-markdown-lint:
+    uses: ./.github/workflows/lint-markdown.yml
+
+  run-link-check:
+    uses: ./.github/workflows/check-links.yml
+
+  run-actionlint:
+    uses: ./.github/workflows/lint-actions.yml
+
+  run-pr-title:
+    permissions:
+      pull-requests: read
+    uses: ./.github/workflows/pr-title.yml
+
+  markdown-lint:
+    needs: [run-markdown-lint]
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 1
+    permissions: {}
+    steps:
+      - name: Require success
+        env:
+          RESULT: ${{ needs.run-markdown-lint.result }}
+        run: test "$RESULT" = "success"
+
+  link-check:
+    needs: [run-link-check]
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 1
+    permissions: {}
+    steps:
+      - name: Require success
+        env:
+          RESULT: ${{ needs.run-link-check.result }}
+        run: test "$RESULT" = "success"
+
+  actionlint:
+    needs: [run-actionlint]
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 1
+    permissions: {}
+    steps:
+      - name: Require success
+        env:
+          RESULT: ${{ needs.run-actionlint.result }}
+        run: test "$RESULT" = "success"
+
+  pr-title:
+    needs: [run-pr-title]
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 1
+    permissions: {}
+    steps:
+      # The title check is skipped on push to main, so skipped counts as a pass here.
+      - name: Require success or skipped
+        env:
+          RESULT: ${{ needs.run-pr-title.result }}
+        run: '[ "$RESULT" = "success" ] || [ "$RESULT" = "skipped" ]'

@@ -1,0 +1,19 @@
+# Copy to .github/dependabot.yml. Use for docs and profile repos that have no package manager.
+# The "chore" label must exist in the repo, or Dependabot skips the label.
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    cooldown:
+      default-days: 7
+    groups:
+      minor-and-patch:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+    labels:
+      - "chore"
+    commit-message:
+      prefix: "chore(deps)"

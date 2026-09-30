@@ -1,0 +1,2 @@
+# The banner images do not exist yet. Delete this line when assets/ holds them (see the brand doc).
+^file://.*/assets/banner-name-(night|dawn)\.png$

@@ -1,0 +1,49 @@
+name: Lint Markdown
+
+on:
+  workflow_call:
+    inputs:
+      globs:
+        description: Files to lint, one glob per line.
+        type: string
+        default: "**/*.md"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: lint-markdown-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  archive-guard:
+    runs-on: ubuntu-latest
+    timeout-minutes: 1
+    permissions: {}
+    steps:
+      - name: Refuse to run in an archive repo
+        env:
+          REPO: ${{ github.repository }}
+        run: |
+          case "${REPO#*/}" in
+            ARCHIVE-*) echo "::error::${REPO} is an archive repo. Workflows never run here."; exit 1 ;;
+          esac
+
+  lint:
+    needs: [archive-guard]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # A repo without its own markdownlint config gets a relaxed default for this run only.
+      - name: Default config
+        shell: bash
+        run: |
+          if ! compgen -G ".markdownlint*" >/dev/null; then
+            printf 'config:\n  MD013: false\n  MD041: false\n' > .markdownlint-cli2.yaml
+          fi
+      - uses: DavidAnson/markdownlint-cli2-action@21c1be1b93ad9ed58fa840aacc3f279cde2a72ff # v24.2.0
+        with:
+          globs: ${{ inputs.globs }}

@@ -1,0 +1,8 @@
+---
+description: Read AGENTS.md first. It holds every rule for this repo.
+alwaysApply: true
+---
+
+Before any edit, read `AGENTS.md` at the repo root and follow it. Do not
+restate its rules here. Add a line below only for a setting that applies to
+Cursor alone.

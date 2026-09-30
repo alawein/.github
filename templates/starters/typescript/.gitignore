@@ -1,0 +1,26 @@
+# Secrets and local environment files.
+.env
+.env.*
+
+# Build and tool output.
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+
+# Editor and OS files.
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Local agent settings.
+.claude/settings.local.json
+
+# Private keys and certificates.
+*.pem
+*.key
+*.pfx

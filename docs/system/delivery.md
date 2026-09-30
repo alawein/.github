@@ -1,0 +1,645 @@
+# Delivery
+
+The single home of how a change gets from an idea to production and stays
+safe there: the flow, branch, commit and pull request rules, releases,
+environments, Vercel, dependencies, security, secrets, backups, and incidents.
+How work is tracked is in [projects.md](projects.md). Repo classes, names,
+layout, and licenses are in [repos.md](repos.md). How the shared workflows work
+and how to bump a pin is in [ci.md](../ci.md). Moving a domain is in
+[vercel.md](../vercel.md).
+
+A line that starts with "Decision:" records a choice that was open. The reason
+follows on the same line. A "pull request" (PR) is a proposed change that is
+reviewed before it joins `main`.
+
+## Who does what
+
+One person owns every repo and reads every diff. AI coding agents do much of
+the typing. The split is fixed:
+
+- Agents write code on a branch, open a draft PR, and run checks.
+- Agents never merge, never turn on auto-merge, and never change settings,
+  rulesets, secrets, or tokens.
+- The owner reads the diff, turns on auto-merge, and owns every release.
+
+Decision: agents have no merge rights. Why: a fast writer needs one slow,
+careful reader, and the reader must be a person.
+
+## The flow
+
+```text
+ idea or note
+     |
+     v
+ issue: goal + "done when" list          board: Inbox -> Next
+     |
+     v
+ branch: type/short-topic                board: Doing
+     |
+     v
+ draft PR opened early, commits pushed   (a pushed branch is a backup)
+     |
+     v
+ checks run on every push                four shared checks + tests
+     |
+     v
+ self-review, then a fresh-agent review  board: Review
+     |
+     v
+ owner reads the diff, turns on auto-merge
+     |
+     v
+ squash merge to main, branch deleted
+     |
+     +--> versioned repos: release PR -> tag -> release
+     |
+     v
+ deploy (Vercel builds main)
+     |
+     v
+ verify the live result                  board: Done
+     |
+     v
+ learn: one line in the log; a check if it can recur
+```
+
+| Step | What happens | Gate |
+| --- | --- | --- |
+| Issue | A goal and a "done when" list. A note in the log is not work yet | Has a repo and a done-when list |
+| Branch | `type/short-topic` from a fresh `main` | One topic |
+| Draft PR | Opened at the first push | Checks start running |
+| Checks | Shared checks plus the repo's tests | All required checks green |
+| Review | You read your own diff first. A second agent session with no memory of the work reads it next | Notes fixed or answered |
+| Merge | Owner enables auto-merge. It fires when checks pass | Owner only |
+| Release | Only repos that publish versions (see Versions and releases) | Release PR, tag |
+| Deploy | Vercel builds `main` after the merge | Build passes |
+| Verify | Open the live URL or run the smoke test | Done when it works live |
+| Learn | One line in the log. If a mistake could happen again, open an issue for a check | Nothing recurs twice |
+
+Decision: a mistake that happens twice becomes a check, a test, or a rule.
+Why: memory fades, and a check does not.
+
+## Branches, commits, and pull requests
+
+### Branches
+
+- `main` is the only long-lived branch. It is always releasable.
+- Work branches are `type/short-topic`, lowercase with hyphens, no dates:
+  `feat/build`, `fix/label-join`, `docs/readme-links`.
+- Types: feat, fix, docs, chore, refactor, test.
+- One agent per branch. Run parallel agents in separate Git worktrees
+  (extra working folders on the same repo), each on its own branch, and keep
+  them on different files where you can.
+- At most three PRs wait for review at once.
+- Delete the branch after the merge. GitHub does it on merge.
+
+### Commits
+
+Decision: the PR title and body are the record. Commits on a branch are
+scratch. Why: squash merge flattens a branch into one commit, so a rule about
+branch commits would only slow down agents.
+
+- Keep branch commits short and imperative ("add parser test").
+- Where a repo takes direct pushes to `main` (private tooling under the light
+  ruleset), every commit subject follows the PR title format below.
+- Never use `--no-verify` to skip a hook. Fix the hook's complaint.
+- Force-push only your own branch, with `--force-with-lease`. Never `main`.
+- Commit and PR text says what changed and why. It does not narrate which
+  tool wrote it. No `Co-Authored-By` trailer unless a person co-wrote the change.
+
+### Pull request titles
+
+Format: `type(scope): summary`. GitHub uses it as the squash commit title.
+
+- Types: feat, fix, docs, chore, refactor, test. The title check accepts more
+  types, because tools generate them. House rule is these six.
+- Scope is optional, one lowercase word: `fix(parser): handle empty input`.
+- Summary is an imperative verb phrase, 72 characters or fewer for the whole
+  title, no final period, specific ("fix the strict-label join", not "fix bug").
+- A breaking change adds `!` (`feat(api)!: drop the v1 route`) and the body
+  explains the migration.
+- A revert is `fix(scope): revert <summary>`. GitHub's Revert button writes a
+  title that starts with `Revert`, which fails the title check. Edit it.
+- A release PR is `chore(release): vX.Y.Z`.
+
+### Pull request rules
+
+- One topic per PR, about 300 changed lines or fewer. Lockfiles and generated
+  files do not count. A bigger change is split, or it uses the long checklist in
+  [pull-request-checklist.md](../../templates/pull-request-checklist.md).
+- Fill every section of the template. Write "n/a" and say why if one does not
+  apply.
+- Link the issue with `Closes #12` in the Why section.
+- Open it as a draft at the first push. Mark it ready when the checks pass and
+  you have read your own diff.
+- A behavior change comes with a test. For a bug fix the test fails before the
+  fix.
+- Stacked PRs (a PR based on another unmerged PR) are not used. Land the base
+  first, or split the work into independent PRs.
+
+Decision: no stacked PRs. Why: with squash merging, every merge forces a rebase
+of the PRs above it, and one reviewer gains nothing from the extra layers.
+
+Decision: draft PRs are the default for work in progress. Why: CI runs on
+drafts, a pushed draft is an off-machine backup, and auto-merge cannot fire on
+a draft by mistake.
+
+### Labels
+
+Five labels, the same in every repo. The set lives in
+[labels.yml](../../templates/labels.yml) and `setup-repo.ps1` applies it.
+
+| Label | Meaning |
+| --- | --- |
+| feat | New feature or capability |
+| fix | Bug fix or correction |
+| docs | Documentation only change |
+| chore | Maintenance, tooling, or cleanup with no behavior change |
+| blocked | Cannot proceed until an external dependency or decision is resolved |
+
+- Labels go on issues. The issue form sets the type label. A PR carries no
+  label, because its title already says the type.
+- A `refactor` or `test` issue uses `chore`.
+- `blocked` means waiting on something outside the repo. The issue says what.
+- Apply one entry by hand with
+  `gh label create NAME --color HEX --description "TEXT" --force`.
+
+Decision: no labels for refactor, test, or ready. Why: the PR title holds the
+type, and a draft PR that becomes ready already says "ready".
+
+### Reading an agent's diff
+
+An agent's diff can look right and be wrong. Look for these first:
+
+- Tests deleted, skipped, or loosened to make a check pass.
+- Files you did not expect, especially config, CI, lockfiles, and dotfiles.
+- A new dependency, install script, or network call.
+- A rewrite where a small edit would do.
+- A secret, a token, a personal path, or a debug print.
+- A claim in the PR body that the diff does not show.
+
+## Merging and checks
+
+- Squash merge only. Merge commits and rebase merges are off.
+- Squash commit title is the PR title. The message is blank.
+- The branch may fall behind `main`. Use the Update branch button or rebase
+  locally. Branch history does not reach `main`.
+- Auto-merge is allowed. The owner turns it on per PR after reading the diff
+  (`gh pr merge --auto --squash`). It fires when the required checks pass.
+- No merge queue. No bypass actors on any ruleset, so the rules bind the owner
+  too. To fix a bad rule, set the ruleset to Disabled, fix it, turn it on.
+- Required approvals: 0. GitHub does not let an author approve their own PR, so
+  any higher number would block every merge.
+- Required checks on every repo that has the full ruleset (see "Rulesets"):
+  `markdown-lint`, `link-check`, `actionlint`, `pr-title`. They are the job
+  names in each repo's `ci.yml`, so a rename there would block every PR.
+- A repo with code (tool, site, or lab) also requires its test check:
+  `node-ci` for TypeScript tools and sites, `python-ci` for Python tools and
+  labs. A check that never blocks is decoration, and code is where agents make
+  mistakes.
+- CodeQL and other scanners report but never block. A flaky required check
+  blocks every merge.
+- How the shared workflows report those names is in [ci.md](../ci.md).
+
+Decision: the test check is required for repos with code. Why: green tests are
+the only review that scales to an agent's pace.
+
+Decision: the squash commit message is blank, not the PR body. Why: the body
+holds a template with checklists. In `git log` that is noise. The title ends in
+`(#12)`, which leads to the PR with the why, the tests, and the risk.
+
+### Rulesets
+
+A ruleset is a set of branch or tag rules that GitHub enforces. The files are
+in `rulesets/` and `scripts/setup-repo.ps1` applies them. All are active with no
+bypass actors, so the rules bind the owner too.
+
+| File | Name in GitHub | Applies to | Rules |
+| --- | --- | --- | --- |
+| `main-public.json` | `main-protection` | `main` in public repos | No deletion, no force push, linear history, signed commits, PR with 0 approvals and squash only, the required checks |
+| `main-private.json` | `main-guard` | `main` in private repos | No deletion, no force push |
+| `main-private.json` with `-Strict` | `main-guard` | `main` in private sites, and any private repo run with `-Strict` | The two above, plus linear history, PR with 0 approvals and squash only, and the required checks when `ci.yml` defines them |
+| `tags.json` | `release-tags` | Tags `v*` in every live repo | No deletion, no move |
+
+- `repo-settings-public.json` and `repo-settings-private.json` hold the merge
+  settings (squash only, blank commit message, auto-merge on, branch deleted on
+  merge) and, for public repos, secret scanning.
+- The script adds the test check to the required list for a repo with code.
+- The ruleset is skipped, not forced, when `ci.yml` is missing or lacks the
+  required jobs, or a workflow still has the all-zero placeholder pin. A
+  required check that never reports blocks every merge. Run the script again
+  once CI is ready.
+- Private repos get the light ruleset. A private site always gets `-Strict`.
+  Any other private repo takes `-Strict` once its CI exists.
+- Wiki and projects are off everywhere. Issues and discussions are off only in
+  the profile repo, where nothing needs a reply.
+- The script never deletes labels or rulesets. Deletes are done by hand, after
+  you read the list.
+- The script and `verify-repo.ps1` refuse any repo named `ARCHIVE-...`.
+- To recover from a bad rule, set the ruleset to Disabled in Settings, fix it,
+  and turn it back on.
+
+Decision: shared community files (security policy, contributing guide, code of
+conduct, support page, issue and PR templates) live once in `alawein/.github`.
+Why: one copy stays correct. A repo's own copy replaces the default. They are
+not merged. `CODEOWNERS`, workflows, and the license stay per repo.
+
+### Signed commits
+
+A signed commit carries a cryptographic proof of who wrote it. GitHub shows it
+as Verified.
+
+- Public repos require signed commits on `main`. GitHub signs its own squash
+  merges, so a merge made through the PR passes. Confirm this once on a
+  throwaway public repo: squash-merge a PR that holds an unsigned commit.
+- Private repos leave the rule out. Sign locally anyway once you have a key.
+- Until a signing key is registered: keep the rule on for public repos, do not
+  set `commit.gpgsign` (every commit would fail without a key), and do not let
+  it block work.
+- To register one key for all tools:
+  1. Create an SSH key of type ed25519 and keep it in your password manager's
+     SSH agent, so nothing prompts during an agent run.
+  2. Add the public half at GitHub, Settings, SSH and GPG keys, as a Signing
+     key. This is a separate entry from an authentication key.
+  3. Set `gpg.format` to `ssh`, `user.signingkey` to the public key, and
+     `commit.gpgsign` to `true`. On Windows, set `gpg.ssh.program` to the
+     OpenSSH `ssh-keygen.exe` that Git for Windows ships.
+  4. Make one test commit and check for Verified on GitHub.
+
+Decision: one signing key, registered once, shared by all tools on the machine.
+Why: a key per tool is more keys to track, and all of them act as you.
+
+## Versions and releases
+
+Decision: manual annotated tags with a short routine, not release-please
+(a bot that opens release PRs for you). Why: PRs made by the default Actions
+token do not start other workflows, so a bot release PR never runs the required
+checks and cannot merge. Fixing that needs a stored token or a GitHub App, which
+is one more secret to guard. The manual routine takes ten minutes, and an agent
+can do the typing.
+
+| Kind of repo | Versioned? | Scheme |
+| --- | --- | --- |
+| Libraries, CLIs, and packages others install | Yes | Semantic version, GitHub release, registry publish |
+| Templates and shared workflows others pin | Yes | Semantic version, so a pin comment is checkable |
+| Research code | Once, at paper release | `v1.0.0` tag and release |
+| Sites, docs, the profile repo | No | The deploy from `main` is the release |
+| Private apps and ops tools | No | Same. Tag only if another repo pins it |
+
+### Semantic version
+
+`MAJOR.MINOR.PATCH`, read as: Patch means a fix or a dependency update nobody
+notices. Minor means a new capability that is backward compatible. Major means
+something a caller relied on is gone or incompatible. Before 1.0 (`0.y.z`), a
+minor bump may break.
+
+### The routine
+
+1. Confirm `main` is green. If a milestone exists for this version, confirm it
+   has no open issues.
+2. List what merged since the last tag:
+   `gh pr list --state merged --search "merged:>=YYYY-MM-DD" --json number,title`.
+3. Pick the version from those titles. A `!` means major. A `feat` means minor.
+   Anything else is a patch.
+4. Branch `chore/release-vX.Y.Z`. Update the version in the one file that holds
+   it. Add the changelog entry.
+5. Open the PR titled `chore(release): vX.Y.Z`. Merge it.
+6. Tag the merge commit on `main` and push the tag:
+   `git tag -a vX.Y.Z -m "vX.Y.Z"` then `git push origin vX.Y.Z`.
+7. Publish the release with the changelog entry as its notes:
+   `gh release create vX.Y.Z --verify-tag --notes-file <file>`.
+8. If the repo publishes a package, the tag starts the publish workflow (below).
+9. Verify from outside: install the release in a clean folder and run it.
+10. Close the milestone.
+
+The `v*` tag ruleset forbids deleting or moving a tag, because a moved tag
+silently changes what people pinned. A wrong release gets a new patch version.
+For a package, mark the bad one deprecated or yanked (a flag that tells
+installers to skip it), then ship the fix.
+
+Publishing to a registry (npm, PyPI) runs only from a workflow started by a `v*`
+tag, using the registry's trusted publishing (OIDC: a short-lived login that
+GitHub proves for the workflow, so no stored password). The job sits in a
+GitHub Environment named `release` that needs the owner's approval where the
+plan allows it.
+
+### Changelog
+
+Repos with versioned releases keep a `CHANGELOG.md` in the Keep a Changelog
+format.
+
+- Write the entry in the release PR, from the merged PR titles. PRs do not edit
+  the changelog. Why: every PR touching the same lines makes merge conflicts,
+  and parallel agents would hit them daily.
+- Sections: Added, Changed, Deprecated, Removed, Fixed, Security. Write for a
+  user: what changed for them.
+- Header: `## [X.Y.Z] - YYYY-MM-DD`. Never edit a released section. A
+  correction goes in the next version.
+- Repos without versions keep no changelog. The git log and the PRs are the
+  history.
+
+## Environments
+
+There are three. There is no shared staging, because a preview is a private
+staging copy for every PR.
+
+| | Local | Preview | Production |
+| --- | --- | --- | --- |
+| What | Your machine | One per branch and PR | The live site or app |
+| Runs from | Working folder | Any non-`main` branch | `main` only |
+| Who sees it | You | You and the team, behind a login | Everyone |
+| Data | Throwaway or fixtures | Test data, never production data | Real |
+| Secrets | Dev-only keys | Preview-only keys | Production keys |
+| Deployed by | Nobody | Vercel, on push | Vercel, on merge |
+
+Rules:
+
+- No environment reads another's secrets or data. A preview never points at the
+  production database. Use a separate database or a database branch.
+- Every value that differs by environment is an environment variable, never
+  a code branch.
+- A schema or data change ships in its own PR, with a backup taken first. A
+  rollback of code does not roll back data.
+
+## Vercel
+
+Vercel builds and hosts the personal site and other web apps. Nothing else
+here uses it.
+
+- One Vercel scope (your account or one team) owns every project. Do not
+  create projects elsewhere. The free Hobby plan is for non-commercial use. A
+  site that earns money needs a paid plan.
+- The project name equals the repo name. Never reuse a name in two scopes.
+- Connect each project to its GitHub repo. The production branch is `main`.
+  Nothing else deploys to production.
+- Production deploys come from a merged PR, never from a laptop, and never
+  through a linked personal project.
+- Deployment Protection is Standard: previews sit behind a login and the
+  production domain stays public. Never choose All Deployments, because it puts
+  a login wall on the production domain.
+- Share a preview by adding the person to the team, or use the protection
+  bypass secret for an automation. Never turn protection off to test.
+- The Vercel Toolbar is off. The Node version is set in project settings and in
+  `package.json`.
+- Check the preview before merge when a change touches what a visitor sees. Put
+  the preview URL, and a screenshot if useful, in the PR.
+- Skip builds that add nothing, such as Dependabot branches that only change
+  workflow files, with `ignoreCommand` in `vercel.json`.
+- A redirect starts temporary (307). Change it to 308 only after 7 clean days,
+  because browsers cache a 308 and it cannot be recalled.
+- Never move or remove a domain without the saved baselines and the steps in
+  [vercel.md](../vercel.md), which also holds the `vercel.json` template.
+- Never commit `.vercel/` or any `.env*` file.
+
+### Environment variables on Vercel
+
+- Set them in the dashboard or with `vercel env add NAME production`. Never
+  commit a value and never put an `env` block in `vercel.json`.
+- Names are `UPPER_SNAKE_CASE`. A value read in the browser needs the framework's
+  public prefix (`NEXT_PUBLIC_`, `PUBLIC_`, `VITE_`). Nothing secret gets one.
+- Mark every secret Sensitive. Vercel offers this for Production and Preview. A
+  sensitive value cannot be read back, so local values come from your password
+  manager, not from `vercel env pull`.
+- Give each variable only the environments it needs. Production and Preview use
+  different values.
+- A changed value applies to new deployments only. Redeploy after a change.
+- The repo README lists the variable names under "Environment". Never the values.
+
+### Roll back a bad deploy
+
+1. Vercel dashboard, Deployments, pick the last good production deployment,
+   choose Instant Rollback. CLI: `vercel rollback <deployment-url>`.
+2. A rollback stops automatic assignment of the production domain. New deploys
+   will not go live until you promote one by hand.
+3. Fix forward: revert the bad PR with a new PR, merge it, check the new
+   deployment, promote it.
+4. Check the live URL and the certificate.
+
+## Dependencies
+
+Dependabot (GitHub's bot that opens PRs for new versions) runs in every repo.
+
+- Schedule: weekly, Monday, for npm or Python packages and for GitHub Actions.
+- A new version waits 7 days before Dependabot proposes it (the cooldown). Most
+  bad releases are pulled in the first week.
+- Minor and patch updates arrive as one grouped PR per ecosystem. A major
+  update arrives as its own PR.
+- Security updates arrive at once. The cooldown does not delay them.
+- Open PR limit: 5 per ecosystem.
+- Actions are pinned to a full 40-character commit SHA with the tag in a
+  comment. A tag can move. A SHA cannot. Turn on the setting that rejects
+  unpinned actions once the repo runs green. The pins are listed in
+  [pins.md](../pins.md). Bump steps are in [ci.md](../ci.md).
+- Packages are pinned by a committed lockfile (`package-lock.json`, `uv.lock`).
+  CI installs exactly what the lockfile says (`npm ci`, `uv sync --locked`).
+  Ranges in the manifest are fine when the lockfile is committed.
+- Tools that Dependabot cannot bump (a downloaded binary, a Docker image tag)
+  are pinned by version and checksum, and listed in the repo's pins file.
+- Runtimes (Node, Python) move once a year in their own PR, when the old one is
+  within six months of end of life.
+- Adding a dependency says why in the PR: what the standard library or an
+  existing package cannot do. Check the maintainer, the last release date, and
+  the license.
+
+### Review a bump
+
+1. Patch or minor group: read the PR's release notes summary and the lockfile
+   diff. Look for new packages that were not there before. Checks green, then
+   turn on auto-merge.
+2. Major: read the release notes for breaking changes. Run the app or the
+   tests locally. Check that the preview works. Merge alone, not with others.
+3. Any bump with an install script, a new maintainer, or a sudden size jump:
+   stop and look at the package's page before merging.
+4. Stuck for a week: close it. Dependabot will try again, or pin it with a
+   comment that says why.
+
+Decision: Dependabot PRs are never merged without a person turning on
+auto-merge. Why: a dependency update is code from a stranger.
+
+## Security baseline
+
+### Account
+
+- Two-factor login with a passkey or hardware key. Recovery codes are in the
+  password manager.
+- Review authorized apps and installed GitHub Apps once a quarter. Each one
+  gets selected repos only, never all.
+- Fine-grained personal access tokens only, never classic. Scope each to named
+  repos and the fewest permissions. Set an expiry of 90 days or less.
+
+### Every repo
+
+- Dependabot alerts and security updates on.
+- Actions token default is read-only (`contents: read`). Raise a permission per
+  job, never for the whole file.
+- Workflows never use `pull_request_target`, which runs with secrets, and never
+  run code from a PR with secrets.
+- Text from outside (issue titles, PR titles, branch names) is never placed
+  inside a `run:` script. Pass it through an `env:` variable.
+- Checkout uses `persist-credentials: false`. Every job has `timeout-minutes`.
+- `.gitignore` covers `.env*`, key files, and tool state folders.
+
+### Public repos
+
+- Secret scanning and push protection on. Push protection blocks a push that
+  contains a known token pattern. It is free on public repos.
+- Private vulnerability reporting on, and `SECURITY.md` says how to report.
+- CodeQL (GitHub's code scanner) on, using the default setup in Settings, Code
+  security. It is never a required check. Read its alerts in the weekly review.
+- Require approval for first-time contributors' workflow runs.
+
+### Private repos
+
+- Hosted secret scanning may not be available on your plan. Check Settings.
+  Until you know, scan locally.
+- Run a local scanner (gitleaks) before every push. A global pre-push hook does
+  it for all repos. A repo that uses its own hook manager calls the same scan.
+  A clean scan exits 0. Run it with no network, and pin the tool by version or
+  image digest.
+- Rulesets and required checks on private repos need GitHub Pro. Decision: use
+  Pro. Why: it costs little next to one unprotected `main`. Without Pro, keep a
+  local pre-push hook that refuses `main`, and work through PRs by habit.
+- What else depends on the plan is in [repos.md](repos.md), "Private repo
+  limits and fallback".
+
+### If a secret leaks
+
+Treat any secret that reached a commit, a log, a screenshot, a chat, or a public
+repo as stolen. Order matters.
+
+1. Revoke or rotate it at the source first. Before anything else.
+2. Check the provider's usage log for the window it was exposed. Note anything
+   you did not do.
+3. Put the new value in place (see Secrets) and redeploy what used it.
+4. Remove the value from the code in a PR. Rewriting history is optional and
+   does not undo the leak, because forks and caches keep copies.
+5. Close the scanning alert as "revoked".
+6. Fill in [incident.md](../../templates/incident.md). If money, data, or an
+   attacker was involved, fill in
+   [postmortem.md](../../templates/postmortem.md) within a week.
+7. Add the check that would have caught it (a pattern, a hook, a `.gitignore`
+   line).
+
+## Secrets
+
+Decision: Bitwarden is the source of truth for every secret. Why: one place to
+rotate, audit, and recover from. The repo, Vercel, and GitHub hold copies only.
+
+The best secret is one that does not exist. Prefer, in this order:
+
+1. No secret: the automatic `GITHUB_TOKEN`, Vercel's Git integration, and OIDC.
+2. A short-lived token.
+3. A scoped, expiring key, stored in Bitwarden.
+
+Rules:
+
+- Nothing secret goes in a repo, in `vercel.json`, in an issue or PR, in chat,
+  or in a screenshot. Never open, paste, or print a `.env*` file.
+- Each secret has a name, an owner (the service), a place it is used, and an
+  expiry or rotation date, recorded in its Bitwarden entry.
+- Local work reads secrets from a `.env.local` file that is ignored by Git,
+  filled from Bitwarden.
+- A machine account token for the command-line tool lives in your user
+  environment, not in a file in a repo.
+
+### Move a secret to GitHub Actions or Vercel
+
+Pipe the value from Bitwarden straight to the destination. It never lands in a
+file, in the repo, or on the command line.
+
+```powershell
+# GitHub Actions secret: read from Bitwarden, send to GitHub on stdin
+(bws secret get <secret-id> | ConvertFrom-Json).value | gh secret set NAME --repo alawein/<repo>
+
+# Vercel variable: the same, to one environment
+(bws secret get <secret-id> | ConvertFrom-Json).value | vercel env add NAME production
+```
+
+Use a repository secret for one repo, never an organization-wide secret for a
+single use. Give a workflow a secret only in the job step that needs it.
+
+### Rotation rhythm
+
+- On any leak or suspected leak: at once.
+- When a tool, machine, or service you used is retired or lost: at once.
+- Keys that can spend money or write to production: every 90 days.
+- Other keys with no built-in expiry: every 180 days.
+- Tokens with a built-in expiry: set to 90 days or less, and renew before it ends.
+
+The first Monday of each quarter is rotation day. It is a dated task on the
+board.
+
+To rotate: create the new secret at the source, update Bitwarden, update GitHub
+and Vercel, redeploy, then revoke the old one. Revoke last, so nothing breaks.
+
+## Backups
+
+Every repo has a remote on GitHub, private repos included. That is one copy. A
+laptop clone is a second copy, but both depend on you and one login.
+
+- Push each working branch at the end of a session. A draft PR does it.
+- Each month, back up everything to a place outside the working folder and
+  outside any folder that syncs deletions: an external drive, or an encrypted
+  cloud bucket. Do both for private repos.
+  - Git: `git clone --mirror` of every repo (a full copy with all branches
+    and tags).
+  - Issues and PRs: export to JSON with `gh issue list --state all --json ...`
+    and `gh pr list --state all --json ...`, per repo, with a high `--limit`.
+  - The board: `gh project item-list <number> --owner alawein --format json`.
+  - Notion: its own export.
+- Secrets are backed up by Bitwarden. Env variable names are in each README.
+- Each quarter, restore one repo from a mirror into a scratch folder and run its
+  tests. A backup you have not restored is a guess.
+- A repo you archive stays on GitHub as read-only. Keep its mirror. Retired
+  repos are renamed `ARCHIVE-<name>` and isolated as described in
+  [archive.md](../archive.md).
+
+## Incidents and rollback
+
+An incident is anything live that is broken, exposed, or losing data.
+
+| Severity | Meaning | Response |
+| --- | --- | --- |
+| High | Production down, data loss, or a leaked secret | Stop now. Roll back first |
+| Medium | Degraded, or one feature broken | Fix the same day |
+| Low | Cosmetic, or a workaround exists | Normal issue |
+
+Steps, in order:
+
+1. Stop the harm. Roll back, turn off the feature, or revoke the secret. Do not
+   debug in production first.
+2. Open a copy of [incident.md](../../templates/incident.md) in your log. Note the
+   time you noticed, and keep a one-line timeline as you go.
+3. Tell anyone affected. Plain words, what is broken, what you did, when the next
+   update comes.
+4. Fix forward in a normal PR with a `fix(scope): ...` title. A fix in a hurry
+   still uses a PR and the checks.
+5. Verify live.
+6. Write the postmortem for any High incident, and for any Medium that repeated.
+   Use [postmortem.md](../../templates/postmortem.md). Each fix becomes an issue
+   on the board.
+
+How to undo each kind of change:
+
+| What went wrong | How to undo |
+| --- | --- |
+| A bad merge to `main` | Revert the PR (a new `fix(scope): revert ...` PR) |
+| A bad site deploy | Instant Rollback on Vercel, then revert the PR |
+| A bad package release | Deprecate or yank it, ship a patch. Tags cannot be moved |
+| A bad data change | Restore from the backup taken before the change |
+| A leaked secret | Rotate at the source first. See "If a secret leaks" |
+| A bad ruleset or setting | Set the ruleset to Disabled, fix it, turn it on |
+
+Decision: rollback comes before diagnosis. Why: a minute of downtime costs less
+than ten minutes of guessing.
+
+## Review tools
+
+Decision: no CodeRabbit and no Graphite. CodeRabbit posts an AI review on every
+PR. A solo owner already gets that review by running a fresh agent session on
+the diff before opening the PR, at no extra cost and with no extra bot that can
+read private code. The bot's comments add noise to read, and it takes its
+instructions from a file in the PR branch, which is untrusted input. Graphite
+is built for stacked PRs and review queues, and this flow uses neither. Revisit
+CodeRabbit only if PR volume grows past what one person can read. Nothing else
+here depends on either tool.

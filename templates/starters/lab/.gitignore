@@ -1,0 +1,37 @@
+# Secrets and local environment files.
+.env
+.env.*
+
+# Raw and cached data stay local. See data/README.md.
+data/raw/
+data/cache/
+
+# Build and tool output.
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+.coverage
+htmlcov/
+
+# Editor and OS files.
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Local agent settings.
+.claude/settings.local.json
+
+# Private keys and certificates.
+*.pem
+*.key
+*.pfx

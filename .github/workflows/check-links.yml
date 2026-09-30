@@ -1,0 +1,45 @@
+name: Check links
+
+on:
+  workflow_call:
+    inputs:
+      paths:
+        description: Files or globs for lychee to scan.
+        type: string
+        default: "./**/*.md"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: check-links-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  archive-guard:
+    runs-on: ubuntu-latest
+    timeout-minutes: 1
+    permissions: {}
+    steps:
+      - name: Refuse to run in an archive repo
+        env:
+          REPO: ${{ github.repository }}
+        run: |
+          case "${REPO#*/}" in
+            ARCHIVE-*) echo "::error::${REPO} is an archive repo. Workflows never run here."; exit 1 ;;
+          esac
+
+  lint:
+    needs: [archive-guard]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # Put ignored URL patterns in a .lycheeignore file at the repo root.
+      - uses: lycheeverse/lychee-action@e7477775783ea5526144ba13e8db5eec57747ce8 # v2.9.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          args: --no-progress --verbose --max-retries 3 --retry-wait-time 10 --accept '200..=299' ${{ inputs.paths }}

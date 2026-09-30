@@ -1,0 +1,5 @@
+# The README template points at files a new repo will have (its banner images and LICENSE).
+^file://.*/templates/assets/
+^file://.*/templates/LICENSE$
+# Starters carry banner images in assets/ that the new repo adds later.
+^file://.*/templates/starters/.*/assets/

@@ -1,0 +1,109 @@
+name: Python CI
+
+on:
+  workflow_call:
+    inputs:
+      python-version:
+        description: Python version, for example 3.13.
+        type: string
+        default: "3.13"
+      installer:
+        description: "uv (needs pyproject.toml and uv.lock) or pip (needs a requirements file)."
+        type: string
+        default: uv
+      uv-version:
+        description: Pinned uv version. Used only when installer is uv.
+        type: string
+        default: "0.12.21"
+      requirements-file:
+        description: Requirements file for pip. It must list ruff and pytest.
+        type: string
+        default: requirements.txt
+      working-directory:
+        type: string
+        default: "."
+      run-lint:
+        type: boolean
+        default: true
+      run-test:
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: python-ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  archive-guard:
+    runs-on: ubuntu-latest
+    timeout-minutes: 1
+    permissions: {}
+    steps:
+      - name: Refuse to run in an archive repo
+        env:
+          REPO: ${{ github.repository }}
+        run: |
+          case "${REPO#*/}" in
+            ARCHIVE-*) echo "::error::${REPO} is an archive repo. Workflows never run here."; exit 1 ;;
+          esac
+
+  ci:
+    needs: [archive-guard]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        shell: bash
+        working-directory: ${{ inputs.working-directory }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # uv path: install exactly what uv.lock says.
+      - name: Set up uv
+        if: inputs.installer == 'uv'
+        uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+        with:
+          version: ${{ inputs.uv-version }}
+          python-version: ${{ inputs.python-version }}
+          enable-cache: true
+          working-directory: ${{ inputs.working-directory }}
+      - name: Install (uv)
+        if: inputs.installer == 'uv'
+        run: uv sync --locked
+
+      # pip path.
+      - name: Set up Python
+        if: inputs.installer == 'pip'
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: ${{ inputs.python-version }}
+          cache: pip
+          cache-dependency-path: ${{ inputs.working-directory }}/${{ inputs.requirements-file }}
+      - name: Install (pip)
+        if: inputs.installer == 'pip'
+        env:
+          REQUIREMENTS_FILE: ${{ inputs.requirements-file }}
+        run: |
+          python -m venv .venv
+          .venv/bin/python -m pip install -r "$REQUIREMENTS_FILE"
+
+      - name: Lint
+        if: inputs.run-lint
+        env:
+          INSTALLER: ${{ inputs.installer }}
+        run: |
+          if [ "$INSTALLER" = "uv" ]; then RUN=(uv run); else RUN=(.venv/bin/python -m); fi
+          "${RUN[@]}" ruff check .
+          "${RUN[@]}" ruff format --check .
+      - name: Test
+        if: inputs.run-test
+        env:
+          INSTALLER: ${{ inputs.installer }}
+        run: |
+          if [ "$INSTALLER" = "uv" ]; then RUN=(uv run); else RUN=(.venv/bin/python -m); fi
+          "${RUN[@]}" pytest

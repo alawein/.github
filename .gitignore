@@ -1,0 +1,26 @@
+# Local data: a repo map or a run log must never be committed.
+*.csv
+*.ndjson
+*.log
+
+# Secrets and local environment files.
+.env
+.env.*
+
+# Tool and build output.
+.vercel/
+node_modules/
+
+# Editor and OS files.
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Private keys and certificates.
+*.pem
+*.key
+*.pfx

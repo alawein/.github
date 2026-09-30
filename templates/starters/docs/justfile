@@ -1,0 +1,24 @@
+# Tasks. Install just once: winget install Casey.Just
+set windows-shell := ["powershell.exe", "-NoLogo", "-NoProfile", "-Command"]
+
+default:
+    @just --list
+
+# Markdown style, the same rules the shared check uses. Changes nothing.
+lint:
+    npx --yes markdownlint-cli2 "**/*.md"
+
+# Link check. Needs lychee on the PATH.
+test:
+    lychee './**/*.md'
+
+# A docs repo has nothing to build.
+build:
+    @echo "Nothing to build."
+
+# Everything the pull request checks run.
+check: lint test build
+
+# Apply the automatic markdown fixes.
+fix:
+    npx --yes markdownlint-cli2 --fix "**/*.md"
