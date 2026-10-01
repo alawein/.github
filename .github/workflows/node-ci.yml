@@ -17,6 +17,9 @@ on:
       run-test:
         type: boolean
         default: true
+      require-test:
+        type: boolean
+        default: false
       run-build:
         type: boolean
         default: true
@@ -58,6 +61,23 @@ jobs:
           node-version: ${{ inputs.node-version }}
           cache: npm
           cache-dependency-path: ${{ inputs.working-directory }}/package-lock.json
+      - name: Require a runnable test script
+        if: inputs.require-test
+        env:
+          RUN_TEST: ${{ inputs.run-test }}
+        run: |
+          node --input-type=module -e '
+            import fs from "node:fs";
+            const p = JSON.parse(fs.readFileSync("package.json", "utf8"));
+            if (process.env.RUN_TEST !== "true") {
+              console.error("::error::require-test: true requires run-test: true.");
+              process.exit(1);
+            }
+            if (typeof p.scripts?.test !== "string" || p.scripts.test.trim() === "") {
+              console.error("::error::require-test: true requires a nonempty package.json scripts.test script.");
+              process.exit(1);
+            }
+          '
       # npm ci installs exactly what the lockfile says and fails if the two disagree.
       - name: Install
         run: npm ci
@@ -65,8 +85,11 @@ jobs:
         if: inputs.run-lint
         run: npm run lint --if-present
       - name: Test
-        if: inputs.run-test
+        if: inputs.run-test && !inputs.require-test
         run: npm test --if-present
+      - name: Test (required)
+        if: inputs.require-test
+        run: npm test
       - name: Build
         if: inputs.run-build
         run: npm run build --if-present

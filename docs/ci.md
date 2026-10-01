@@ -39,6 +39,21 @@ steps to add one by hand.
 CodeQL is not a workflow here. Turn it on with GitHub's default setup
 (Settings, Code security) on public repos.
 
+## Reusable workflow inputs
+
+`node-ci.yml` defaults `require-test` to `false`, so optional callers retain
+`npm test --if-present`. Callers for code classes can opt in with
+`require-test: true` and must also set `run-test: true`. The guard fails before
+install with a diagnostic if execution is disabled or `package.json` lacks a
+nonempty `scripts.test` string. The mandatory branch runs `npm test` without
+`--if-present` and propagates the test command's failure.
+
+`check-links.yml` defaults `offline` to `false`, preserving external checking
+for existing callers when they update their kit pin. Deliberately migrating
+PR checks to `offline: true` requires a paired scheduled external scan using
+`offline: false`. This API does not establish that distributed templates or
+consumer repositories have completed that migration.
+
 ## Check names and gate jobs
 
 A called workflow reports its checks as `<caller job> / <called job>`, for
@@ -157,9 +172,10 @@ any workflow in this repo or in a caller repo.
   scope, an optional `!`, then a colon, a space, and any subject. House rules are stricter
   (six types, 72 characters) and are in delivery.md. The action does not check
   length.
-- `node-ci.yml`: `npm ci`, then `npm run lint`, `npm test`, `npm run build`,
-  each with `--if-present`, so a missing script is skipped. Inputs:
-  `node-version`, `working-directory`, `run-lint`, `run-test`, `run-build`.
+- `node-ci.yml`: `npm ci`, then lint, test, and build. Optional scripts use
+  `--if-present`; `require-test: true` requires and runs a nonempty test
+  script. Inputs: `node-version`, `working-directory`, `run-lint`,
+  `run-test`, `run-build`, `require-test`.
 - `python-ci.yml`: with `uv`, `uv sync --locked` then `ruff check`,
   `ruff format --check`, `pytest`. With `pip`, the requirements file must list
   ruff and pytest. Inputs: `python-version`, `installer`, `uv-version`,
