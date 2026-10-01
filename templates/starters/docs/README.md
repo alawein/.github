@@ -18,12 +18,14 @@ Each page lives in `docs/`. Add a page there and link it from this list.
 just check
 ```
 
-`just check` runs the markdown lint and the link check. `just fix` applies the
-automatic fixes. Install `just` once with `winget install Casey.Just`.
+`just check` runs the pinned Markdown lint and checks local links offline.
+`just fix` applies the automatic Markdown fixes. Install `just` once with
+`winget install Casey.Just`, plus Node.js/npm and lychee.
 
 Every pull request also runs four shared checks: `markdown-lint`,
 `link-check`, `actionlint`, and `pr-title`. They are described in
 [CONTRIBUTING](https://github.com/alawein/.github/blob/main/CONTRIBUTING.md).
+PR links are checked offline; the paired nightly workflow scans external URLs.
 
 ## Contributing
 

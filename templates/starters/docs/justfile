@@ -6,11 +6,11 @@ default:
 
 # Markdown style, the same rules the shared check uses. Changes nothing.
 lint:
-    npx --yes markdownlint-cli2 "**/*.md"
+    npx --yes markdownlint-cli2@0.23.2 "**/*.md"
 
-# Link check. Needs lychee on the PATH.
+# Local Markdown links. Needs lychee on the PATH.
 test:
-    lychee './**/*.md'
+    lychee --offline --no-progress './**/*.md'
 
 # A docs repo has nothing to build.
 build:
@@ -21,4 +21,4 @@ check: lint test build
 
 # Apply the automatic markdown fixes.
 fix:
-    npx --yes markdownlint-cli2 --fix "**/*.md"
+    npx --yes markdownlint-cli2@0.23.2 --fix "**/*.md"
