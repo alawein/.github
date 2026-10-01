@@ -99,9 +99,9 @@ failed on purpose, so no caller ran unpinned code. The steps, for the record:
 3. Tag the commit `v1.0.0` so the `# v1.0.0` comment next to each pin is true.
 4. Later bumps follow "Bump a pin".
 
-Current distributed pins use verified `v1.1.0` at
-`cfae30c70243ff09a1edc1546b8ed24a3c5c0eeb`; its required checks passed before tagging.
-This release provides `require-test` and paired local/external link inputs.
+Current distributed pins use verified `v1.2.0` at
+`6f6dbe7f3a23ab830a32007bb52b83fd1bb40563`; its required checks passed before tagging.
+This release preserves `require-test` and paired local/external link inputs, and fixes recursive link patterns at the Bash action boundary.
 
 ## Permission rules
 
@@ -154,7 +154,7 @@ Third-party action, in this repo:
    and `.github/workflows/check-links-nightly.yml`.
 3. Open a PR in the caller repo.
 
-Tag `alawein/.github` (`v1.0.0`, `v1.1.0`, ...) after each change to a reusable
+Tag `alawein/.github` (`v1.0.0`, `v1.2.0`, ...) after each change to a reusable
 workflow, so the comment next to a pin says something a reader can check.
 
 ## Why `pull_request` and never `pull_request_target`
