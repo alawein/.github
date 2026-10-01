@@ -341,8 +341,9 @@ minor bump may break.
    `gh pr list --state merged --search "merged:>=YYYY-MM-DD" --json number,title`.
 3. Pick the version from those titles. A `!` means major. A `feat` means minor.
    Anything else is a patch.
-4. Branch `chore/release-vX.Y.Z`. Update the version in the one file that holds
-   it. Add the changelog entry.
+4. Use hyphens between version numbers in the branch, for example
+   `chore/release-v1-3-0` for `v1.3.0`. Update the version in the one file that
+   holds it. Add the changelog entry.
 5. With named approval, open the PR titled `chore(release): vX.Y.Z`.
    The owner reviews and merges it.
 6. The owner creates a signed annotated tag on the verified merge commit:

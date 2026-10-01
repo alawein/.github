@@ -4,6 +4,7 @@ import importlib.util
 import json
 import os
 from pathlib import Path
+import re
 import subprocess
 import sys
 import tempfile
@@ -35,10 +36,21 @@ class PolicyTests(unittest.TestCase):
             with self.subTest(kind=kind):
                 self.assertEqual(self.check(event(kind + "/policy-hygiene")), [])
 
+    def test_documented_release_branch_passes_ready_pr_policy(self):
+        delivery = (SCRIPT.parents[1] / "docs/system/delivery.md").read_text(encoding="utf-8")
+        branches = re.findall(r"`(chore/release-[^`]+)`", delivery)
+        self.assertTrue(branches, "release routine must supply a branch example")
+        for branch in branches:
+            branch = branch.replace("X", "1").replace("Y", "3").replace("Z", "0")
+            for body in ("Closes #12", "No-issue: this release has no existing tracking issue"):
+                with self.subTest(branch=branch, body=body):
+                    self.assertEqual(self.check(event(branch, body)), [])
+
     def test_disallowed_human_branches(self):
         for branch in ("codex/task", "feat/2026-10-01-topic", "feat/Bad", "feat/a--b",
                        "feat/topic-2026-10-01", "feat/20261001", "feat/a-", "feat/-a",
-                       "feat/a/b", "feat/topic-10-01-2026", "dependabot/npm/x"):
+                       "feat/a/b", "feat/topic-10-01-2026", "dependabot/npm/x",
+                       "chore/release-v1.3.0"):
             with self.subTest(branch=branch):
                 self.assertTrue(self.check(event(branch)))
 
