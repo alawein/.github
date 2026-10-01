@@ -25,26 +25,29 @@ concurrency:
 
 jobs:
   run-markdown-lint:
-    uses: alawein/.github/.github/workflows/lint-markdown.yml@a2f16663330afe2bd8ac4ee548121f495e866e4c # v1.0.0
+    uses: alawein/.github/.github/workflows/lint-markdown.yml@cfae30c70243ff09a1edc1546b8ed24a3c5c0eeb # v1.1.0
 
   run-link-check:
-    uses: alawein/.github/.github/workflows/check-links.yml@a2f16663330afe2bd8ac4ee548121f495e866e4c # v1.0.0
+    uses: alawein/.github/.github/workflows/check-links.yml@cfae30c70243ff09a1edc1546b8ed24a3c5c0eeb # v1.1.0
+    with:
+      offline: true
 
   run-actionlint:
-    uses: alawein/.github/.github/workflows/lint-actions.yml@a2f16663330afe2bd8ac4ee548121f495e866e4c # v1.0.0
+    uses: alawein/.github/.github/workflows/lint-actions.yml@cfae30c70243ff09a1edc1546b8ed24a3c5c0eeb # v1.1.0
 
   run-pr-title:
     permissions:
       pull-requests: read
-    uses: alawein/.github/.github/workflows/pr-title.yml@a2f16663330afe2bd8ac4ee548121f495e866e4c # v1.0.0
+    uses: alawein/.github/.github/workflows/pr-title.yml@cfae30c70243ff09a1edc1546b8ed24a3c5c0eeb # v1.1.0
 
   # Vercel (or another host) deploys the site. This job only proves that lint, tests and the build pass.
   run-node-ci:
-    uses: alawein/.github/.github/workflows/node-ci.yml@a2f16663330afe2bd8ac4ee548121f495e866e4c # v1.0.0
+    uses: alawein/.github/.github/workflows/node-ci.yml@cfae30c70243ff09a1edc1546b8ed24a3c5c0eeb # v1.1.0
     with:
       node-version: lts/*
       run-lint: true
       run-test: true
+      require-test: true
       run-build: true
 
   # Gate jobs: a called job reports as "<caller job> / <called job>", so these carry the exact

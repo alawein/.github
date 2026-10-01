@@ -11,12 +11,23 @@ list here.
 steps to add one by hand.
 
 1. Pick the stub for the class (next section).
-2. Copy it from `templates/workflows/` to `.github/workflows/ci.yml`.
+2. Copy it from `templates/workflows/` to `.github/workflows/ci.yml`, and copy
+   `check-links-nightly.yml` from the same folder beside it.
 3. Set the pin after each `@` to a full commit SHA of `alawein/.github` (see
    "After the first commit" and "Bump a pin").
 4. Copy the matching `templates/dependabot-*.yml` to `.github/dependabot.yml`.
 5. Run `scripts/setup-repo.ps1`. It requires the check names that `ci.yml`
    defines.
+
+For the approved private TypeScript hub `alawein/career-engine`, the local
+`-CheckProfile hub-check` option reads `.github/workflows/check.yml` and expects
+the single `check` job. The default `standard` profile keeps the class-specific
+`ci.yml` checks. The hub profile refuses other repo, class, or language values.
+Both setup and verification fail when the hub workflow or job is missing.
+`rulesets/main-hub.json` and `rulesets/main-site.json` are local branch policy
+templates; a setup dry run only prints its proposed writes. Use of the hub
+option for owner setup remains gated on this extension merging and a green hub
+CI run.
 
 ## Which workflow runs where
 
@@ -51,8 +62,8 @@ nonempty `scripts.test` string. The mandatory branch runs `npm test` without
 `check-links.yml` defaults `offline` to `false`, preserving external checking
 for existing callers when they update their kit pin. Deliberately migrating
 PR checks to `offline: true` requires a paired scheduled external scan using
-`offline: false`. This API does not establish that distributed templates or
-consumer repositories have completed that migration.
+`offline: false`. The kit and distributed stubs/starters explicitly use the paired policy.
+An existing consumer must copy both files when migrating.
 
 ## Check names and gate jobs
 
@@ -87,6 +98,10 @@ failed on purpose, so no caller ran unpinned code. The steps, for the record:
 2. Replace every all-zero SHA in the stubs and starters with it.
 3. Tag the commit `v1.0.0` so the `# v1.0.0` comment next to each pin is true.
 4. Later bumps follow "Bump a pin".
+
+Current distributed pins use verified `v1.1.0` at
+`cfae30c70243ff09a1edc1546b8ed24a3c5c0eeb`; its required checks passed before tagging.
+This release provides `require-test` and paired local/external link inputs.
 
 ## Permission rules
 
@@ -135,7 +150,8 @@ Third-party action, in this repo:
 
 1. Get the SHA of the commit you want:
    `gh api repos/alawein/.github/commits/main --jq .sha`.
-2. Replace every `@<sha>` in `.github/workflows/ci.yml` and the tag comment.
+2. Replace every `@<sha>` and tag comment in both `.github/workflows/ci.yml`
+   and `.github/workflows/check-links-nightly.yml`.
 3. Open a PR in the caller repo.
 
 Tag `alawein/.github` (`v1.0.0`, `v1.1.0`, ...) after each change to a reusable
@@ -163,19 +179,24 @@ any workflow in this repo or in a caller repo.
 - `lint-markdown.yml`: if the repo has no markdownlint config, it uses one that
   turns off line length (MD013) and first-line heading (MD041) for that run. A
   repo config replaces it.
-- `check-links.yml`: accepts status 200 to 299 only, and retries a failing link
-  3 times, 10 seconds apart. Put ignored URL patterns in a `.lycheeignore` file
-  at the repo root.
+- `check-links.yml`: its reusable default remains external checking. The kit
+  and distributed callers explicitly validate local links offline on PR/push,
+  so a third-party outage cannot block a merge. The scheduled and manual
+  `check-links-nightly.yml` runs the full external scan with three retries and
+  10 seconds between retries. It accepts status 200 to 299. Put ignored URL
+  patterns in a `.lycheeignore` file at the repo root.
 - `pr-title.yml`: runs `amannn/action-semantic-pull-request` with no inputs and
   no custom regex, so the action's defaults apply. It accepts
   `feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert`, an optional
   scope, an optional `!`, then a colon, a space, and any subject. House rules are stricter
   (six types, 72 characters) and are in delivery.md. The action does not check
   length.
-- `node-ci.yml`: `npm ci`, then lint, test, and build. Optional scripts use
-  `--if-present`; `require-test: true` requires and runs a nonempty test
-  script. Inputs: `node-version`, `working-directory`, `run-lint`,
-  `run-test`, `run-build`, `require-test`.
+- `node-ci.yml`: `npm ci`, then `npm run lint`, `npm test`, `npm run build`.
+  Optional callers keep `--if-present`; a caller with `require-test: true`
+  fails before install if `run-test` is false or `test` is missing or blank,
+  then runs `npm test` without `--if-present`. Inputs: `node-version`,
+  `working-directory`, `run-lint`, `run-test`, `require-test`, `run-build`.
+  Set `require-test: true` only after bumping the caller to a verified kit pin.
 - `python-ci.yml`: with `uv`, `uv sync --locked` then `ruff check`,
   `ruff format --check`, `pytest`. With `pip`, the requirements file must list
   ruff and pytest. Inputs: `python-version`, `installer`, `uv-version`,

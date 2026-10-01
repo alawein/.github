@@ -94,6 +94,10 @@ by hand, then applies these settings by hand:
 
 ### Layer 4: tooling guards
 
+Run `scripts/check-live-references.ps1 -Roots @($kitRoot, $profileRoot, $siteRoot)` from PowerShell after setting each variable to a live checkout. The read-only guard checks tracked text docs and config against archived or retired repo links, workflow pins, profile pins, and any reviewed old domains passed with `-OldDomains @('old.example.test')`. Supply only domains confirmed by the owner; an omitted domain list does not check old domains. It verifies each root's Git origin and refuses unsafe paths before opening files. A finding exits 4; an unreadable input or invalid root exits 2. A clean run still reports the hub as UNKNOWN until the owner runs the guard there.
+
+Historical references require a reviewed exception in the script with the repo origin, exact repo-relative path, full line, reason, and one permitted occurrence. A second occurrence fails. Do not exempt an entire file. Run `scripts/tests/check-live-references.Tests.ps1` to check both the planted failure and clean fixture.
+
 - The kit's setup and verify scripts refuse any repo whose name starts with `ARCHIVE-`.
 - Every reusable workflow starts with a guard job that fails when the repository name starts with
   `ARCHIVE-`, and every other job in that workflow lists it under `needs`. The guard:

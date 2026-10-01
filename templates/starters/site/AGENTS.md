@@ -13,7 +13,8 @@ line must prevent a mistake.
 3. Run `git status` and the check command below once, before any change.
 4. Shared standards: the `alawein/.github` repo, `docs/system/agents.md` for
    agent rules and `docs/system/delivery.md` for branches, commits, and PRs. This
-   file adds to them and wins on conflict for this repo only.
+   file adds restrictions; it cannot relax owner gates or account policy.
+   Follow AG-002 in the shared agent policy for precedence.
 
 ## Commands
 
@@ -53,11 +54,12 @@ Shell: PowerShell on Windows, bash in CI.
 
 ## Remote actions
 
-Mode: push branches and open draft PRs.
+Mode: LOCAL-ONLY. Follow AG-001 in the shared agent policy.
 
-The owner's typed words come first for: spending money, rotating or exposing a
-secret, permanently deleting data or a repo, sending anything other people
-will read, and touching anyone else's repo. Only the owner merges.
+Every send, spend, publish, purge or delete, commit, push, merge, PR creation,
+secret rotation or other remote change needs owner approval naming the action,
+target and scope. Only the owner merges or enables auto-merge. General
+"Continue" never crosses an unnamed gate. Never expose secrets.
 
 ## Verify before you say done
 
@@ -78,6 +80,6 @@ None yet. A repo skill lives at `.claude/skills/NAME/SKILL.md` and is listed her
 
 ## Close out
 
-1. Open the PR from the template. Describe the change and its checks only.
+1. Prepare PR text from the template locally; opening it needs named approval.
 2. Add one line to `docs/lessons.md`.
 3. Leave no stray files: stage named paths only, never `git add -A`.

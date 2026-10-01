@@ -24,6 +24,8 @@ jobs:
 
   run-link-check:
     uses: ./.github/workflows/check-links.yml
+    with:
+      offline: true
 
   run-actionlint:
     uses: ./.github/workflows/lint-actions.yml
