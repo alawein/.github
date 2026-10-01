@@ -29,6 +29,9 @@ line must prevent a mistake.
 
 Shell: PowerShell on Windows, bash in CI.
 
+Install Node.js/npm for `markdownlint-cli2@0.23.2` and lychee for local links
+before running `just check`.
+
 ## Layout
 
 | Path | What is in it |
@@ -75,7 +78,7 @@ None yet. A repo skill lives at `.claude/skills/NAME/SKILL.md` and is listed her
 
 ## Known traps
 
-- The link check needs the network. A failure on a new external link may be a typo or a site that is down. Open the link before you touch the ignore file.
+- Local and PR link checks run offline; external links are scanned nightly. Open a reported external URL before changing `.lycheeignore`.
 - The README opens with a picture element, not a heading. Do not add a title line above it.
 
 ## Close out
