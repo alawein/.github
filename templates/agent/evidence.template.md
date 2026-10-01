@@ -48,6 +48,9 @@ time and PASS/WARN/FAIL or UNVERIFIED separately from local validation.
 The implementer cannot certify their own separate review. This record proves
 provenance, not independence of judgment. After relevant edits, record the new
 digest, rerun affected checks and obtain scoped re-review before promotion.
+Stop all review producers before freezing accepted artifacts. Record their
+completed state and exact content hashes; preserve prior failures, UNKNOWN and
+NOT RUN results. Recheck frozen bytes before using them as promotion evidence.
 
 ## Risk, rollback and approval
 

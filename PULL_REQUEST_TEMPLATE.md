@@ -6,6 +6,8 @@
 
 <!-- The problem or goal. -->
 
+<!-- Ready PR: replace with Closes #12 or No-issue: followed by a specific reason.
+     Blank references, placeholders and examples in comments/code do not qualify. -->
 Closes #
 
 ## Changes

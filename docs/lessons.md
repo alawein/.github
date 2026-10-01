@@ -13,3 +13,4 @@ One line per session, newest at the bottom. Format:
 - 2026-09-30 | label audits | Supplemental labels can be useful without replacing the canonical set | Require exact canonical values and report additional labels as informational notes.
 - 2026-09-30 | link globs | Bash expanded a recursive pattern before lychee and skipped root and nested files | Quote each workflow glob and test the action argument boundary.
 - 2026-10-01 | docs starters | Generated local checks used a moving Markdown runner and external links despite offline PR checks | Pin local tools, check local links offline, and keep external coverage in the paired nightly.
+- 2026-10-01 | PR metadata and hygiene | Examples and unavailable API data can produce misleading policy evidence | Check actual prose and verified bot identity; paginate GET observations and preserve UNKNOWN before promoting new contexts.

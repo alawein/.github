@@ -1,0 +1,82 @@
+name: Read-only hygiene
+
+on:
+  workflow_call:
+    inputs:
+      kit-ref:
+        description: Full kit commit SHA; only kit self-tests may omit it.
+        type: string
+        default: ""
+      expected-required-checks:
+        description: Comma-separated contexts expected in effective main rules.
+        type: string
+        default: markdown-lint,link-check,actionlint,pr-title
+
+permissions:
+  contents: read
+
+concurrency:
+  group: hygiene-${{ github.workflow }}-${{ github.repository }}
+  cancel-in-progress: false
+
+jobs:
+  archive-guard:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 1
+    permissions: {}
+    steps:
+      - name: Refuse to run in an archive repo
+        env:
+          REPO: ${{ github.repository }}
+        run: |
+          case "${REPO#*/}" in
+            ARCHIVE-*) echo "::error::${REPO} is an archive repo. Workflows never run here."; exit 1 ;;
+          esac
+
+  audit:
+    needs: [archive-guard]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - name: Validate kit ref
+        id: ref
+        env:
+          KIT_REF: ${{ inputs.kit-ref }}
+          CALLER_REPOSITORY: ${{ github.repository }}
+          CALLER_SHA: ${{ github.sha }}
+        run: |
+          if [ -z "$KIT_REF" ]; then
+            if [ "$CALLER_REPOSITORY" != "alawein/.github" ]; then
+              echo '::error::Foreign callers must supply the full immutable kit-ref.'
+              exit 1
+            fi
+            KIT_REF="$CALLER_SHA"
+          fi
+          if [[ ! "$KIT_REF" =~ ^[0-9a-f]{40}$ ]]; then
+            echo '::error::kit-ref must be a full lowercase commit SHA.'
+            exit 1
+          fi
+          echo "kit-ref=$KIT_REF" >> "$GITHUB_OUTPUT"
+      - name: Check out audit implementation
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: alawein/.github
+          ref: ${{ steps.ref.outputs.kit-ref }}
+          path: _kit
+          persist-credentials: false
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12.10"
+      - name: Report observed hygiene
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPOSITORY: ${{ github.repository }}
+          EXPECTED_CHECKS: ${{ inputs.expected-required-checks }}
+          OUTPUT: ${{ runner.temp }}/hygiene.json
+        run: |
+          python _kit/scripts/audit-hygiene.py --repository "$REPOSITORY" \
+            --required-checks "$EXPECTED_CHECKS" --output "$OUTPUT"

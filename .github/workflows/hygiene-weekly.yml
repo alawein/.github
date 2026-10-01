@@ -1,0 +1,18 @@
+name: Weekly hygiene
+
+on:
+  schedule:
+    - cron: "23 8 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  hygiene:
+    permissions:
+      contents: read
+      pull-requests: read
+    uses: ./.github/workflows/hygiene.yml
+    with:
+      expected-required-checks: markdown-lint,link-check,actionlint,pr-title
