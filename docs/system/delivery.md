@@ -155,7 +155,7 @@ a draft by mistake.
 
 ### Labels
 
-Five labels, the same in every repo. The set lives in
+Five canonical labels, required in every repo. The set lives in
 [labels.yml](../../templates/labels.yml); owner-approved setup applies it.
 Shared forms and their label references live in
 [.github/ISSUE_TEMPLATE](../../.github/ISSUE_TEMPLATE/), GitHub's
@@ -173,8 +173,9 @@ Shared forms and their label references live in
   label, because its title already says the type.
 - A `refactor` or `test` issue uses `chore`.
 - `blocked` means waiting on something outside the repo. The issue says what.
-- Report extra or missing labels. The owner approves renaming, mapping or
-  removing extras; verification never deletes them automatically.
+- Missing canonical labels or mismatched colors and descriptions fail verification.
+- Report additional labels as informational notes. Useful supplemental labels
+  may remain; renaming, mapping or removal requires named owner approval.
 - The owner can apply one approved entry with
   `gh label create NAME --color HEX --description "TEXT" --force`.
 

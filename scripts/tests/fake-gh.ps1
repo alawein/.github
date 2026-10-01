@@ -51,6 +51,7 @@ if ($path -match '/rulesets/([123])$') {
   $o | ConvertTo-Json -Depth 12 -Compress
   exit 0
 }
+if ($env:FAKE_GH_CASE -like 'labels-*' -and $path -match '/contents/(README\.md|\.github/dependabot\.yml)$') { $Matches[1]; exit 0 }
 if ($path -match '/contents/') { 'HTTP 404'; exit 1 }
 if ($path -match '/vulnerability-alerts$') { '{}'; exit 0 }
 if ($path -match '/automated-security-fixes$|/private-vulnerability-reporting$') { '{"enabled":true}'; exit 0 }
@@ -59,7 +60,23 @@ if ($path -match '/actions/permissions$') { '{"sha_pinning_required":true}'; exi
 if ($path -match '/community/profile$') { '{"files":{"pull_request_template":{"url":"fixture"}}}'; exit 0 }
 if ($path -match '/license$') { 'HTTP 404'; exit 1 }
 if ($path -match '/topics$') { '{"names":["fixture"]}'; exit 0 }
-if ($path -match '/labels\?') { exit 0 }
+if ($path -match '/labels\?') {
+  if ($env:FAKE_GH_CASE -like 'labels-*') {
+    "feat`ta2eeef`tNew feature or capability"
+    if ($env:FAKE_GH_CASE -ne 'labels-missing') {
+      $color = if ($env:FAKE_GH_CASE -eq 'labels-color') { 'ffffff' } else { 'd73a4a' }
+      $description = if ($env:FAKE_GH_CASE -eq 'labels-description') { 'Bug fix or Correction' } else { 'Bug fix or correction' }
+      "fix`t$color`t$description"
+    }
+    "docs`t0075ca`tDocumentation only change"
+    "chore`tcfd3d7`tMaintenance, tooling, or cleanup with no behavior change"
+    "blocked`tb60205`tCannot proceed until an external dependency or decision is resolved"
+    "dependencies`t0366d6`tDependency updates"
+    "accessibility`t7057ff`tAccessibility improvements"
+    "javascript`t168700`tJavaScript changes"
+  }
+  exit 0
+}
 if ($path -match '/actions/permissions/fork-pr-contributor-approval$') { '{"approval_policy":"first_time_contributors"}'; exit 0 }
 Write-Error "unexpected API: $path"
 exit 92
