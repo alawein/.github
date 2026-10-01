@@ -11,6 +11,7 @@ import unittest
 ROOT = Path(__file__).resolve().parents[2]
 AUDIT_SOURCE_SHA = "ce04a21e332e42c3137b26f3becb0de77086b6cb"
 AUDIT_SOURCE_HASH = "444859e0388579527564800c508432a9c1f28a1ddaa076b23b6353e4dea4f374"
+RELEASE_SHA = "b5f8bc3a916b41e22e5e09ec72f34c01428c2933"
 BASH = (str(Path(os.environ.get("ProgramFiles", "C:/Program Files")) / "Git/bin/bash.exe")
         if os.name == "nt" else shutil.which("bash"))
 
@@ -74,6 +75,30 @@ class MetadataWorkflowTests(unittest.TestCase):
                                        ("success", "failure", 1), ("success", "cancelled", 1)):
             code = subprocess.run([BASH, "-c", script], env={**os.environ, "RESULT": result, "TESTS": tests}).returncode
             self.assertEqual(code, expected)
+
+    def test_opt_in_consumer_gate_requires_success(self):
+        fragment = (ROOT / "templates/workflows/pr-policy.jobs.yml").read_text(encoding="utf-8")
+        script = re.search(r"      run: \|\n((?:        .*\n?)+)", fragment)[1]
+        script = "\n".join(line[8:] for line in script.splitlines())
+        for result in ("success", "failure", "cancelled", "skipped", ""):
+            with self.subTest(result=result):
+                code = subprocess.run([BASH, "-c", script], env={**os.environ, "RESULT": result}).returncode
+                self.assertEqual(code, 0 if result == "success" else 1)
+
+    def test_new_callers_bind_workflow_and_source_without_extra_credentials(self):
+        policy = (ROOT / "templates/workflows/pr-policy.jobs.yml").read_text(encoding="utf-8")
+        self.assertIn("pr-policy.yml@" + RELEASE_SHA + " # v1.3.0", policy)
+        self.assertRegex(policy, r"(?m)^    kit-ref: " + RELEASE_SHA + "$")
+        self.assertIn("needs: [run-pr-policy]", policy)
+        self.assertIn("if: ${{ always() }}", policy)
+        self.assertIn("permissions: {}", policy)
+        self.assertNotIn("pull-requests:", policy)
+        hygiene = (ROOT / "templates/workflows/hygiene-weekly.yml").read_text(encoding="utf-8")
+        self.assertIn("hygiene.yml@" + RELEASE_SHA + " # v1.3.0", hygiene)
+        self.assertNotIn("kit-ref:", hygiene)
+        for caller in (policy, hygiene):
+            self.assertNotIn("secrets:", caller)
+            self.assertNotIn("write", caller)
 
 
 if __name__ == "__main__":

@@ -6,7 +6,7 @@ if ($args[0] -ne 'api') { Write-Error 'unexpected gh command'; exit 91 }
 $path = [string]$args[1]
 if ($env:FAKE_GH_CASE -eq 'http-403' -and $path -eq 'repos/alawein/career-engine') { 'HTTP 403'; exit 1 }
 if ($path -match '^repos/alawein/[^/]+$') {
-  $visibility = if ($env:FAKE_GH_CASE -eq 'public-tool') { 'public' } else { 'private' }
+  $visibility = if (($env:FAKE_GH_CASE -eq 'public-tool' -or $env:FAKE_GH_CASE -like 'policy-public-*')) { 'public' } else { 'private' }
   $branch = if ($env:FAKE_GH_CASE -eq 'hub-nonmain') { 'develop' } else { 'main' }
   @{ visibility=$visibility; archived=$false; default_branch=$branch; description='fixture'; allow_squash_merge=$true; allow_merge_commit=$false; allow_rebase_merge=$false; squash_merge_commit_title='PR_TITLE'; squash_merge_commit_message='BLANK'; delete_branch_on_merge=$true; allow_auto_merge=$true; has_wiki=$false; has_projects=$false; security_and_analysis=@{secret_scanning=@{status='enabled'};secret_scanning_push_protection=@{status='enabled'}} } | ConvertTo-Json -Depth 6 -Compress
   exit 0
@@ -18,7 +18,16 @@ if ($path -match '/contents/\.github/workflows$') {
 }
 if ($path -match '/contents/\.github/workflows/(check|ci)\.yml$') {
   if ($env:FAKE_GH_CASE -in @('hub-missing', 'site-missing-ci')) { 'HTTP 404'; exit 1 }
-  if ($env:FAKE_GH_CASE -eq 'hub-wrong') { "jobs:`n  wrong:`n    runs-on: ubuntu-latest" }
+  if ($env:FAKE_GH_CASE -like 'policy-*') {
+    $jobs = @('markdown-lint', 'link-check', 'actionlint', 'pr-title')
+    if ($env:FAKE_GH_CLASS -eq 'site' -or ($env:FAKE_GH_CLASS -eq 'tool' -and $env:FAKE_GH_LANGUAGE -eq 'typescript')) { $jobs += 'node-ci' }
+    if ($env:FAKE_GH_CLASS -eq 'lab' -or ($env:FAKE_GH_CLASS -eq 'tool' -and $env:FAKE_GH_LANGUAGE -eq 'python')) { $jobs += 'python-ci' }
+    if ($env:FAKE_GH_CASE -notlike '*missing-gate') { $jobs += 'pr-policy' }
+    'jobs:'
+    foreach ($job in $jobs) { "  ${job}:" }
+    if ($env:FAKE_GH_CASE -like '*placeholder') { '    uses: alawein/.github/.github/workflows/pr-policy.yml@0000000000000000000000000000000000000000' }
+  }
+  elseif ($env:FAKE_GH_CASE -eq 'hub-wrong') { "jobs:`n  wrong:`n    runs-on: ubuntu-latest" }
   elseif ($env:FAKE_GH_CASE -like 'hub-*') { "jobs:`n  check:`n    runs-on: ubuntu-latest" }
   else { "jobs:`n  markdown-lint:`n  link-check:`n  actionlint:`n  pr-title:`n  node-ci:" }
   exit 0
@@ -43,6 +52,16 @@ if ($path -match '/rulesets/([123])$') {
         if ($r.type -eq 'required_status_checks') { $r.parameters.required_status_checks[-1].context = 'wrong-ci' }
       }
     }
+  }
+  if ($env:FAKE_GH_CASE -like 'policy-*') {
+    if ($id -eq '1') { $o = Get-Content -Raw -LiteralPath (Join-Path $PSScriptRoot '../../rulesets/main-site.json') | ConvertFrom-Json }
+    $checks = @('markdown-lint', 'link-check', 'actionlint', 'pr-title')
+    if ($env:FAKE_GH_CLASS -eq 'site' -or ($env:FAKE_GH_CLASS -eq 'tool' -and $env:FAKE_GH_LANGUAGE -eq 'typescript')) { $checks += 'node-ci' }
+    if ($env:FAKE_GH_CLASS -eq 'lab' -or ($env:FAKE_GH_CLASS -eq 'tool' -and $env:FAKE_GH_LANGUAGE -eq 'python')) { $checks += 'python-ci' }
+    if ($env:FAKE_GH_CASE -notlike '*missing-context') { $checks += 'pr-policy' }
+    if ($env:FAKE_GH_CASE -like '*extra-context') { $checks += 'unknown-language-ci' }
+    if ($env:FAKE_GH_CASE -like '*wrong-context') { $checks[-1] = 'wrong-policy' }
+    ($o.rules | Where-Object type -eq required_status_checks).parameters.required_status_checks = @($checks | ForEach-Object { [pscustomobject]@{context=$_} })
   }
   if ($env:FAKE_GH_CASE -like 'hub-*') {
     $o.rules += [pscustomobject]@{type='required_status_checks';parameters=@{required_status_checks=@(@{context='check'})}}

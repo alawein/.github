@@ -30,6 +30,10 @@
   standard audits ci.yml and the class checks. hub-check audits the approved
   TypeScript hub's check.yml and its required check job.
 
+.PARAMETER RequirePrPolicy
+  Expect the opt-in pr-policy gate and required context. Private repos need
+  -Strict unless Class site implies it. Incompatible with hub-check.
+
 .EXAMPLE
   .\verify-repo.ps1 -Repo alawein/example-app -Class tool -Language python
 #>
@@ -39,7 +43,8 @@ param(
   [ValidateSet('', 'profile', 'docs', 'tool', 'site', 'lab')][string]$Class = '',
   [ValidateSet('typescript', 'python')][string]$Language = 'typescript',
   [ValidateSet('standard', 'hub-check')][string]$CheckProfile = 'standard',
-  [switch]$Strict
+  [switch]$Strict,
+  [switch]$RequirePrPolicy
 )
 
 $ErrorActionPreference = 'Continue'
@@ -54,7 +59,8 @@ if ($GhCmd) { $Gh = $GhCmd.Source }
 $KitRoot = Split-Path -Parent $PSScriptRoot
 . (Join-Path $PSScriptRoot 'lib/check-policy.ps1')
 $BaseChecks = @('markdown-lint', 'link-check', 'actionlint', 'pr-title')
-try { $checkPolicy = Get-CheckPolicy -Repo $Repo -Class $Class -Language $Language -CheckProfile $CheckProfile -Strict:$Strict }
+if ($RequirePrPolicy) { $BaseChecks += 'pr-policy' }
+try { $checkPolicy = Get-CheckPolicy -Repo $Repo -Class $Class -Language $Language -CheckProfile $CheckProfile -Strict:$Strict -RequirePrPolicy:$RequirePrPolicy }
 catch { Write-Host ('STOP: ' + $_.Exception.Message); exit 2 }
 $RequiredChecks = @($checkPolicy.RequiredChecks)
 $workflowPath = $checkPolicy.WorkflowPath
@@ -133,6 +139,7 @@ $r = Get-Api @("repos/$Repo")
 if ($r.Code -ne 0 -or -not $r.Json) { Write-Host "STOP: cannot read $Repo"; Write-Host $r.Out; exit 2 }
 $i = $r.Json
 $isPublic = ($i.visibility -eq 'public')
+if ($RequirePrPolicy -and -not $isPublic -and -not $checkPolicy.RequireChecks) { Write-Host 'STOP: RequirePrPolicy on a private repo requires -Strict (Class site implies it)'; exit 2 }
 if ($CheckProfile -eq 'hub-check' -and $isPublic) { Write-Host 'STOP: hub-check is approved for the private hub only'; exit 2 }
 $useStrict = $checkPolicy.RequireChecks
 
@@ -190,6 +197,7 @@ Add-Result 'SHA pinning required (turn on after first green CI run)' ($ap.Json -
 $workflow = Get-Api @("repos/$Repo/contents/$workflowPath", '-H', 'Accept: application/vnd.github.raw')
 $ciText = $workflow.Out
 $ciOk = ($workflow.Code -eq 0)
+if ($RequirePrPolicy -and $ciText -match '(?<![0-9a-fA-F])0{40}(?![0-9a-fA-F])') { $ciOk = $false }
 if ($ciOk) { foreach ($n in $RequiredChecks) { if ($ciText -notmatch ('(?m)^\s{2}' + [regex]::Escape($n) + ':\s*$')) { $ciOk = $false } } }
 
 # ---------- rulesets ----------

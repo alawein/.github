@@ -3,6 +3,7 @@
 import json
 import os
 import platform
+import shutil
 import subprocess
 import tempfile
 import unittest
@@ -13,6 +14,8 @@ import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 NODE_DIR = os.environ.get("NODE22_DIR")
+LEGACY_SHA = "6f6dbe7f3a23ab830a32007bb52b83fd1bb40563"
+RELEASE_SHA = "b5f8bc3a916b41e22e5e09ec72f34c01428c2933"
 BASH = Path(r"C:\Program Files\Git\bin\bash.exe") if platform.system() == "Windows" else Path("/bin/bash")
 
 
@@ -116,6 +119,56 @@ class DistributedGateTests(unittest.TestCase):
                     self.assertEqual(generated.returncode, 0, generated.stderr)
                     self.assert_paired_workflows(Path(temporary) / name / ".github/workflows",
                                                  code=repo_class == "site" or (repo_class == "tool" and language == "typescript"))
+                    directory = Path(temporary) / name / ".github/workflows"
+                    ci = yaml.safe_load((directory / "ci.yml").read_text(encoding="utf-8"))
+                    gates = {"markdown-lint", "link-check", "actionlint", "pr-title"}
+                    if repo_class == "site" or (repo_class == "tool" and language == "typescript"):
+                        gates.add("node-ci")
+                    if repo_class == "lab" or (repo_class == "tool" and language == "python"):
+                        gates.add("python-ci")
+                    self.assertEqual(set(ci["jobs"]), gates | {"run-" + gate for gate in gates})
+                    for job in ci["jobs"].values():
+                        if "uses" in job:
+                            self.assertTrue(job["uses"].endswith("@" + LEGACY_SHA))
+                    self.assertEqual({path.name for path in directory.iterdir()}, {"ci.yml", "check-links-nightly.yml"})
+
+    def test_manual_opt_in_assembles_generated_consumers_without_replacing_jobs(self):
+        actionlint = os.environ.get("ACTIONLINT") or shutil.which("actionlint")
+        self.assertTrue(actionlint, "actionlint is required for assembled consumer verification")
+        fragment = yaml.safe_load((ROOT / "templates/workflows/pr-policy.jobs.yml").read_text(encoding="utf-8"))
+        self.assertEqual(set(fragment), {"run-pr-policy", "pr-policy"}, "fragment must be merged under jobs")
+        for repo_class, language, language_gate in (("docs", "typescript", None), ("tool", "typescript", "node-ci"), ("tool", "python", "python-ci")):
+            with self.subTest(repo_class=repo_class, language=language), tempfile.TemporaryDirectory() as temporary:
+                name = "contract-optin-docs" if repo_class == "docs" else "contract-optin"
+                generated = subprocess.run(["pwsh", "-NoProfile", "-File", str(ROOT / "scripts/new-repo.ps1"),
+                                            "-Name", name, "-Class", repo_class, "-Language", language,
+                                            "-Path", temporary, "-Create"], capture_output=True, text=True)
+                self.assertEqual(generated.returncode, 0, generated.stdout + generated.stderr)
+                directory = Path(temporary) / name / ".github/workflows"
+                ci_path = directory / "ci.yml"
+                ci = yaml.safe_load(ci_path.read_text(encoding="utf-8"))
+                original_jobs = dict(ci["jobs"])
+                ci["jobs"].update(fragment)
+                ci[True]["pull_request"]["types"] += ["ready_for_review", "converted_to_draft"]
+                # PyYAML 1.1 reads 'on' as true; restore the workflow key when emitting YAML.
+                ci["on"] = ci.pop(True)
+                ci_path.write_text(yaml.safe_dump(ci, sort_keys=False), encoding="utf-8")
+                hygiene = yaml.safe_load((ROOT / "templates/workflows/hygiene-weekly.yml").read_text(encoding="utf-8"))
+                checks = "markdown-lint,link-check,actionlint,pr-title"
+                if language_gate:
+                    checks += "," + language_gate
+                hygiene["jobs"]["hygiene"]["with"]["expected-required-checks"] = checks
+                hygiene["on"] = hygiene.pop(True)
+                (directory / "hygiene-weekly.yml").write_text(yaml.safe_dump(hygiene, sort_keys=False), encoding="utf-8")
+                for name, job in original_jobs.items():
+                    self.assertEqual(ci["jobs"][name], job)
+                self.assertEqual(ci["jobs"]["run-pr-policy"]["with"]["kit-ref"], RELEASE_SHA)
+                self.assertEqual(ci["jobs"]["pr-policy"]["permissions"], {})
+                self.assertEqual(ci["permissions"], {"contents": "read"})
+                self.assertEqual(hygiene["jobs"]["hygiene"]["with"], {"expected-required-checks": checks})
+                lint = subprocess.run([actionlint, "-shellcheck=", "-pyflakes=", *map(str, sorted(directory.glob("*.yml")))],
+                                      capture_output=True, text=True)
+                self.assertEqual(lint.returncode, 0, lint.stdout + lint.stderr)
 
 
 if __name__ == "__main__":
