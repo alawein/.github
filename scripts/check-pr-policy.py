@@ -20,25 +20,32 @@ def prose(body):
     lines, fence = [], None
     for line in body.splitlines():
         content = line.expandtabs(4)
-        quotes, indent = 0, 0
+        containers = []
         if fence:
-            # Only the opening containers are structural inside fenced code.
-            for _ in range(fence[1]):
-                content = re.sub(r"^ {0,3}> ?", "", content, count=1)
-            if content.startswith(" " * fence[2]):
-                content = content[fence[2]:]
-        else:
+            # Apply the opening containers in order, never literal code markers.
+            for kind, width in fence[1]:
+                quote = re.match(r"^ {0,3}> ?", content) if kind == "quote" else None
+                if quote:
+                    content = content[quote.end():]
+                elif kind == "list" and (content.startswith(" " * width) or not content.strip()):
+                    content = content[width:]
+                else:
+                    # This line starts a new outer block; examine it again below.
+                    fence = None
+                    content = line.expandtabs(4)
+                    break
+        if not fence:
             while True:
                 quote = re.match(r"^ {0,3}> ?", content)
                 item = re.match(r"^ {0,3}(?:[-+*]|\d+[.)])( +)", content)
                 if quote:
                     content = content[quote.end():]
-                    quotes += 1
+                    containers.append(("quote", 0))
                 elif item:
                     # Five or more padding spaces introduce indented code.
                     end = item.start(1) + (1 if len(item[1]) > 4 else len(item[1]))
                     content = content[end:]
-                    indent += end
+                    containers.append(("list", end))
                 else:
                     break
         match = re.match(r"^ {0,3}(`{3,}|~{3,})(.*)$", content)
@@ -48,7 +55,7 @@ def prose(body):
                 fence = None
             continue
         if match:
-            fence = (match[1], quotes, indent)
+            fence = (match[1], containers)
         elif not content.startswith(" " * 4):
             lines.append(content)
     return re.sub(r"(?<!`)(`+)(?!`).*?(?<!`)\1(?!`)", "", "\n".join(lines), flags=re.S)

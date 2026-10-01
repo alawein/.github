@@ -103,6 +103,26 @@ class PolicyTests(unittest.TestCase):
             with self.subTest(body=body):
                 self.assertEqual(self.check(event(body=body)), [])
 
+    def test_fence_scope_and_container_order_cannot_expose_code(self):
+        for text in ("Closes #12", "No-issue: shared workflow policy has no existing tracking issue"):
+            for body in ("> ~~~\n> example\n~~~\n" + text + "\n~~~",
+                         "- ~~~\n  example\n~~~\n" + text + "\n~~~",
+                         "- > ~~~\n  >     ~~~\n  > " + text + "\n  > ~~~",
+                         "- ~~~\n\n  " + text + "\n  ~~~"):
+                with self.subTest(body=body):
+                    self.assertTrue(self.check(event(body=body)))
+
+    def test_fence_scope_exit_and_valid_closing_preserve_prose(self):
+        for text in ("Closes #12", "No-issue: shared workflow policy has no existing tracking issue"):
+            for body in ("> ~~~\n> example\n" + text,
+                         "- ~~~\n  example\n" + text,
+                         "- > ~~~\n  > example\n  > ~~~\n\n" + text,
+                         "> - ~~~\n>   example\n>   ~~~\n\n" + text,
+                         "- > ~~~\n  >     ~~~\n  > Closes #99\n  > ~~~\n\n" + text,
+                         "~~~\n> ~~~\nCloses #99\n~~~\n\n" + text):
+                with self.subTest(body=body):
+                    self.assertEqual(self.check(event(body=body)), [])
+
     def test_blank_template_reasons_do_not_pass(self):
         for body in (None, "", "No-issue: n/a", "No-issue: TODO", "No-issue: reason",
                      "No-issue: <specific reason>", "No-issue: {{REASON}}", "No-issue: none",
