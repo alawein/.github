@@ -1,0 +1,127 @@
+{
+  "schema_version": 1,
+  "brand": "Night Market",
+  "readme_display": {
+    "width": 760,
+    "light_theme": "dawn",
+    "fallback_theme": "night",
+    "named_banners_keep_existing_title": true,
+    "shared_scenes_require_text_heading": true
+  },
+  "assets": [
+    {
+      "id": "profile-banner-night",
+      "repository": "alawein/alawein",
+      "path": "assets/banner-name-night.png",
+      "placement": "readme_named_banner",
+      "theme": "night",
+      "width": 1520,
+      "height": 600,
+      "sha256": "16112968add83bfb0e7327af875c203ab22d1d91eb428a9cc03ee2f8e22553e9",
+      "source": {
+        "repository": "alawein/alawein",
+        "path": "assets/banner-name-night.png",
+        "revision": "fc9519018d588cdbde77e5b5ee83c561cecb8a02",
+        "url": "https://raw.githubusercontent.com/alawein/alawein/fc9519018d588cdbde77e5b5ee83c561cecb8a02/assets/banner-name-night.png"
+      },
+      "operation": "preserve_bytes"
+    },
+    {
+      "id": "profile-banner-dawn",
+      "repository": "alawein/alawein",
+      "path": "assets/banner-name-dawn.png",
+      "placement": "readme_named_banner",
+      "theme": "dawn",
+      "width": 1520,
+      "height": 600,
+      "sha256": "bb2ae86d6723e58871837b4e0ff2f28e9831d7d47498bd66354ecc2b79222f12",
+      "source": {
+        "repository": "alawein/alawein",
+        "path": "assets/banner-name-dawn.png",
+        "revision": "fc9519018d588cdbde77e5b5ee83c561cecb8a02",
+        "url": "https://raw.githubusercontent.com/alawein/alawein/fc9519018d588cdbde77e5b5ee83c561cecb8a02/assets/banner-name-dawn.png"
+      },
+      "operation": "preserve_bytes"
+    },
+    {
+      "id": "profile-social-card",
+      "repository": "alawein/alawein",
+      "path": "assets/social-preview.png",
+      "placement": "repository_social_preview_asset",
+      "theme": "night",
+      "width": 1280,
+      "height": 640,
+      "sha256": "cb823066f96d0f03f09fbef0014165843010892060c8dc1e2e2ae50b4e8e8c7a",
+      "source": {
+        "repository": "alawein/alawein",
+        "path": "assets/social-preview.png",
+        "revision": "fc9519018d588cdbde77e5b5ee83c561cecb8a02",
+        "url": "https://raw.githubusercontent.com/alawein/alawein/fc9519018d588cdbde77e5b5ee83c561cecb8a02/assets/social-preview.png"
+      },
+      "operation": "preserve_bytes"
+    },
+    {
+      "id": "profile-square-mark",
+      "repository": "alawein/alawein",
+      "path": "assets/logo-512.png",
+      "placement": "square_mark_source",
+      "theme": "night",
+      "width": 512,
+      "height": 512,
+      "sha256": "3049054ed58f6b69d56b90b98db579d1f977e2861acd04a891f3dbdcfc08ecf1",
+      "source": {
+        "repository": "alawein/alawein",
+        "path": "assets/logo-512.png",
+        "revision": "fc9519018d588cdbde77e5b5ee83c561cecb8a02",
+        "url": "https://raw.githubusercontent.com/alawein/alawein/fc9519018d588cdbde77e5b5ee83c561cecb8a02/assets/logo-512.png"
+      },
+      "operation": "preserve_bytes"
+    },
+    {
+      "id": "kit-readme-night",
+      "repository": "alawein/.github",
+      "path": "assets/banner-night.png",
+      "placement": "readme_shared_scene",
+      "theme": "night",
+      "width": 760,
+      "height": 300,
+      "sha256": "b1c4abbf21dad3c1ae4ca9daff455196d0e58816358f8186d4e363eeeda07784",
+      "source": {
+        "repository": "alawein/alawein",
+        "path": "assets/banner-night.png",
+        "revision": "fc9519018d588cdbde77e5b5ee83c561cecb8a02",
+        "url": "https://raw.githubusercontent.com/alawein/alawein/fc9519018d588cdbde77e5b5ee83c561cecb8a02/assets/banner-night.png"
+      },
+      "operation": "preserve_bytes"
+    },
+    {
+      "id": "kit-readme-dawn",
+      "repository": "alawein/.github",
+      "path": "assets/banner-dawn.png",
+      "placement": "readme_shared_scene",
+      "theme": "dawn",
+      "width": 760,
+      "height": 300,
+      "sha256": "7508f6019770d5613a5ba065b5d8660bad1be15b666dc8dfce2f20c0693106c3",
+      "source": {
+        "repository": "alawein/alawein",
+        "path": "assets/banner-dawn.png",
+        "revision": "fc9519018d588cdbde77e5b5ee83c561cecb8a02",
+        "url": "https://raw.githubusercontent.com/alawein/alawein/fc9519018d588cdbde77e5b5ee83c561cecb8a02/assets/banner-dawn.png"
+      },
+      "operation": "preserve_bytes"
+    }
+  ],
+  "publication": {
+    "manifest_records": "asset files and placements",
+    "social_preview_upload": "separate_settings_action",
+    "profile_upload_state": "unverified",
+    "kit_social_preview": "no_selected_card",
+    "kit_upload_performed": false
+  },
+  "site_reference": {
+    "url": "https://meshal.ai",
+    "assets": "separate_owned_surface",
+    "copy_requested": false
+  }
+}

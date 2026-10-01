@@ -1,13 +1,14 @@
 # Brand rules for repo images and READMEs
 
-Every repo under github.com/alawein looks like it belongs to the owner's site:
+The default for repos under github.com/alawein follows the owner's site:
 a pixel-art night street, the repo name on a red headband ribbon, two palettes
 (night and dawn). These rules cover every banner, social preview, logo, and
 README. The approved brand source is frozen. Generate repo images only from
 that source, and change the source through owner review before regenerating
-affected images.
+affected images. The public reuse exception below permits existing approved
+bytes without regeneration.
 
-## What every repo gets
+## Default repo images
 
 | File | Size | Use |
 | --- | --- | --- |
@@ -20,6 +21,37 @@ The README embeds the banner pair in a `picture` element at `width="760"`. The
 starter is [README.template.md](../templates/README.template.md). It has no H1
 because the banner carries the name. It has no hosted widgets and no badge
 wall. All images are committed files.
+
+## Kit public reuse exception
+
+The owner selected the existing public unlettered night/dawn scene pair for
+this kit's README. Copy these bytes without regeneration; this exception
+does not change the named-banner default or the frozen generator's `docs`
+roofline and monogram selections.
+
+| Placement | Files | Geometry |
+| --- | --- | --- |
+| Kit README | `assets/banner-night.png`, `assets/banner-dawn.png` | 760x300, displayed at width 760 |
+| Profile README | Existing named night/dawn pair | 1520x600, displayed at width 760 |
+| Profile social preview and mark | Existing card and square mark | Preserve their identities and bytes |
+
+The kit uses dawn for light mode and night as fallback, paired with the
+`.github` text heading because the shared scenes carry no repository name.
+Keep the scene alt text plain and identical across themes. Do not relabel an
+unlettered scene as a named banner, stretch, smooth, redraw, add glow or neon.
+The palettes and art bans below still apply.
+
+The [public asset manifest](../assets/public-assets.json) records all six
+approved assets, their roles, dimensions, immutable public source revision,
+paths and SHA-256 hashes. Only the two kit scenes are copied here; the named
+profile banners, card and mark remain in the source repository.
+
+The kit social preview remains GitHub's generated repository card. Its
+760x300 scenes are below GitHub's [recommended preview dimensions](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/customizing-your-repositorys-social-media-preview)
+of at least 640x320 (1280x640 for best display). This is rendering guidance,
+not a claim of an enforced upload minimum. A selected kit card and its
+settings upload are separate owner-approved actions; a committed asset does
+not prove upload. The named profile card is not a kit card.
 
 ## Palettes
 
