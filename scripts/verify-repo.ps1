@@ -294,7 +294,8 @@ if (-not (Test-Path -LiteralPath $labelsPath)) {
   }
   $names = @($want | ForEach-Object { $_.Name })
   $extra = @($have.Keys | Where-Object { $names -notcontains $_ })
-  Add-Result 'no extra labels' ($extra.Count -eq 0) $(if ($extra.Count -eq 0) { 'exactly the five' } else { ($extra -join ', ') + ' (delete by hand once the five exist)' })
+  if ($extra.Count -gt 0) { Add-Note 'additional labels' ($extra -join ', ') }
+  else { Add-Result 'no extra labels' $true 'exactly the five' }
 }
 
 # ---------- topics ----------

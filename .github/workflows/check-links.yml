@@ -4,9 +4,9 @@ on:
   workflow_call:
     inputs:
       paths:
-        description: Files or globs for lychee to scan.
+        description: Files or globs for lychee to scan; quote each glob to prevent shell expansion.
         type: string
-        default: "./**/*.md"
+        default: "'./**/*.md'"
       offline:
         description: Check local links only; enable only with external nightly coverage.
         type: boolean

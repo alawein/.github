@@ -62,6 +62,20 @@ function Invoke-PolicyScript([string]$Name, [string]$Case, [string]$Repo, [strin
   return [pscustomobject]@{ Out=$output; Code=$code; Calls=$calls }
 }
 try {
+  # Supplemental-label failure, or weakened canonical validation, must fail these real audit cases.
+  $supplemental = Invoke-PolicyScript 'verify-repo.ps1' 'labels-extra' 'alawein/example' 'docs' 'standard'
+  if ($supplemental.Code -ne 0 -or $supplemental.Out -notmatch '(?m)^NOTE\s+additional labels:' -or $supplemental.Out -match '(?m)^FAIL|delete by hand') { throw "supplemental labels incorrectly fail the audit: $($supplemental.Out.Trim())" }
+  foreach ($label in @('feat', 'fix', 'docs', 'chore', 'blocked')) {
+    if ($supplemental.Out -notmatch "(?m)^PASS\s+label ${label}:") { throw "canonical label $label was not validated" }
+  }
+  foreach ($label in @('dependencies', 'accessibility', 'javascript')) {
+    if ($supplemental.Out -notmatch "(?m)^NOTE\s+additional labels:[^\r\n]*$label") { throw "supplemental label $label was not reported" }
+  }
+  foreach ($case in @('labels-missing', 'labels-color', 'labels-description')) {
+    $invalid = Invoke-PolicyScript 'verify-repo.ps1' $case 'alawein/example' 'docs' 'standard'
+    if ($invalid.Code -ne 1 -or $invalid.Out -notmatch '(?m)^FAIL\s+label fix:' -or ([regex]::Matches($invalid.Out, '(?m)^FAIL')).Count -ne 1 -or $invalid.Out -notmatch '(?m)^NOTE\s+additional labels:') { throw "$case did not preserve the canonical-label failure" }
+  }
+  Write-Host 'PASS: supplemental label note and canonical missing, color, description failures'
   $siteNoStatus = Invoke-PolicyScript 'verify-repo.ps1' 'site' 'alawein/meshal-site' 'site' 'standard'
   if ($siteNoStatus.Out -notmatch 'FAIL[^\r\n]*main-guard rule required_status_checks' -or $siteNoStatus.Out -notmatch 'FAIL[^\r\n]*main-guard required checks') { throw 'ready site without required checks passed policy audit' }
   $siteBootstrap = Invoke-PolicyScript 'verify-repo.ps1' 'site-missing-ci' 'alawein/meshal-site' 'site' 'standard'

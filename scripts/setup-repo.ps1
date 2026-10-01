@@ -14,7 +14,7 @@
   429 or any error other than 404, so a failed read never turns into a write.
   Safe to run again: settings and topics are replaced with the same values,
   labels and rulesets are matched by name and updated in place.
-  It never deletes anything (stock labels and rulesets are removed by hand).
+  It never deletes anything; removal requires named owner approval.
   At the end of an -Apply run it calls verify-repo.ps1 to read everything back.
 
 .PARAMETER Repo
@@ -316,7 +316,7 @@ if ($Topics.Count -gt 0) {
 
 # ---------- 5. labels ----------
 
-Write-Host "`n== 5. Labels (five, from templates\labels.yml; stock labels are never deleted here) =="
+Write-Host "`n== 5. Labels (five canonical, from templates\labels.yml; additional labels retained) =="
 $lr = Invoke-GhRead @('api', "repos/$Repo/labels?per_page=100", '--paginate', '--jq', '.[] | [.name,.color,(.description // "")] | @tsv')
 $existing = @{}
 if ($lr.Code -eq 0 -and $lr.Out) {
@@ -354,7 +354,7 @@ $keep = @()
 foreach ($l in $labels) { $keep += $l.Name.ToLower(); foreach ($al in $l.Aliases) { $keep += $al.ToLower() } }
 $stock = @($existing.Keys | Where-Object { $keep -notcontains $_ })
 if ($stock.Count -gt 0) {
-  Write-Host ('Note: labels not in the standard: {0}. Delete by hand (owner-run): gh label delete NAME --repo {1} --yes' -f ($stock -join ', '), $Repo)
+  Write-Host ('Note: additional labels retained: {0}. Removal requires named owner approval.' -f ($stock -join ', '))
 }
 
 # ---------- 6. rulesets ----------
