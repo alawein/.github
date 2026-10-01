@@ -7,7 +7,7 @@ name: CI
 
 on:
   pull_request:
-    types: [opened, edited, synchronize, reopened]
+    types: [opened, edited, synchronize, reopened, ready_for_review, converted_to_draft]
   push:
     branches: [main]
 
@@ -35,10 +35,40 @@ jobs:
       pull-requests: read
     uses: ./.github/workflows/pr-title.yml
 
+  run-pr-policy:
+    uses: ./.github/workflows/pr-policy.yml
+
+  metadata-tests:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12.10"
+      - name: Test metadata and workflow guards
+        run: python -m unittest discover -s scripts/tests -p 'test_*.py' -v
+
+  pr-policy:
+    needs: [run-pr-policy, metadata-tests]
+    if: ${{ always() }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 1
+    permissions: {}
+    steps:
+      - name: Require policy and metadata tests
+        env:
+          RESULT: ${{ needs.run-pr-policy.result }}
+          TESTS: ${{ needs.metadata-tests.result }}
+        run: |
+          test "$RESULT" = "success" && test "$TESTS" = "success"
+
   markdown-lint:
     needs: [run-markdown-lint]
     if: ${{ always() }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 1
     permissions: {}
     steps:
@@ -50,7 +80,7 @@ jobs:
   link-check:
     needs: [run-link-check]
     if: ${{ always() }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 1
     permissions: {}
     steps:
@@ -62,7 +92,7 @@ jobs:
   actionlint:
     needs: [run-actionlint]
     if: ${{ always() }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 1
     permissions: {}
     steps:
@@ -74,7 +104,7 @@ jobs:
   pr-title:
     needs: [run-pr-title]
     if: ${{ always() }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 1
     permissions: {}
     steps:

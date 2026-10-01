@@ -13,7 +13,7 @@ concurrency:
 
 jobs:
   archive-guard:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 1
     permissions: {}
     steps:
@@ -28,7 +28,7 @@ jobs:
   lint:
     needs: [archive-guard]
     if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
       # Default rules: type(scope): subject. Same as the profile repo.

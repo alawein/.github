@@ -93,6 +93,10 @@ Why: memory fades, and a check does not.
 - Work branches are `type/short-topic`, lowercase with hyphens, no dates:
   `feat/build`, `fix/label-join`, `docs/readme-links`.
 - Types: feat, fix, docs, chore, refactor, test.
+- Topics have no empty hyphen segments or calendar dates. Agent-prefixed
+  branches such as `codex/task` fail the opt-in metadata check. Only the exact
+  `dependabot[bot]` author of type `Bot` on a generated `dependabot/` branch is
+  exempt from human branch naming and linkage.
 - One agent per branch. Run parallel agents in separate Git worktrees
   (extra working folders on the same repo), each on its own branch, and keep
   them on different files where you can.
@@ -136,7 +140,13 @@ Format: `type(scope): summary`. GitHub uses it as the squash commit title.
   [pull-request-checklist.md](../../templates/pull-request-checklist.md).
 - Fill every section of the template. Write "n/a" and say why if one does not
   apply.
-- Link the issue with `Closes #12` in the Why section.
+- Ready human PRs link an issue in the Why section, for example `Closes #12`.
+  If no existing tracking issue applies, use `No-issue: <specific reason>` with
+  an actual reason, such as `No-issue: shared workflow policy has no existing
+  tracking issue`. Empty and placeholder reasons do not qualify; drafts may
+  defer linkage. Issue references inside code examples or HTML comments do not
+  qualify. The metadata check proves syntax, not issue existence or a meaningful
+  explanation; owner review checks the exception, including issues-off profiles.
 - Include the real task ID in evidence and, when public-safe, the Why section.
   Do not invent MAIOS IDs or rename branches to add one.
 - After named approval, open it as a draft. A ready-state change also needs
@@ -209,6 +219,9 @@ An agent's diff can look right and be wrong. Look for these first:
 - Required checks for the kit, profile and standard full ruleset:
   `markdown-lint`, `link-check`, `actionlint`, `pr-title`. They are the job
   names in each repo's `ci.yml`, so a rename there would block every PR.
+- `pr-policy` is an additional opt-in context. The kit's always-report producer
+  exists locally; settings promotion requires an eligible successful PR run and
+  named owner approval. Preserve legacy consumers until their reviewed adoption.
 - A repo with code (tool, site, or lab) also requires its test check:
   `node-ci` for TypeScript tools and sites, `python-ci` for Python tools and
   labs. A check that never blocks is decoration, and code is where agents make
@@ -297,12 +310,13 @@ Why: a key per tool is more keys to track, and all of them act as you.
 
 ## Versions and releases
 
-Decision: owner-created signed annotated tags with a short routine, not release-please
-(a bot that opens release PRs for you). Why: PRs made by the default Actions
-token do not start other workflows, so a bot release PR never runs the required
-checks and cannot merge. Fixing that needs a stored token or a GitHub App, which
-is one more secret to guard. The manual routine takes ten minutes, and an agent
-can do the typing.
+Decision: owner-created signed annotated tags with a short routine, not
+release-please (a bot that opens release PRs for you). Why: the owner controls
+the reviewed release target and signing. Current GitHub behavior permits
+approval-required runs for token-created PR opened, synchronize and reopened
+events; other token-created PR activity remains suppressed. A token-created PR
+does not itself prove eligible successful checks. The manual routine needs no
+additional stored token or GitHub App.
 
 | Kind of repo | Versioned? | Scheme |
 | --- | --- | --- |
@@ -327,8 +341,9 @@ minor bump may break.
    `gh pr list --state merged --search "merged:>=YYYY-MM-DD" --json number,title`.
 3. Pick the version from those titles. A `!` means major. A `feat` means minor.
    Anything else is a patch.
-4. Branch `chore/release-vX.Y.Z`. Update the version in the one file that holds
-   it. Add the changelog entry.
+4. Use hyphens between version numbers in the branch, for example
+   `chore/release-v1-3-0` for `v1.3.0`. Update the version in the one file that
+   holds it. Add the changelog entry.
 5. With named approval, open the PR titled `chore(release): vX.Y.Z`.
    The owner reviews and merges it.
 6. The owner creates a signed annotated tag on the verified merge commit:
@@ -458,9 +473,13 @@ Dependabot (GitHub's bot that opens PRs for new versions) runs in every repo.
 - Minor and patch updates arrive as one grouped PR per ecosystem. A major
   update arrives as its own PR.
 - Security updates arrive at once. The cooldown does not delay them.
-- Vendor configuration allows 5 open PRs per ecosystem; this is not permission
-  to exceed the shared three-waiting-PR cap. If automated arrivals exceed it,
+- The kit caps open version PRs at one per configured ecosystem and explicitly
+  marks its minor/patch group as version updates. Security PRs are outside that
+  cap. This is not an atomic global three-waiting-PR limit. If arrivals exceed it,
   pause new promotion and ask the owner to resolve the backlog without stacks.
+- Review release notes and the lockfile diff, including changed install scripts
+  and new transitive dependencies; run affected consumer checks before promoting
+  an update. Do not add dependencies, scopes or test skips to make an update pass.
 - Actions are pinned to a full 40-character commit SHA with the tag in a
   comment. A tag can move. A SHA cannot. Turn on the setting that rejects
   unpinned actions once the repo runs green. The pins are listed in

@@ -33,7 +33,7 @@ concurrency:
 
 jobs:
   archive-guard:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 1
     permissions: {}
     steps:
@@ -47,7 +47,7 @@ jobs:
 
   ci:
     needs: [archive-guard]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     defaults:
       run:

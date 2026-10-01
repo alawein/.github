@@ -44,6 +44,8 @@ CI run.
 | `check-links.yml` | `link-check` | Every class |
 | `lint-actions.yml` | `actionlint` | Every class |
 | `pr-title.yml` | `pr-title` | Every class |
+| `pr-policy.yml` | `pr-policy` (opt-in) | Branch and ready-PR linkage metadata |
+| `hygiene.yml` | Advisory scheduled report | Read-only repository observations |
 | `node-ci.yml` | `node-ci` | `npm ci`, lint, test, build |
 | `python-ci.yml` | `python-ci` | uv or pip, ruff, pytest |
 
@@ -64,6 +66,50 @@ for existing callers when they update their kit pin. Deliberately migrating
 PR checks to `offline: true` requires a paired scheduled external scan using
 `offline: false`. The kit and distributed stubs/starters explicitly use the paired policy.
 An existing consumer must copy both files when migrating.
+
+`pr-policy.yml` requires `kit-ref` to be a full lowercase
+40-character SHA from a reviewed kit release when called by another repository.
+Pass the same SHA used on the workflow's `uses:` line. This workflow checks out
+`alawein/.github` at that validated ref, never the caller's policy script. Only
+same-repository kit self-tests may omit the input and use the current SHA.
+Both metadata workflows use Python `3.12.10`, standard-library scripts and
+read-only credentials.
+
+The policy script reads `GITHUB_EVENT_PATH`; PR prose is never interpolated into
+shell commands. It checks branch naming on drafts and ready PRs, and checks
+linkage when ready. Callers must include `ready_for_review` and
+`converted_to_draft` alongside opened, edited, synchronize and reopened events.
+Missing or malformed PR metadata fails. Explicit push events succeed without
+PR linkage. The existing title producer retains its behavior.
+
+The kit runs metadata fixtures and an always-report `pr-policy` gate that
+requires successful policy and test producers, including on push to main.
+Cancellation, failure or skipped producers cannot pass this gate. The original
+four required contexts and distributed v1.2.0 pins remain unchanged. Other
+consumers opt in after a reviewed signed release. Require `pr-policy` in live
+rules only after observing an eligible successful PR run at its current SHA.
+
+`hygiene.yml` accepts `expected-required-checks`, a comma-separated list defaulting
+to the original four contexts; it has no `kit-ref` input. Callers pin the reviewed
+workflow release SHA on `uses:`. The workflow separately pins audit source to
+reviewed commit `ce04a21e332e42c3137b26f3becb0de77086b6cb` for every caller,
+including the kit's weekly run. Caller input cannot select executable code.
+Audit source changes require review and a coordinated implementation pin and
+source-digest fixture update. Read-only repository permissions alone do not
+restrict the runner's cache token; no cache-mode enforcement is claimed.
+Its caller grants `contents: read` and
+`pull-requests: read`; its existing automatic token becomes in-memory `GH_TOKEN`.
+It uses GET-only REST calls, paginates lists, and reports effective main rules,
+active ruleset bypass actors (including inherited rulesets), squash flags,
+ready PR count and branches without open PRs whose last commit is 30 days old.
+Commit age does not prove branch creation age. A per-repository report cannot
+enforce the global three-PR admission limit.
+
+Reports go to the job log, step summary and runner-local JSON, with no artifact
+upload or mutating API. Observed drift is `WARN`; denied, malformed or incomplete
+data is `UNKNOWN` and exits nonzero. An empty observed response is distinct from
+unavailable data. `hygiene-weekly.yml` is the kit's weekly/manual caller; a
+schedule declaration does not prove a successful scheduled run.
 
 ## Check names and gate jobs
 
@@ -115,6 +161,7 @@ This release preserves `require-test` and paired local/external link inputs, and
 - No secrets in these workflows. The automatic `secrets.GITHUB_TOKEN` is the
   only credential.
 - Every job has `timeout-minutes`.
+- Active kit jobs use `ubuntu-24.04`; hosted image software still changes.
 - Concurrency cancels older runs on the same PR. Runs on `main` are never
   canceled.
 - Each reusable workflow uses its own concurrency prefix, so it never clashes
@@ -130,7 +177,8 @@ This release preserves `require-test` and paired local/external link inputs, and
 - [pins.md](pins.md) lists every pin, the date it was verified, and its source.
 - Dependabot (`github-actions` ecosystem, weekly, 7-day cooldown) proposes
   bumps as one grouped PR. This repo's own `.github/dependabot.yml` does the
-  same for the workflows here.
+  same for the workflows here, caps version PRs at one, and explicitly groups
+  version updates. Security updates are outside that limit and cooldown.
 - Two pins are not `uses:` lines and need a manual bump: the actionlint version
   and sha256 in `lint-actions.yml`, and the default `uv-version` in
   `python-ci.yml`. The list is in `pins.md`.
