@@ -1,0 +1,19 @@
+name: External link check
+
+on:
+  schedule:
+    - cron: "17 8 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: external-links-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  run-link-check:
+    uses: alawein/.github/.github/workflows/check-links.yml@cfae30c70243ff09a1edc1546b8ed24a3c5c0eeb # v1.1.0
+    with:
+      offline: false

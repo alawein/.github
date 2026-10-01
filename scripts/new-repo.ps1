@@ -291,8 +291,6 @@ if ($isNode) {
   Write-Host ("  {0}. Run just check (install just once with: winget install Casey.Just)." -f $step++)
 }
 Write-Host ("  {0}. Run git init and make the first commit yourself. This script ran no git." -f $step++)
-if ($plan | Where-Object { $_.Text -match '0{40}' }) {
-  Write-Host ("  {0}. Replace the placeholder pin (all zeros) in .github\workflows, as the kit CI doc says." -f $step++)
-}
+Write-Host ("  {0}. Review the verified kit pins in both CI and nightly workflows. Follow docs/ci.md when bumping them." -f $step++)
 Write-Host ("  {0}. Read AGENTS.md and edit it to fit the repo, add the banner images, then delete the banner line in .lycheeignore." -f $step++)
 exit 0

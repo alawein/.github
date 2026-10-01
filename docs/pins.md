@@ -30,5 +30,5 @@ the checksum from the release's `actionlint_<version>_checksums.txt` (or the ass
 ## Pins to this repo
 
 Caller stubs in `templates/workflows/` and the `ci.yml` files in `templates/starters/` pin
-`alawein/.github` itself. They pin the first commit, `a2f16663330afe2bd8ac4ee548121f495e866e4c`
-(tag `v1.0.0`), verified 2026-09-30. To bump it, see [ci.md](ci.md), "Bump a pin".
+`alawein/.github` itself. They pin verified `cfae30c70243ff09a1edc1546b8ed24a3c5c0eeb`
+(tag `v1.1.0`), verified after required checks passed on 2026-09-30. To bump it, see [ci.md](ci.md), "Bump a pin".

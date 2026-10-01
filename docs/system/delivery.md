@@ -17,10 +17,16 @@ reviewed before it joins `main`.
 One person owns every repo and reads every diff. AI coding agents do much of
 the typing. The split is fixed:
 
-- Agents write code on a branch, open a draft PR, and run checks.
+- Agents prepare local changes, checks, review evidence and PR text.
 - Agents never merge, never turn on auto-merge, and never change settings,
   rulesets, secrets, or tokens.
 - The owner reads the diff, turns on auto-merge, and owns every release.
+
+Every procedure below is subject to the named owner gates in the
+[agent Safety floor](agents.md#safety-floor), including commits, pushes,
+draft PRs, sends, spend, publication, deletion, secret rotation and every
+remote change. LOCAL-ONLY is the default. Descriptions of desired settings
+are not proof they are active; live account state is UNVERIFIED until checked.
 
 Decision: agents have no merge rights. Why: a fast writer needs one slow,
 careful reader, and the reader must be a person.
@@ -37,7 +43,7 @@ careful reader, and the reader must be a person.
  branch: type/short-topic                board: Doing
      |
      v
- draft PR opened early, commits pushed   (a pushed branch is a backup)
+ owner approves commit, push and draft PR
      |
      v
  checks run on every push                four shared checks + tests
@@ -65,16 +71,16 @@ careful reader, and the reader must be a person.
 
 | Step | What happens | Gate |
 | --- | --- | --- |
-| Issue | A goal and a "done when" list. A note in the log is not work yet | Has a repo and a done-when list |
+| Issue | Prepare a goal and a "done when" list | Named approval before posting |
 | Branch | `type/short-topic` from a fresh `main` | One topic |
-| Draft PR | Opened at the first push | Checks start running |
+| Draft PR | Open after the approved commit and push | Named owner approval for each action |
 | Checks | Shared checks plus the repo's tests | All required checks green |
 | Review | You read your own diff first. A second agent session with no memory of the work reads it next | Notes fixed or answered |
 | Merge | Owner enables auto-merge. It fires when checks pass | Owner only |
-| Release | Only repos that publish versions (see Versions and releases) | Release PR, tag |
-| Deploy | Vercel builds `main` after the merge | Build passes |
+| Release | Only repos that publish versions (see Versions and releases) | Owner-approved PR, signed tag and publish |
+| Deploy | Vercel builds `main` after the merge | Owner authorizes the deployment effect |
 | Verify | Open the live URL or run the smoke test | Done when it works live |
-| Learn | One line in the log. If a mistake could happen again, open an issue for a check | Nothing recurs twice |
+| Learn | One line in the log; prepare an issue for a recurring mistake | Named approval before posting |
 
 Decision: a mistake that happens twice becomes a check, a test, or a rule.
 Why: memory fades, and a check does not.
@@ -90,8 +96,8 @@ Why: memory fades, and a check does not.
 - One agent per branch. Run parallel agents in separate Git worktrees
   (extra working folders on the same repo), each on its own branch, and keep
   them on different files where you can.
-- At most three PRs wait for review at once.
-- Delete the branch after the merge. GitHub does it on merge.
+- At most three PRs wait for review at once, including dependency PRs.
+- Branch deletion after merge is an owner-approved setting or named action.
 
 ### Commits
 
@@ -103,7 +109,8 @@ branch commits would only slow down agents.
 - Where a repo takes direct pushes to `main` (private tooling under the light
   ruleset), every commit subject follows the PR title format below.
 - Never use `--no-verify` to skip a hook. Fix the hook's complaint.
-- Force-push only your own branch, with `--force-with-lease`. Never `main`.
+- An approved force-push targets only your own branch and uses
+  `--force-with-lease`. Never `main`.
 - Commit and PR text says what changed and why. It does not narrate which
   tool wrote it. No `Co-Authored-By` trailer unless a person co-wrote the change.
 
@@ -130,8 +137,10 @@ Format: `type(scope): summary`. GitHub uses it as the squash commit title.
 - Fill every section of the template. Write "n/a" and say why if one does not
   apply.
 - Link the issue with `Closes #12` in the Why section.
-- Open it as a draft at the first push. Mark it ready when the checks pass and
-  you have read your own diff.
+- Include the real task ID in evidence and, when public-safe, the Why section.
+  Do not invent MAIOS IDs or rename branches to add one.
+- After named approval, open it as a draft. A ready-state change also needs
+  approval, passing checks and the recorded review of the current diff.
 - A behavior change comes with a test. For a bug fix the test fails before the
   fix.
 - Stacked PRs (a PR based on another unmerged PR) are not used. Land the base
@@ -147,7 +156,10 @@ a draft by mistake.
 ### Labels
 
 Five labels, the same in every repo. The set lives in
-[labels.yml](../../templates/labels.yml) and `setup-repo.ps1` applies it.
+[labels.yml](../../templates/labels.yml); owner-approved setup applies it.
+Shared forms and their label references live in
+[.github/ISSUE_TEMPLATE](../../.github/ISSUE_TEMPLATE/), GitHub's
+[supported default location](https://docs.github.com/en/communities/setting-up-your-project-for-healthy-contributions/creating-a-default-community-health-file).
 
 | Label | Meaning |
 | --- | --- |
@@ -161,7 +173,9 @@ Five labels, the same in every repo. The set lives in
   label, because its title already says the type.
 - A `refactor` or `test` issue uses `chore`.
 - `blocked` means waiting on something outside the repo. The issue says what.
-- Apply one entry by hand with
+- Report extra or missing labels. The owner approves renaming, mapping or
+  removing extras; verification never deletes them automatically.
+- The owner can apply one approved entry with
   `gh label create NAME --color HEX --description "TEXT" --force`.
 
 Decision: no labels for refactor, test, or ready. Why: the PR title holds the
@@ -187,16 +201,23 @@ An agent's diff can look right and be wrong. Look for these first:
 - Auto-merge is allowed. The owner turns it on per PR after reading the diff
   (`gh pr merge --auto --squash`). It fires when the required checks pass.
 - No merge queue. No bypass actors on any ruleset, so the rules bind the owner
-  too. To fix a bad rule, set the ruleset to Disabled, fix it, turn it on.
+  too. A bad rule requires a separately approved repair, saved prior JSON and
+  immediate restoration of enforcement; do not add a bot bypass.
 - Required approvals: 0. GitHub does not let an author approve their own PR, so
   any higher number would block every merge.
-- Required checks on every repo that has the full ruleset (see "Rulesets"):
+- Required checks for the kit, profile and standard full ruleset:
   `markdown-lint`, `link-check`, `actionlint`, `pr-title`. They are the job
   names in each repo's `ci.yml`, so a rename there would block every PR.
 - A repo with code (tool, site, or lab) also requires its test check:
   `node-ci` for TypeScript tools and sites, `python-ci` for Python tools and
   labs. A check that never blocks is decoration, and code is where agents make
   mistakes.
+- The approved hub profile uses the single required `check` job; its exact
+  scope is in [CI](../ci.md). Preserve all current names and always-report
+  behavior. Site E2E stays advisory pending the owner's 30-clean-day decision.
+- PR test retries remain zero. Preserve failure evidence and repair flakes;
+  never skip, weaken or quarantine a required check. Two flake occurrences
+  in 14 days require a dated issue proposal; posting it stays gated.
 - CodeQL and other scanners report but never block. A flaky required check
   blocks every merge.
 - How the shared workflows report those names is in [ci.md](../ci.md).
@@ -211,12 +232,15 @@ holds a template with checklists. In `git log` that is noise. The title ends in
 ### Rulesets
 
 A ruleset is a set of branch or tag rules that GitHub enforces. The files are
-in `rulesets/` and `scripts/setup-repo.ps1` applies them. All are active with no
-bypass actors, so the rules bind the owner too.
+in `rulesets/`; owner-approved `scripts/setup-repo.ps1` applies them.
+The templates use active enforcement and no bypass actors. Verify live state
+after application; a local template or successful dry run proves neither.
 
 | File | Name in GitHub | Applies to | Rules |
 | --- | --- | --- | --- |
 | `main-public.json` | `main-protection` | `main` in public repos | No deletion, no force push, linear history, signed commits, PR with 0 approvals and squash only, the required checks |
+| `main-site.json` | `main-guard` | Private sites | No deletion or force push, linear history, PR with 0 approvals and squash only, four shared checks plus `node-ci` |
+| `main-hub.json` | `main-guard` | Approved private hub profile | No deletion or force push, required `check` |
 | `main-private.json` | `main-guard` | `main` in private repos | No deletion, no force push |
 | `main-private.json` with `-Strict` | `main-guard` | `main` in private sites, and any private repo run with `-Strict` | The two above, plus linear history, PR with 0 approvals and squash only, and the required checks when `ci.yml` defines them |
 | `tags.json` | `release-tags` | Tags `v*` in every live repo | No deletion, no move |
@@ -225,19 +249,18 @@ bypass actors, so the rules bind the owner too.
   settings (squash only, blank commit message, auto-merge on, branch deleted on
   merge) and, for public repos, secret scanning.
 - The script adds the test check to the required list for a repo with code.
-- The ruleset is skipped, not forced, when `ci.yml` is missing or lacks the
-  required jobs, or a workflow still has the all-zero placeholder pin. A
-  required check that never reports blocks every merge. Run the script again
-  once CI is ready.
+- Missing jobs or all-zero workflow pins block CI readiness. Public branch
+  setup skips its ruleset; strict private setup may omit required checks;
+  the approved hub profile fails closed. Report the actual bootstrap gap,
+  never an enforcement pass, and rerun owner-approved setup after CI is ready.
 - Private repos get the light ruleset. A private site always gets `-Strict`.
   Any other private repo takes `-Strict` once its CI exists.
 - Wiki and projects are off everywhere. Issues and discussions are off only in
   the profile repo, where nothing needs a reply.
-- The script never deletes labels or rulesets. Deletes are done by hand, after
-  you read the list.
+- The script never deletes labels or rulesets. Any deletion needs a named
+  owner approval after reviewing the exact list.
 - The script and `verify-repo.ps1` refuse any repo named `ARCHIVE-...`.
-- To recover from a bad rule, set the ruleset to Disabled in Settings, fix it,
-  and turn it back on.
+- Ruleset recovery follows the separately approved repair above.
 
 Decision: shared community files (security policy, contributing guide, code of
 conduct, support page, issue and PR templates) live once in `alawein/.github`.
@@ -246,17 +269,19 @@ not merged. `CODEOWNERS`, workflows, and the license stay per repo.
 
 ### Signed commits
 
-A signed commit carries a cryptographic proof of who wrote it. GitHub shows it
-as Verified.
+A commit signature verifies a signing identity; it does not prove who wrote
+every line. Record GitHub's observed verification state before promotion.
 
-- Public repos require signed commits on `main`. GitHub signs its own squash
-  merges, so a merge made through the PR passes. Confirm this once on a
-  throwaway public repo: squash-merge a PR that holds an unsigned commit.
+- Public policy requires signed commits on `main`. Unsigned head commits can
+  block a squash merge even when GitHub would sign its final commit. Do not
+  promise that an unsigned branch will pass. See
+  [GitHub's signing rule](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/available-rules-for-rulesets#require-signed-commits).
 - Private repos leave the rule out. Sign locally anyway once you have a key.
-- Until a signing key is registered: keep the rule on for public repos, do not
-  set `commit.gpgsign` (every commit would fail without a key), and do not let
-  it block work.
-- To register one key for all tools:
+- Keep local edits moving while signing is unavailable, but block promotion
+  until the owner verifies signing identity, head signatures and the actual
+  merge path. Never disable the rule to pass. No signing test authorizes a
+  commit, push or merge by itself.
+- The owner registers one key for all tools under named approval:
   1. Create an SSH key of type ed25519 and keep it in your password manager's
      SSH agent, so nothing prompts during an agent run.
   2. Add the public half at GitHub, Settings, SSH and GPG keys, as a Signing
@@ -271,7 +296,7 @@ Why: a key per tool is more keys to track, and all of them act as you.
 
 ## Versions and releases
 
-Decision: manual annotated tags with a short routine, not release-please
+Decision: owner-created signed annotated tags with a short routine, not release-please
 (a bot that opens release PRs for you). Why: PRs made by the default Actions
 token do not start other workflows, so a bot release PR never runs the required
 checks and cannot merge. Fixing that needs a stored token or a GitHub App, which
@@ -303,10 +328,13 @@ minor bump may break.
    Anything else is a patch.
 4. Branch `chore/release-vX.Y.Z`. Update the version in the one file that holds
    it. Add the changelog entry.
-5. Open the PR titled `chore(release): vX.Y.Z`. Merge it.
-6. Tag the merge commit on `main` and push the tag:
-   `git tag -a vX.Y.Z -m "vX.Y.Z"` then `git push origin vX.Y.Z`.
-7. Publish the release with the changelog entry as its notes:
+5. With named approval, open the PR titled `chore(release): vX.Y.Z`.
+   The owner reviews and merges it.
+6. The owner creates a signed annotated tag on the verified merge commit:
+   `git tag -s vX.Y.Z -m "vX.Y.Z"`; verify with `git verify-tag vX.Y.Z`
+   and record the signer and target. Push only with named approval:
+   `git push origin vX.Y.Z`.
+7. With named publish approval, publish the release and changelog notes:
    `gh release create vX.Y.Z --verify-tag --notes-file <file>`.
 8. If the repo publishes a package, the tag starts the publish workflow (below).
 9. Verify from outside: install the release in a clean folder and run it.
@@ -314,6 +342,10 @@ minor bump may break.
 
 The `v*` tag ruleset forbids deleting or moving a tag, because a moved tag
 silently changes what people pinned. A wrong release gets a new patch version.
+That ruleset does not require a tag signature. Signed annotated releases are
+owner policy; record local verification and the remote tag's signature and
+target before treating a release as verified. Existing tags are not certified
+by this policy. See [GitHub tag signing](https://docs.github.com/en/authentication/managing-commit-signature-verification/signing-tags).
 For a package, mark the bad one deprecated or yanked (a flag that tells
 installers to skip it), then ship the fix.
 
@@ -425,7 +457,9 @@ Dependabot (GitHub's bot that opens PRs for new versions) runs in every repo.
 - Minor and patch updates arrive as one grouped PR per ecosystem. A major
   update arrives as its own PR.
 - Security updates arrive at once. The cooldown does not delay them.
-- Open PR limit: 5 per ecosystem.
+- Vendor configuration allows 5 open PRs per ecosystem; this is not permission
+  to exceed the shared three-waiting-PR cap. If automated arrivals exceed it,
+  pause new promotion and ask the owner to resolve the backlog without stacks.
 - Actions are pinned to a full 40-character commit SHA with the tag in a
   comment. A tag can move. A SHA cannot. Turn on the setting that rejects
   unpinned actions once the repo runs green. The pins are listed in
@@ -444,14 +478,13 @@ Dependabot (GitHub's bot that opens PRs for new versions) runs in every repo.
 ### Review a bump
 
 1. Patch or minor group: read the PR's release notes summary and the lockfile
-   diff. Look for new packages that were not there before. Checks green, then
-   turn on auto-merge.
+   diff. Look for new packages that were not there before. After checks and
+   current review, only the owner turns on auto-merge.
 2. Major: read the release notes for breaking changes. Run the app or the
    tests locally. Check that the preview works. Merge alone, not with others.
 3. Any bump with an install script, a new maintainer, or a sudden size jump:
    stop and look at the package's page before merging.
-4. Stuck for a week: close it. Dependabot will try again, or pin it with a
-   comment that says why.
+4. Stuck for a week: propose closure or a documented pin for owner approval.
 
 Decision: Dependabot PRs are never merged without a person turning on
 auto-merge. Why: a dependency update is code from a stranger.
@@ -462,8 +495,9 @@ auto-merge. Why: a dependency update is code from a stranger.
 
 - Two-factor login with a passkey or hardware key. Recovery codes are in the
   password manager.
-- Review authorized apps and installed GitHub Apps once a quarter. Each one
-  gets selected repos only, never all.
+- Review authorized apps and installed GitHub Apps every 30 days and on each
+  permission or repository-scope change. Use selected repos only; follow
+  [reviewer access and spending policy](reviewers.md#access-and-spending).
 - Fine-grained personal access tokens only, never classic. Scope each to named
   repos and the fewest permissions. Set an expiry of 90 days or less.
 
@@ -507,7 +541,8 @@ auto-merge. Why: a dependency update is code from a stranger.
 Treat any secret that reached a commit, a log, a screenshot, a chat, or a public
 repo as stolen. Order matters.
 
-1. Revoke or rotate it at the source first. Before anything else.
+1. Notify the owner privately without the value; the owner authorizes and
+   revokes or rotates it at the source first. Do not expose it again.
 2. Check the provider's usage log for the window it was exposed. Note anything
    you did not do.
 3. Put the new value in place (see Secrets) and redeploy what used it.
@@ -544,7 +579,8 @@ Rules:
 
 ### Move a secret to GitHub Actions or Vercel
 
-Pipe the value from Bitwarden straight to the destination. It never lands in a
+Owner-run procedure after named secret and destination approval: pipe the value
+from Bitwarden straight to the destination. It never lands in a
 file, in the repo, or on the command line.
 
 ```powershell
@@ -577,7 +613,8 @@ and Vercel, redeploy, then revoke the old one. Revoke last, so nothing breaks.
 Every repo has a remote on GitHub, private repos included. That is one copy. A
 laptop clone is a second copy, but both depend on you and one login.
 
-- Push each working branch at the end of a session. A draft PR does it.
+- Keep local recovery evidence at session end. A remote backup push or draft
+  PR still needs its named owner approval.
 - Each month, back up everything to a place outside the working folder and
   outside any folder that syncs deletions: an external drive, or an encrypted
   cloud bucket. Do both for private repos.
@@ -606,12 +643,12 @@ An incident is anything live that is broken, exposed, or losing data.
 
 Steps, in order:
 
-1. Stop the harm. Roll back, turn off the feature, or revoke the secret. Do not
-   debug in production first.
+1. Stop dependent promotion and preserve evidence. The owner authorizes and
+   executes rollback, feature disablement or secret revocation. Prepare the
+   smallest local revert or fix; an incident does not waive action gates.
 2. Open a copy of [incident.md](../../templates/incident.md) in your log. Note the
    time you noticed, and keep a one-line timeline as you go.
-3. Tell anyone affected. Plain words, what is broken, what you did, when the next
-   update comes.
+3. Prepare a plain update for affected people; sending it needs named approval.
 4. Fix forward in a normal PR with a `fix(scope): ...` title. A fix in a hurry
    still uses a PR and the checks.
 5. Verify live.
@@ -628,18 +665,14 @@ How to undo each kind of change:
 | A bad package release | Deprecate or yank it, ship a patch. Tags cannot be moved |
 | A bad data change | Restore from the backup taken before the change |
 | A leaked secret | Rotate at the source first. See "If a secret leaks" |
-| A bad ruleset or setting | Set the ruleset to Disabled, fix it, turn it on |
+| A bad ruleset or setting | Owner-approved repair with saved prior settings and restored enforcement |
 
-Decision: rollback comes before diagnosis. Why: a minute of downtime costs less
-than ten minutes of guessing.
+Code rollback does not restore data or DNS. Use the saved baseline and obtain
+the owner's separate approval for each remote rollback.
 
 ## Review tools
 
-Decision: no CodeRabbit and no Graphite. CodeRabbit posts an AI review on every
-PR. A solo owner already gets that review by running a fresh agent session on
-the diff before opening the PR, at no extra cost and with no extra bot that can
-read private code. The bot's comments add noise to read, and it takes its
-instructions from a file in the PR branch, which is untrusted input. Graphite
-is built for stacked PRs and review queues, and this flow uses neither. Revisit
-CodeRabbit only if PR volume grows past what one person can read. Nothing else
-here depends on either tool.
+Follow [reviewers.md](reviewers.md): CodeRabbit is the sole automatic reviewer
+after named owner activation; secondary review is scoped and manual. Review
+findings are advisory. Preserve required checks, owner-only merge, three
+waiting PRs, no stacks, no queue and no bypass actors.

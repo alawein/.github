@@ -10,6 +10,8 @@
 # Tool and build output.
 .vercel/
 node_modules/
+.superpowers/
+__pycache__/
 
 # Editor and OS files.
 .vscode/

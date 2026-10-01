@@ -38,6 +38,10 @@
   history to the private ruleset, plus the required checks when ci.yml already
   defines them. Class site implies it.
 
+.PARAMETER CheckProfile
+  standard uses ci.yml and the class checks. hub-check is limited to the
+  approved TypeScript hub and requires the check job in check.yml.
+
 .PARAMETER EnableShaPinning
   Turns on sha_pinning_required. Use only after the first green CI run.
 
@@ -55,6 +59,7 @@ param(
   [ValidateSet('typescript', 'python')][string]$Language = 'typescript',
   [string[]]$Topics = @(),
   [switch]$Strict,
+  [ValidateSet('standard', 'hub-check')][string]$CheckProfile = 'standard',
   [switch]$EnableShaPinning,
   [switch]$Apply
 )
@@ -70,7 +75,7 @@ if ($GhCmd) { $Gh = $GhCmd.Source }
 
 $KitRoot = Split-Path -Parent $PSScriptRoot
 $Owner = 'alawein'
-$BaseChecks = @('markdown-lint', 'link-check', 'actionlint', 'pr-title')
+. (Join-Path $PSScriptRoot 'lib/check-policy.ps1')
 $script:Failures = 0
 $script:Skipped = 0
 
@@ -189,15 +194,10 @@ if ($nameErrors.Count -gt 0) {
   exit 2
 }
 if ($Class -eq 'archive') { Write-Host 'STOP: class archive gets no settings. Use scripts\archive-repos.ps1 (docs\archive.md).'; exit 2 }
-# The test check a repo with code must also require.
-$TestCheck = ''
-switch ($Class) {
-  'site' { $TestCheck = 'node-ci' }
-  'lab'  { $TestCheck = 'python-ci' }
-  'tool' { if ($Language -eq 'python') { $TestCheck = 'python-ci' } else { $TestCheck = 'node-ci' } }
-}
-$RequiredChecks = @($BaseChecks)
-if ($TestCheck) { $RequiredChecks += $TestCheck }
+try { $checkPolicy = Get-CheckPolicy -Repo $Repo -Class $Class -Language $Language -CheckProfile $CheckProfile -Strict:$Strict }
+catch { Write-Host ('STOP: ' + $_.Exception.Message); exit 2 }
+$RequiredChecks = @($checkPolicy.RequiredChecks)
+$workflowPath = $checkPolicy.WorkflowPath
 if ($Topics.Count -gt 20) { Write-Host 'STOP: at most 20 topics'; exit 2 }
 foreach ($t in $Topics) {
   if ($t -cnotmatch '^[a-z0-9][a-z0-9-]{0,49}$') { Write-Host "STOP: topic '$t' must be lowercase letters, digits, hyphens (max 50)"; exit 2 }
@@ -205,7 +205,7 @@ foreach ($t in $Topics) {
 $labelsPath = Join-Path $KitRoot 'templates\labels.yml'
 if (-not (Test-Path -LiteralPath $labelsPath)) { Write-Host "STOP: missing $labelsPath"; exit 2 }
 $labels = Read-Labels $labelsPath
-foreach ($f in @('rulesets\main-public.json', 'rulesets\main-private.json', 'rulesets\tags.json', 'rulesets\repo-settings-public.json', 'rulesets\repo-settings-private.json')) {
+foreach ($f in @('rulesets\main-public.json', 'rulesets\main-private.json', 'rulesets\main-site.json', 'rulesets\main-hub.json', 'rulesets\tags.json', 'rulesets\repo-settings-public.json', 'rulesets\repo-settings-private.json')) {
   $p = Join-Path $KitRoot $f
   if (-not (Test-Path -LiteralPath $p)) { Write-Host "STOP: missing $p"; exit 2 }
   Test-Json (Get-Content -LiteralPath $p -Raw) $f
@@ -215,7 +215,7 @@ $mode = 'DRY RUN (reads only, nothing is written)'
 if ($Apply) { $mode = 'APPLY (writes are live)' }
 Write-Host ''
 Write-Host "Repo: $Repo   Class: $Class   Mode: $mode"
-if ($TestCheck) { Write-Host "Required checks: $($RequiredChecks -join ', ')" }
+Write-Host "Check profile: $CheckProfile; workflow: $workflowPath; checks: $($RequiredChecks -join ', ')"
 Write-Host ''
 
 $auth = Invoke-GhRead @('auth', 'status') -Soft
@@ -228,9 +228,14 @@ if ($r.Code -ne 0) { Write-Host "STOP: cannot read $Repo`n$($r.Out)"; exit 2 }
 $info = $r.Out | ConvertFrom-Json
 if ($info.archived) { Write-Host 'STOP: repo is archived. Archived repos are not changed.'; exit 2 }
 $isPublic = ($info.visibility -eq 'public')
+if ($CheckProfile -eq 'hub-check' -and $isPublic) { Write-Host 'STOP: hub-check is approved for the private hub only'; exit 2 }
 $defaultBranch = $info.default_branch
 Write-Host ("Facts: visibility={0} default_branch={1}" -f $info.visibility, $defaultBranch)
-$useStrict = ([bool]$Strict) -or ($Class -eq 'site')
+if ($CheckProfile -eq 'hub-check' -and $defaultBranch -ne 'main') {
+  Write-Host "FAIL branch ruleset: default branch is '$defaultBranch'; hub-check requires main before setup."
+  exit 1
+}
+$useStrict = $checkPolicy.RequireChecks
 if ($isPublic -and $Strict) { Write-Host 'Note: -Strict only changes private repos; public repos already get the full ruleset.' }
 
 # Is CI ready to be required? Two conditions:
@@ -248,7 +253,7 @@ function Get-CiState {
       $c = Invoke-GhRead @('api', ("repos/$Repo/contents/.github/workflows/" + [uri]::EscapeDataString($name)), '-H', 'Accept: application/vnd.github.raw')
       if ($c.Code -ne 0) { continue }
       if ($c.Out -match '(?<![0-9a-fA-F])0{40}(?![0-9a-fA-F])') { $placeholders += $name }
-      if ($name -ceq 'ci.yml') {
+      if ($name -ceq (Split-Path -Leaf $workflowPath)) {
         $missing = @()
         foreach ($n in $RequiredChecks) {
           if ($c.Out -notmatch ('(?m)^\s{2}' + [regex]::Escape($n) + ':\s*$')) { $missing += $n }
@@ -387,16 +392,16 @@ else {
   }
   if ($isPublic) {
     if (-not $ciReady) {
-      if ($missing.Count -gt 0) { Write-Host ('SKIP branch ruleset: .github/workflows/ci.yml is missing or lacks jobs: ' + ($missing -join ', ')) }
+      if ($missing.Count -gt 0) { Write-Host ("SKIP branch ruleset: $workflowPath is missing or lacks jobs: " + ($missing -join ', ')) }
       else { Write-Host 'SKIP branch ruleset: the placeholder pins above would keep the required checks from ever reporting.' }
       Write-Host '  A required check that never reports would block every pull request. Fix the above on main, then run this again.'
       $script:Skipped++
     } else {
       $pubJson = Get-Content -LiteralPath (Join-Path $KitRoot 'rulesets\main-public.json') -Raw
-      if ($TestCheck) {
+      if ($Class -in @('site', 'lab', 'tool')) {
         $po = $pubJson | ConvertFrom-Json
         foreach ($rule in $po.rules) {
-          if ($rule.type -eq 'required_status_checks') { $rule.parameters.required_status_checks += [pscustomobject]@{ context = $TestCheck } }
+          if ($rule.type -eq 'required_status_checks') { $rule.parameters.required_status_checks += [pscustomobject]@{ context = $RequiredChecks[-1] } }
         }
         $pubJson = ConvertTo-Json -InputObject $po -Depth 12
       }
@@ -405,7 +410,20 @@ else {
   }
   else {
     $obj = (Get-Content -LiteralPath (Join-Path $KitRoot 'rulesets\main-private.json') -Raw) | ConvertFrom-Json
-    if ($useStrict) {
+    if ($CheckProfile -eq 'hub-check') {
+      if ($ciReady) {
+        $obj = (Get-Content -LiteralPath (Join-Path $KitRoot 'rulesets\main-hub.json') -Raw) | ConvertFrom-Json
+      } else {
+        Write-Host ("FAIL branch ruleset: $workflowPath is missing or lacks jobs: " + ($missing -join ', '))
+        $script:Failures++
+        $script:Skipped++
+        $obj = $null
+      }
+    }
+    elseif ($Class -eq 'site' -and $ciReady) {
+      $obj = (Get-Content -LiteralPath (Join-Path $KitRoot 'rulesets\main-site.json') -Raw) | ConvertFrom-Json
+    }
+    elseif ($useStrict) {
       $obj.rules += ('{"type":"required_linear_history"}' | ConvertFrom-Json)
       $obj.rules += ('{"type":"pull_request","parameters":{"required_approving_review_count":0,"dismiss_stale_reviews_on_push":false,"require_code_owner_review":false,"require_last_push_approval":false,"required_review_thread_resolution":false,"allowed_merge_methods":["squash"]}}' | ConvertFrom-Json)
       if ($ciReady) {
@@ -413,10 +431,10 @@ else {
         $scRule = @{ type = 'required_status_checks'; parameters = @{ strict_required_status_checks_policy = $false; do_not_enforce_on_create = $false; required_status_checks = $ctxs } }
         $obj.rules += ((ConvertTo-Json -InputObject $scRule -Depth 6) | ConvertFrom-Json)
       } else {
-        Write-Host 'Note: ci.yml missing or incomplete, or placeholder pins remain, so the strict private ruleset has no required checks yet. Run again after CI is ready.'
+        Write-Host ("Note: $workflowPath missing or incomplete, or placeholder pins remain, so the strict private ruleset has no required checks yet. Run again after CI is ready.")
       }
     }
-    Set-Ruleset 'main-guard' (ConvertTo-Json -InputObject $obj -Depth 12)
+    if ($obj) { Set-Ruleset 'main-guard' (ConvertTo-Json -InputObject $obj -Depth 12) }
   }
 }
 Set-Ruleset 'release-tags' (Get-Content -LiteralPath (Join-Path $KitRoot 'rulesets\tags.json') -Raw)
@@ -440,12 +458,13 @@ if ($EnableShaPinning) {
 
 Write-Host "`n== Read-back =="
 if ($Apply) {
-  $vArgs = @{ Repo = $Repo; Class = $Class; Language = $Language }
+  $vArgs = @{ Repo = $Repo; Class = $Class; Language = $Language; CheckProfile = $CheckProfile }
   if ($useStrict) { $vArgs['Strict'] = $true }
   & (Join-Path $PSScriptRoot 'verify-repo.ps1') @vArgs
   Write-Host ("`nWrite failures: {0}   Skipped steps: {1}" -f $script:Failures, $script:Skipped)
   if ($script:Failures -gt 0) { exit 1 }
 } else {
   Write-Host ("Dry run done. Nothing was written. Skipped steps: {0}. Add -Apply to write." -f $script:Skipped)
+  if ($script:Failures -gt 0) { exit 1 }
   exit 0
 }

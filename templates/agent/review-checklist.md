@@ -3,14 +3,19 @@
 What a reviewing agent checks before a PR goes to the owner. Run it in a fresh
 session with no memory of writing the change, and use a different model from
 the author when you can. The reviewer reads and reports. It does not edit the
-code unless the owner says so.
+code unless the owner says so. Follow the [reviewer policy](../../docs/system/reviewers.md)
+and save the [evidence record](evidence.template.md). No verdict authorizes a
+gated action.
 
 ## Before you read the diff
 
 - [ ] Read the repo's `AGENTS.md` and the PR Summary.
 - [ ] Run the repo's check command yourself. Do not trust the author's
       Test evidence.
-- [ ] Get the diff against `main`. Confirm it shows only the intended change.
+- [ ] Record the base revision and exact reviewed digest, including new files.
+      Confirm the diff shows only the intended change.
+- [ ] Record this separate reviewer session and its scope; an author cannot
+      certify their own independent review.
 
 ## Scope
 
@@ -38,12 +43,19 @@ code unless the owner says so.
       from raw input.
 - [ ] No check, hook, or permission was loosened to make the PR pass.
 - [ ] CI files: permissions stay minimal, and actions stay pinned.
+- [ ] Owner gates, signing, no bypass actors, no stacks or queue, the three-PR
+      cap and zero PR test retries remain intact.
 
 ## Evidence
 
-- [ ] Test evidence lists commands and results, not "tested".
+- [ ] Evidence lists task, files, tool versions, commands, exits, durations,
+      artifact paths and the content digest, not "tested".
 - [ ] Any "not run" is explained.
 - [ ] Claims in the PR match what you verified.
+- [ ] Findings cite file/line, consequence, evidence and any applicable rule
+      ID; duplicates and disagreements have recorded resolutions.
+- [ ] Relevant edits after review have new digests, affected checks and scoped
+      re-review. Unverified account settings are not presented as active.
 
 ## Docs and text
 
@@ -57,6 +69,8 @@ code unless the owner says so.
 
 - [ ] The Risk and rollback section names what could break.
 - [ ] Revert is safe: no migration or data change that a revert cannot undo.
+- [ ] Remote rollback, data recovery and DNS restoration have separate named
+      owner gates and saved baselines where relevant.
 
 ## How to report
 

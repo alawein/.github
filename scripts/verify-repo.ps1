@@ -26,6 +26,10 @@
   Private repos: also expect pull request and linear history in the ruleset.
   Class site implies it.
 
+.PARAMETER CheckProfile
+  standard audits ci.yml and the class checks. hub-check audits the approved
+  TypeScript hub's check.yml and its required check job.
+
 .EXAMPLE
   .\verify-repo.ps1 -Repo alawein/example-app -Class tool -Language python
 #>
@@ -34,6 +38,7 @@ param(
   [Parameter(Mandatory = $true)][string]$Repo,
   [ValidateSet('', 'profile', 'docs', 'tool', 'site', 'lab')][string]$Class = '',
   [ValidateSet('typescript', 'python')][string]$Language = 'typescript',
+  [ValidateSet('standard', 'hub-check')][string]$CheckProfile = 'standard',
   [switch]$Strict
 )
 
@@ -47,16 +52,12 @@ $Gh = 'gh'
 if ($GhCmd) { $Gh = $GhCmd.Source }
 
 $KitRoot = Split-Path -Parent $PSScriptRoot
+. (Join-Path $PSScriptRoot 'lib/check-policy.ps1')
 $BaseChecks = @('markdown-lint', 'link-check', 'actionlint', 'pr-title')
-# The test check a repo with code must also require. Empty for profile, docs, or an unknown class.
-$TestCheck = ''
-switch ($Class) {
-  'site' { $TestCheck = 'node-ci' }
-  'lab'  { $TestCheck = 'python-ci' }
-  'tool' { if ($Language -eq 'python') { $TestCheck = 'python-ci' } else { $TestCheck = 'node-ci' } }
-}
-$RequiredChecks = @($BaseChecks)
-if ($TestCheck) { $RequiredChecks += $TestCheck }
+try { $checkPolicy = Get-CheckPolicy -Repo $Repo -Class $Class -Language $Language -CheckProfile $CheckProfile -Strict:$Strict }
+catch { Write-Host ('STOP: ' + $_.Exception.Message); exit 2 }
+$RequiredChecks = @($checkPolicy.RequiredChecks)
+$workflowPath = $checkPolicy.WorkflowPath
 $script:Pass = 0
 $script:Fail = 0
 
@@ -132,7 +133,8 @@ $r = Get-Api @("repos/$Repo")
 if ($r.Code -ne 0 -or -not $r.Json) { Write-Host "STOP: cannot read $Repo"; Write-Host $r.Out; exit 2 }
 $i = $r.Json
 $isPublic = ($i.visibility -eq 'public')
-$useStrict = ([bool]$Strict) -or ($Class -eq 'site')
+if ($CheckProfile -eq 'hub-check' -and $isPublic) { Write-Host 'STOP: hub-check is approved for the private hub only'; exit 2 }
+$useStrict = $checkPolicy.RequireChecks
 
 Add-Result 'repo not archived' (-not $i.archived) ("archived=" + $i.archived)
 Add-Result 'default branch' ($i.default_branch -eq 'main') ("default_branch=" + $i.default_branch + ", want main")
@@ -183,6 +185,13 @@ Add-Result 'Actions cannot approve PRs' ($aw.Json -and $aw.Json.can_approve_pull
 $ap = Get-Api @("repos/$Repo/actions/permissions")
 Add-Result 'SHA pinning required (turn on after first green CI run)' ($ap.Json -and $ap.Json.sha_pinning_required -eq $true) ("sha_pinning_required=" + $(if ($ap.Json) { $ap.Json.sha_pinning_required } else { 'unreadable' }))
 
+# Read workflow readiness before judging private required checks. A missing
+# workflow is a bootstrap state, while a ready workflow needs matching rules.
+$workflow = Get-Api @("repos/$Repo/contents/$workflowPath", '-H', 'Accept: application/vnd.github.raw')
+$ciText = $workflow.Out
+$ciOk = ($workflow.Code -eq 0)
+if ($ciOk) { foreach ($n in $RequiredChecks) { if ($ciText -notmatch ('(?m)^\s{2}' + [regex]::Escape($n) + ':\s*$')) { $ciOk = $false } } }
+
 # ---------- rulesets ----------
 
 $rl = Get-Api @("repos/$Repo/rulesets", '--jq', '.[] | [.id,.name] | @tsv')
@@ -202,7 +211,8 @@ function Test-RulesetCommon([string]$Name, $rs, [string]$Target, [string]$RefPat
   Add-Result "$Name has no bypass actors" ($nb -eq 0) ("bypass_actors=" + $nb)
   Add-Result "$Name target" ($rs.target -eq $Target) ("target=" + $rs.target)
   $inc = @($rs.conditions.ref_name.include)
-  Add-Result "$Name ref" ($inc -contains $RefPattern) ("include=" + ($inc -join ','))
+  $exc = @($rs.conditions.ref_name.exclude | Where-Object { $_ })
+  Add-Result "$Name ref" ($inc -contains $RefPattern -and $exc.Count -eq 0) ("include=" + ($inc -join ',') + "; exclude=" + ($exc -join ','))
 }
 
 $branchName = 'main-protection'
@@ -218,8 +228,11 @@ if (-not $ids.ContainsKey($branchName)) {
     Test-RulesetCommon $branchName $rs 'branch' 'refs/heads/main'
     $types = Get-RuleTypes $rs
     $need = @('deletion', 'non_fast_forward')
-    if ($isPublic -or $useStrict) { $need += @('required_linear_history', 'pull_request') }
+    if ($isPublic -or ($useStrict -and $CheckProfile -ne 'hub-check')) { $need += @('required_linear_history', 'pull_request') }
     if ($isPublic) { $need += @('required_signatures', 'required_status_checks') }
+    if ($CheckProfile -eq 'hub-check') { $need += 'required_status_checks' }
+    $requirePrivateChecks = (-not $isPublic -and $useStrict -and $CheckProfile -eq 'standard' -and $ciOk)
+    if ($requirePrivateChecks) { $need += 'required_status_checks' }
     foreach ($t in $need) { Add-Result "$branchName rule $t" ($types -contains $t) $(if ($types -contains $t) { 'present' } else { 'missing' }) }
     $pr = $rs.rules | Where-Object { $_.type -eq 'pull_request' } | Select-Object -First 1
     if ($pr) {
@@ -235,6 +248,8 @@ if (-not $ids.ContainsKey($branchName)) {
       # With no -Class the test check is unknown, so only require the base names.
       if (-not $Class) { $same = (@($BaseChecks | Where-Object { $ctx -notcontains $_ }).Count -eq 0) }
       Add-Result "$branchName required checks" $same ("have: " + ($ctx -join ', ') + "; want: " + ($want -join ', '))
+    } elseif ($CheckProfile -eq 'hub-check' -or $requirePrivateChecks) {
+      Add-Result "$branchName required checks" $false ('missing required context: ' + ($RequiredChecks -join ', '))
     } elseif ($isPublic -or $useStrict) {
       if ($useStrict -and -not $isPublic) { Add-Note "$branchName required checks" 'none set; add them when ci.yml exists (setup-repo.ps1 -Strict adds them)' }
     }
@@ -293,11 +308,7 @@ else { Add-Note 'topics' ("count " + $tn.Count + " (optional on private repos)")
 # ---------- files ----------
 
 Add-Result 'README.md' (Test-Path-Api 'README.md') 'root README'
-$ciText = (& $Gh api "repos/$Repo/contents/.github/workflows/ci.yml" -H 'Accept: application/vnd.github.raw' 2>&1 | Out-String)
-$ciOk = ($LASTEXITCODE -eq 0)
-Stop-OnReadError $ciText $LASTEXITCODE
-if ($ciOk) { foreach ($n in $RequiredChecks) { if ($ciText -notmatch ('(?m)^\s{2}' + [regex]::Escape($n) + ':\s*$')) { $ciOk = $false } } }
-Add-Result 'ci.yml with the required jobs' $ciOk ('.github/workflows/ci.yml defines ' + ($RequiredChecks -join ', '))
+Add-Result "$workflowPath with the required jobs" $ciOk ("$workflowPath defines " + ($RequiredChecks -join ', '))
 Add-Result 'dependabot.yml' (Test-Path-Api '.github/dependabot.yml') '.github/dependabot.yml'
 if ($isPublic) {
   Add-Result 'CODEOWNERS' (Test-Path-Api '.github/CODEOWNERS') '.github/CODEOWNERS'

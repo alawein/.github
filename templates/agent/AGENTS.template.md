@@ -2,8 +2,9 @@
 
 {{ONE_LINE: what this repo is and who uses it.}}
 
-This file is the one source of truth for any AI agent working here. Tool files
-(`CLAUDE.md`, Cursor rules) only point to it. Keep it under 150 lines. Every
+This file owns repo-specific rules and points to shared policy. Tool adapters
+(`CLAUDE.md`, Cursor rules) only point to it; verify native adoption. Keep it
+under 150 lines. Every
 line must prevent a mistake.
 
 ## Start here
@@ -13,7 +14,8 @@ line must prevent a mistake.
 3. Run `git status` and the check command below once, before any change.
 4. Shared standards: the `alawein/.github` repo, `docs/system/agents.md` for
    agent rules and `docs/system/delivery.md` for branches, commits, and PRs. This
-   file adds to them and wins on conflict for this repo only.
+   file adds restrictions; it cannot relax owner gates or account policy.
+   Follow the shared policy precedence and cite its stable rule IDs.
 
 ## Commands
 
@@ -53,16 +55,28 @@ Shell: {{SHELL: for example PowerShell on Windows, bash in CI}}.
 
 ## Remote actions
 
-Mode: {{MODE: "push branches and open PRs" or "local only"}}.
+Mode: LOCAL-ONLY. Every send, spend, publish, purge or delete, commit, push,
+merge, PR creation, secret rotation or other remote change needs owner approval
+naming the action, target and scope. Only the owner merges or enables
+auto-merge. General "Continue" never crosses an unnamed gate. Follow
+`docs/system/agents.md` in `alawein/.github`; never expose secrets.
 
-The owner's typed words come first for: spending money, rotating or exposing a
-secret, permanently deleting data or a repo, sending anything other people
-will read, and touching anyone else's repo. Only the owner merges.
+## Review guidelines
+
+Follow `docs/system/reviewers.md` in `alawein/.github`. CodeRabbit is the sole
+automatic reviewer after owner activation; all other reviewers need a named,
+scoped request. Findings need actionable evidence and never authorize gated
+actions. Preserve frozen inputs, exact required checks, zero PR test retries,
+no stacks or queue, and the three-waiting-PR cap. Account state and technical
+enforcement remain UNVERIFIED until observed.
 
 ## Verify before you say done
 
-- Run `{{CHECK_COMMAND}}`. Paste the commands and results into the PR's Test
-  evidence section.
+- Run `{{CHECK_COMMAND}}`. Record the reviewed digest, files, tool versions,
+  commands, exits, durations and unrun gates using the kit's
+  `templates/agent/evidence.template.md`. Prepare public-safe PR evidence.
+- Record the separate reviewer session, verdict and findings; relevant edits
+  need affected checks and scoped re-review.
 - {{EXTRA_VERIFY: for a web app, open it and check the changed page. For a
   library, run the example.}}
 - No "done" without command output. If a check could not run, say "not run"
@@ -79,6 +93,6 @@ will read, and touching anyone else's repo. Only the owner merges.
 
 ## Close out
 
-1. Open the PR from the template. Describe the change and its checks only.
+1. Prepare PR text from the template locally; opening it needs named approval.
 2. Add one line to `docs/lessons.md`.
 3. Leave no stray files: stage named paths only, never `git add -A`.

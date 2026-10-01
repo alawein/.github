@@ -3,8 +3,9 @@
 Every repo under github.com/alawein looks like it belongs to the owner's site:
 a pixel-art night street, the repo name on a red headband ribbon, two palettes
 (night and dawn). These rules cover every banner, social preview, logo, and
-README. The brand source is an interim import and not frozen. When it is
-frozen, regenerate every repo's images.
+README. The approved brand source is frozen. Generate repo images only from
+that source, and change the source through owner review before regenerating
+affected images.
 
 ## What every repo gets
 
@@ -187,5 +188,5 @@ Then:
 3. Fill in the README from the template.
 4. Run the markdown lint and link check before the pull request.
 5. Upload the social preview in the repo settings (see above).
-6. When the brand source changes, run `--check` for every repo and regenerate
-   the ones that drift.
+6. After an owner-approved brand source change, run `--check` for every repo
+   and regenerate only the images that drift.
