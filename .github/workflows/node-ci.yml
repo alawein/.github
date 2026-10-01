@@ -69,9 +69,14 @@ jobs:
           node --input-type=module -e '
             import fs from "node:fs";
             const p = JSON.parse(fs.readFileSync("package.json", "utf8"));
-            if (process.env.RUN_TEST !== "true" ||
-                typeof p.scripts?.test !== "string" ||
-                p.scripts.test.trim() === "") process.exit(1);
+            if (process.env.RUN_TEST !== "true") {
+              console.error("::error::require-test: true requires run-test: true.");
+              process.exit(1);
+            }
+            if (typeof p.scripts?.test !== "string" || p.scripts.test.trim() === "") {
+              console.error("::error::require-test: true requires a nonempty package.json scripts.test script.");
+              process.exit(1);
+            }
           '
       # npm ci installs exactly what the lockfile says and fails if the two disagree.
       - name: Install

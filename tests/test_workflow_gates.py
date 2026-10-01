@@ -34,14 +34,21 @@ class NodeGateTests(unittest.TestCase):
                 env["PATH"] = NODE_DIR + os.pathsep + env["PATH"]
             return subprocess.run([str(BASH), "-c", step(name)["run"]], cwd=directory, env=env, capture_output=True, text=True)
 
-    def test_required_test_rejects_missing_empty_and_disabled_scripts(self):
-        for manifest, run_test in [
-            ('{"scripts":{}}', "true"),
-            ('{"scripts":{"test":"  "}}', "true"),
-            ('{"scripts":{"test":"node -e \'process.exit(0)\'"}}', "false"),
-        ]:
-            with self.subTest(manifest=manifest, run_test=run_test):
-                self.assertNotEqual(self.run_step(manifest, run_test).returncode, 0)
+    def test_required_test_explains_missing_and_blank_scripts(self):
+        for manifest in ['{"scripts":{}}', '{"scripts":{"test":""}}', '{"scripts":{"test":"  "}}']:
+            with self.subTest(manifest=manifest):
+                result = self.run_step(manifest)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("::error::", result.stderr)
+                for detail in ["package.json", "nonempty", "test"]:
+                    self.assertIn(detail, result.stderr.lower())
+
+    def test_required_test_explains_conflicting_execution_inputs(self):
+        result = self.run_step('{"scripts":{"test":"node -e \'process.exit(0)\'"}}', "false")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("::error::", result.stderr)
+        self.assertIn("require-test: true", result.stderr)
+        self.assertIn("run-test: true", result.stderr)
 
     def test_required_test_accepts_runnable_script(self):
         result = self.run_step('{"scripts":{"test":"node -e \'process.exit(0)\'"}}')
@@ -59,9 +66,11 @@ class NodeGateTests(unittest.TestCase):
 
 
 class LinkGateTests(unittest.TestCase):
-    def test_pr_links_default_offline_and_nightly_external(self):
+    def test_reusable_links_preserve_external_checks_by_default(self):
         links = workflow("check-links.yml")
-        self.assertTrue(links[True]["workflow_call"]["inputs"].get("offline", {}).get("default"))
+        self.assertIs(links[True]["workflow_call"]["inputs"]["offline"]["default"], False)
+
+    def test_nightly_links_check_external_sites(self):
         self.assertTrue((ROOT / ".github" / "workflows" / "check-links-nightly.yml").exists())
         nightly = workflow("check-links-nightly.yml")
         self.assertIn("schedule", nightly[True])

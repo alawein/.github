@@ -8,9 +8,9 @@ on:
         type: string
         default: "./**/*.md"
       offline:
-        description: Check local links only; nightly scans external sites.
+        description: Check local links only; enable only with external nightly coverage.
         type: boolean
-        default: true
+        default: false
 
 permissions:
   contents: read
