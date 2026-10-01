@@ -3,10 +3,6 @@ name: Read-only hygiene
 on:
   workflow_call:
     inputs:
-      kit-ref:
-        description: Full kit commit SHA; only kit self-tests may omit it.
-        type: string
-        default: ""
       expected-required-checks:
         description: Comma-separated contexts expected in effective main rules.
         type: string
@@ -41,30 +37,11 @@ jobs:
       contents: read
       pull-requests: read
     steps:
-      - name: Validate kit ref
-        id: ref
-        env:
-          KIT_REF: ${{ inputs.kit-ref }}
-          CALLER_REPOSITORY: ${{ github.repository }}
-          CALLER_SHA: ${{ github.sha }}
-        run: |
-          if [ -z "$KIT_REF" ]; then
-            if [ "$CALLER_REPOSITORY" != "alawein/.github" ]; then
-              echo '::error::Foreign callers must supply the full immutable kit-ref.'
-              exit 1
-            fi
-            KIT_REF="$CALLER_SHA"
-          fi
-          if [[ ! "$KIT_REF" =~ ^[0-9a-f]{40}$ ]]; then
-            echo '::error::kit-ref must be a full lowercase commit SHA.'
-            exit 1
-          fi
-          echo "kit-ref=$KIT_REF" >> "$GITHUB_OUTPUT"
       - name: Check out audit implementation
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: alawein/.github
-          ref: ${{ steps.ref.outputs.kit-ref }}
+          ref: ce04a21e332e42c3137b26f3becb0de77086b6cb
           path: _kit
           persist-credentials: false
       - name: Set up Python

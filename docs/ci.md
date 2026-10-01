@@ -67,12 +67,13 @@ PR checks to `offline: true` requires a paired scheduled external scan using
 `offline: false`. The kit and distributed stubs/starters explicitly use the paired policy.
 An existing consumer must copy both files when migrating.
 
-`pr-policy.yml` and `hygiene.yml` require `kit-ref` to be a full lowercase
+`pr-policy.yml` requires `kit-ref` to be a full lowercase
 40-character SHA from a reviewed kit release when called by another repository.
-Pass the same SHA used on the workflow's `uses:` line. These workflows check out
+Pass the same SHA used on the workflow's `uses:` line. This workflow checks out
 `alawein/.github` at that validated ref, never the caller's policy script. Only
 same-repository kit self-tests may omit the input and use the current SHA.
-Both use Python `3.12.10`, standard-library scripts and read-only credentials.
+Both metadata workflows use Python `3.12.10`, standard-library scripts and
+read-only credentials.
 
 The policy script reads `GITHUB_EVENT_PATH`; PR prose is never interpolated into
 shell commands. It checks branch naming on drafts and ready PRs, and checks
@@ -89,7 +90,14 @@ consumers opt in after a reviewed signed release. Require `pr-policy` in live
 rules only after observing an eligible successful PR run at its current SHA.
 
 `hygiene.yml` accepts `expected-required-checks`, a comma-separated list defaulting
-to the original four contexts. Its caller grants `contents: read` and
+to the original four contexts; it has no `kit-ref` input. Callers pin the reviewed
+workflow release SHA on `uses:`. The workflow separately pins audit source to
+reviewed commit `ce04a21e332e42c3137b26f3becb0de77086b6cb` for every caller,
+including the kit's weekly run. Caller input cannot select executable code.
+Audit source changes require review and a coordinated implementation pin and
+source-digest fixture update. Read-only repository permissions alone do not
+restrict the runner's cache token; no cache-mode enforcement is claimed.
+Its caller grants `contents: read` and
 `pull-requests: read`; its existing automatic token becomes in-memory `GH_TOKEN`.
 It uses GET-only REST calls, paginates lists, and reports effective main rules,
 active ruleset bypass actors (including inherited rulesets), squash flags,

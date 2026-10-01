@@ -1,4 +1,5 @@
 """Exercise the workflow's shell guards, including foreign caller trust and gates."""
+import hashlib
 import os
 from pathlib import Path
 import re
@@ -8,6 +9,8 @@ import tempfile
 import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
+AUDIT_SOURCE_SHA = "ce04a21e332e42c3137b26f3becb0de77086b6cb"
+AUDIT_SOURCE_HASH = "444859e0388579527564800c508432a9c1f28a1ddaa076b23b6353e4dea4f374"
 BASH = (str(Path(os.environ.get("ProgramFiles", "C:/Program Files")) / "Git/bin/bash.exe")
         if os.name == "nt" else shutil.which("bash"))
 
@@ -33,21 +36,36 @@ class MetadataWorkflowTests(unittest.TestCase):
             return result.returncode, output.read_text() if output.exists() else ""
 
     def test_same_repo_can_default_to_current_sha(self):
-        for workflow in ("pr-policy.yml", "hygiene.yml"):
-            code, output = self.run_guard(workflow, "")
-            self.assertEqual(code, 0)
-            self.assertEqual(output.strip(), "kit-ref=" + "a" * 40)
+        code, output = self.run_guard("pr-policy.yml", "")
+        self.assertEqual(code, 0)
+        self.assertEqual(output.strip(), "kit-ref=" + "a" * 40)
 
     def test_foreign_caller_must_supply_full_immutable_ref(self):
-        for workflow in ("pr-policy.yml", "hygiene.yml"):
-            code, output = self.run_guard(workflow, "b" * 40, "owner/consumer")
-            self.assertEqual(code, 0)
-            self.assertEqual(output.strip(), "kit-ref=" + "b" * 40)
-            for ref in ("", "main", "v1.2.0", "a" * 39, "$(echo bad)", "a" * 40 + "\n"):
-                with self.subTest(workflow=workflow, ref=ref):
-                    code, output = self.run_guard(workflow, ref, "owner/consumer")
-                    self.assertNotEqual(code, 0)
-                    self.assertEqual(output, "")
+        code, output = self.run_guard("pr-policy.yml", "b" * 40, "owner/consumer")
+        self.assertEqual(code, 0)
+        self.assertEqual(output.strip(), "kit-ref=" + "b" * 40)
+        for ref in ("", "main", "v1.2.0", "a" * 39, "$(echo bad)", "a" * 40 + "\n"):
+            with self.subTest(ref=ref):
+                code, output = self.run_guard("pr-policy.yml", ref, "owner/consumer")
+                self.assertNotEqual(code, 0)
+                self.assertEqual(output, "")
+
+    def test_hygiene_executes_only_the_reviewed_literal_source(self):
+        workflow = (ROOT / ".github/workflows/hygiene.yml").read_text(encoding="utf-8")
+        self.assertNotIn("kit-ref:", workflow, "audit source must not be a caller input")
+        checkouts = re.findall(r"      - name: .*?\n(.*?)(?=\n      - |\Z)", workflow, re.S)
+        checkouts = [step for step in checkouts if "uses: actions/checkout@" in step]
+        self.assertEqual(len(checkouts), 1, "every audit checkout needs review")
+        checkout = checkouts[0]
+        self.assertRegex(checkout, r"(?m)^          repository: alawein/\.github$")
+        self.assertRegex(checkout, r"(?m)^          ref: " + AUDIT_SOURCE_SHA + r"$")
+        self.assertIn("persist-credentials: false", checkout)
+
+    def test_local_audit_source_matches_the_reviewed_pin(self):
+        # Normalize platform checkout line endings; all other source bytes are bound.
+        source = (ROOT / "scripts/audit-hygiene.py").read_text(encoding="utf-8").encode("utf-8")
+        self.assertEqual(hashlib.sha256(source).hexdigest(), AUDIT_SOURCE_HASH,
+                         "audit changes require reviewing and updating the source pin and hash together")
 
     def test_policy_gate_rejects_unsuccessful_producer_or_tests(self):
         script = self.shell_step("ci.yml", "Require policy and metadata tests")
