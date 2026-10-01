@@ -1,3 +1,10 @@
+<picture>
+  <source media="(prefers-color-scheme: light)" srcset="assets/banner-dawn.png">
+  <img src="assets/banner-night.png" alt="Pixel-art market street with lit shop windows and paper lanterns" width="760">
+</picture>
+
+# .github
+
 Shared GitHub standards for [alawein](https://github.com/alawein): community
 files, reusable workflows, rulesets, scripts, and repo starters. Start with the
 [system guide](docs/system/README.md). Shared community files become defaults

@@ -16,3 +16,4 @@ One line per session, newest at the bottom. Format:
 - 2026-10-01 | PR metadata and hygiene | Examples and unavailable API data can produce misleading policy evidence | Check actual prose and verified bot identity; paginate GET observations and preserve UNKNOWN before promoting new contexts.
 - 2026-10-01 | Scheduled audit source | Read-only repository permissions do not bound runner cache authority | Execute a literal reviewed implementation SHA and bind local source tests to its digest.
 - 2026-10-01 | Release branches | Dotted version branches failed the hyphen-only PR policy | Use hyphens in release branches, keep SemVer tags, and test the documented branch through the real checker.
+- 2026-10-01 | Public artwork | Approved public scene bytes were available while private generation remained separate | Reuse only the selected byte-identical pair with a text heading and source manifest; keep social-preview upload evidence separate.
