@@ -84,6 +84,25 @@ class PolicyTests(unittest.TestCase):
             with self.subTest(body=body):
                 self.assertEqual(self.check(event(body=body)), [])
 
+    def test_container_code_cannot_supply_linkage_or_exception(self):
+        for text in ("Closes #12", "No-issue: shared workflow policy has no existing tracking issue"):
+            for body in (">     " + text, "-     " + text,
+                         "> - - ~~~\n>     " + text + "\n>     ~~~",
+                         "- - ```\n    " + text + "\n    ```",
+                         "~~~\n> ~~~\n" + text + "\n~~~",
+                         "- ~~~\n  - ~~~\n  " + text + "\n  ~~~"):
+                with self.subTest(body=body):
+                    self.assertTrue(self.check(event(body=body)))
+
+    def test_container_prose_and_prose_after_code_remain_linkage(self):
+        reason = "No-issue: shared workflow policy has no existing tracking issue"
+        for body in ("> Closes #12", "- Closes #12", "> - - Closes #12",
+                     "> " + reason, "- " + reason, "> - - " + reason,
+                     "> - - ~~~\n>     Closes #99\n>     ~~~\n\nCloses #12",
+                     "- ~~~\n  - ~~~\n  Closes #99\n  ~~~\n\n" + reason):
+            with self.subTest(body=body):
+                self.assertEqual(self.check(event(body=body)), [])
+
     def test_blank_template_reasons_do_not_pass(self):
         for body in (None, "", "No-issue: n/a", "No-issue: TODO", "No-issue: reason",
                      "No-issue: <specific reason>", "No-issue: {{REASON}}", "No-issue: none",

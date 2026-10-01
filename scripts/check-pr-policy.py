@@ -19,17 +19,38 @@ def prose(body):
     body = re.sub(r"<(pre|code)\b[^>]*>.*?(?:</\1\s*>|\Z)", "", body, flags=re.S | re.I)
     lines, fence = [], None
     for line in body.splitlines():
-        content = re.sub(r"^(?: {0,3}>[ \t]?)*(?: {0,3}(?:[-+*]|\d+[.)])[ \t]+)?", "", line)
+        content = line.expandtabs(4)
+        quotes, indent = 0, 0
+        if fence:
+            # Only the opening containers are structural inside fenced code.
+            for _ in range(fence[1]):
+                content = re.sub(r"^ {0,3}> ?", "", content, count=1)
+            if content.startswith(" " * fence[2]):
+                content = content[fence[2]:]
+        else:
+            while True:
+                quote = re.match(r"^ {0,3}> ?", content)
+                item = re.match(r"^ {0,3}(?:[-+*]|\d+[.)])( +)", content)
+                if quote:
+                    content = content[quote.end():]
+                    quotes += 1
+                elif item:
+                    # Five or more padding spaces introduce indented code.
+                    end = item.start(1) + (1 if len(item[1]) > 4 else len(item[1]))
+                    content = content[end:]
+                    indent += end
+                else:
+                    break
         match = re.match(r"^ {0,3}(`{3,}|~{3,})(.*)$", content)
         if fence:
-            if (match and match[1][0] == fence[0] and len(match[1]) >= len(fence)
+            if (match and match[1][0] == fence[0][0] and len(match[1]) >= len(fence[0])
                     and not match[2].strip()):
                 fence = None
             continue
         if match:
-            fence = match[1]
-        elif not re.match(r"^(?: {4}|\t)", line):
-            lines.append(line)
+            fence = (match[1], quotes, indent)
+        elif not content.startswith(" " * 4):
+            lines.append(content)
     return re.sub(r"(?<!`)(`+)(?!`).*?(?<!`)\1(?!`)", "", "\n".join(lines), flags=re.S)
 
 
