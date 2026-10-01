@@ -5,7 +5,9 @@
   "license": "UNLICENSED",
   "private": true,
   "type": "module",
-  "engines": { "node": ">=22" },
+  "engines": {
+    "node": "^22.12.0 || ^24.0.0 || >=26.0.0"
+  },
   "scripts": {
     "dev": "astro dev",
     "lint": "eslint . && prettier --check . && astro check",
@@ -15,7 +17,7 @@
     "fix": "eslint . --fix && prettier --write ."
   },
   "dependencies": {
-    "astro": "^5.0.0"
+    "astro": "^7.3.5"
   },
   "devDependencies": {
     "@astrojs/check": "^0.9.0",
@@ -25,6 +27,6 @@
     "prettier-plugin-astro": "^0.14.0",
     "typescript": "^5.6.0",
     "typescript-eslint": "^8.0.0",
-    "vitest": "^3.0.0"
+    "vitest": "^5.0.3"
   }
 }
