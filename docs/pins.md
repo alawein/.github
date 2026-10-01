@@ -1,6 +1,7 @@
 # Pins
 
-Every `uses:` in this repo points to a full 40-character commit SHA, with the tag in a comment.
+External actions and reusable workflow calls pin full 40-character commit SHAs,
+with the tag in a comment. Same-repository `./` workflow calls use the current revision.
 Each row was checked on the date shown with read-only GitHub API calls:
 `GET repos/<owner>/<repo>/commits/<tag>` returns the SHA, and `releases/latest` confirmed the tag
 is the newest stable one. The table lists exactly the actions used in `.github/workflows/`. When a
@@ -32,3 +33,19 @@ the checksum from the release's `actionlint_<version>_checksums.txt` (or the ass
 Caller stubs in `templates/workflows/` and the `ci.yml` files in `templates/starters/` pin
 `alawein/.github` itself. They pin verified `6f6dbe7f3a23ab830a32007bb52b83fd1bb40563`
 (tag `v1.2.0`), verified after required checks passed on 2026-09-30. To bump it, see [ci.md](ci.md), "Bump a pin".
+
+The opt-in `pr-policy.jobs.yml` and `hygiene-weekly.yml` templates separately
+pin signed annotated `v1.3.0` at
+`b5f8bc3a916b41e22e5e09ec72f34c01428c2933`, verified and published on
+2026-10-01. The policy `kit-ref` matches this workflow pin. Hygiene has no
+source-ref input; its released workflow checks out reviewed audit source
+`ce04a21e332e42c3137b26f3becb0de77086b6cb`. This adoption leaves all legacy
+distributed pins and starter defaults intact. Full workflow/action SHAs bind
+source revisions; legacy runtime defaults and hosted OS image contents still
+change. See [the v1.3.0 release](https://github.com/alawein/.github/releases/tag/v1.3.0)
+and [opt-in installation](ci.md#opt-in-to-pr-policy-and-hygiene).
+
+The release SHA binds the reusable workflow code. Follow-on opt-in templates
+and `-RequirePrPolicy` setup/verification support come from reviewed kit main
+after adoption merges. Copy those files from main and keep their workflow
+pins at the released SHA; this two-phase adoption requires no additional tag.

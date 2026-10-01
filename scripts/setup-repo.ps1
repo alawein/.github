@@ -42,6 +42,10 @@
   standard uses ci.yml and the class checks. hub-check is limited to the
   approved TypeScript hub and requires the check job in check.yml.
 
+.PARAMETER RequirePrPolicy
+  Opt in to the pr-policy gate in ci.yml. Private repos require -Strict,
+  unless Class site already implies it. Incompatible with hub-check.
+
 .PARAMETER EnableShaPinning
   Turns on sha_pinning_required. Use only after the first green CI run.
 
@@ -59,6 +63,7 @@ param(
   [ValidateSet('typescript', 'python')][string]$Language = 'typescript',
   [string[]]$Topics = @(),
   [switch]$Strict,
+  [switch]$RequirePrPolicy,
   [ValidateSet('standard', 'hub-check')][string]$CheckProfile = 'standard',
   [switch]$EnableShaPinning,
   [switch]$Apply
@@ -194,7 +199,7 @@ if ($nameErrors.Count -gt 0) {
   exit 2
 }
 if ($Class -eq 'archive') { Write-Host 'STOP: class archive gets no settings. Use scripts\archive-repos.ps1 (docs\archive.md).'; exit 2 }
-try { $checkPolicy = Get-CheckPolicy -Repo $Repo -Class $Class -Language $Language -CheckProfile $CheckProfile -Strict:$Strict }
+try { $checkPolicy = Get-CheckPolicy -Repo $Repo -Class $Class -Language $Language -CheckProfile $CheckProfile -Strict:$Strict -RequirePrPolicy:$RequirePrPolicy }
 catch { Write-Host ('STOP: ' + $_.Exception.Message); exit 2 }
 $RequiredChecks = @($checkPolicy.RequiredChecks)
 $workflowPath = $checkPolicy.WorkflowPath
@@ -228,6 +233,7 @@ if ($r.Code -ne 0) { Write-Host "STOP: cannot read $Repo`n$($r.Out)"; exit 2 }
 $info = $r.Out | ConvertFrom-Json
 if ($info.archived) { Write-Host 'STOP: repo is archived. Archived repos are not changed.'; exit 2 }
 $isPublic = ($info.visibility -eq 'public')
+if ($RequirePrPolicy -and -not $isPublic -and -not $checkPolicy.RequireChecks) { Write-Host 'STOP: RequirePrPolicy on a private repo requires -Strict (Class site implies it)'; exit 2 }
 if ($CheckProfile -eq 'hub-check' -and $isPublic) { Write-Host 'STOP: hub-check is approved for the private hub only'; exit 2 }
 $defaultBranch = $info.default_branch
 Write-Host ("Facts: visibility={0} default_branch={1}" -f $info.visibility, $defaultBranch)
@@ -386,6 +392,7 @@ else {
   $missing = @($ci.Missing)
   $placeholders = @($ci.Placeholders)
   $ciReady = ($missing.Count -eq 0 -and $placeholders.Count -eq 0)
+  if ($RequirePrPolicy -and -not $ciReady) { Write-Host 'FAIL opt-in policy: CI jobs and immutable pins must be ready before requiring pr-policy'; $script:Failures++ }
   if ($placeholders.Count -gt 0) {
     Write-Host ('Not ready: these workflow files still pin the all-zero placeholder SHA: ' + ($placeholders -join ', '))
     Write-Host '  Fix: replace every @0000000000000000000000000000000000000000 with a real commit SHA of alawein/.github (docs\ci.md, "After the first commit"), merge that, then run this again.'
@@ -398,10 +405,10 @@ else {
       $script:Skipped++
     } else {
       $pubJson = Get-Content -LiteralPath (Join-Path $KitRoot 'rulesets\main-public.json') -Raw
-      if ($Class -in @('site', 'lab', 'tool')) {
+      if ($RequirePrPolicy -or $Class -in @('site', 'lab', 'tool')) {
         $po = $pubJson | ConvertFrom-Json
         foreach ($rule in $po.rules) {
-          if ($rule.type -eq 'required_status_checks') { $rule.parameters.required_status_checks += [pscustomobject]@{ context = $RequiredChecks[-1] } }
+          if ($rule.type -eq 'required_status_checks') { $rule.parameters.required_status_checks = @($RequiredChecks | ForEach-Object { [pscustomobject]@{ context = $_ } }) }
         }
         $pubJson = ConvertTo-Json -InputObject $po -Depth 12
       }
@@ -422,6 +429,9 @@ else {
     }
     elseif ($Class -eq 'site' -and $ciReady) {
       $obj = (Get-Content -LiteralPath (Join-Path $KitRoot 'rulesets\main-site.json') -Raw) | ConvertFrom-Json
+      if ($RequirePrPolicy) {
+        ($obj.rules | Where-Object { $_.type -eq 'required_status_checks' }).parameters.required_status_checks = @($RequiredChecks | ForEach-Object { [pscustomobject]@{ context = $_ } })
+      }
     }
     elseif ($useStrict) {
       $obj.rules += ('{"type":"required_linear_history"}' | ConvertFrom-Json)
@@ -458,7 +468,7 @@ if ($EnableShaPinning) {
 
 Write-Host "`n== Read-back =="
 if ($Apply) {
-  $vArgs = @{ Repo = $Repo; Class = $Class; Language = $Language; CheckProfile = $CheckProfile }
+  $vArgs = @{ Repo = $Repo; Class = $Class; Language = $Language; CheckProfile = $CheckProfile; RequirePrPolicy = [bool]$RequirePrPolicy }
   if ($useStrict) { $vArgs['Strict'] = $true }
   & (Join-Path $PSScriptRoot 'verify-repo.ps1') @vArgs
   Write-Host ("`nWrite failures: {0}   Skipped steps: {1}" -f $script:Failures, $script:Skipped)

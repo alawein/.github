@@ -29,6 +29,29 @@ foreach ($invalid in @(
 }
 Write-Host 'PASS: standard behavior and hub compatibility'
 
+
+# Removing opt-in forwarding, losing a language context, or silently opting in defaults fails this matrix.
+foreach ($case in @(
+  @{Class='profile'; Language='typescript'; Checks='markdown-lint,link-check,actionlint,pr-title'},
+  @{Class='docs'; Language='typescript'; Checks='markdown-lint,link-check,actionlint,pr-title'},
+  @{Class='tool'; Language='typescript'; Checks='markdown-lint,link-check,actionlint,pr-title,node-ci'},
+  @{Class='tool'; Language='python'; Checks='markdown-lint,link-check,actionlint,pr-title,python-ci'},
+  @{Class='lab'; Language='typescript'; Checks='markdown-lint,link-check,actionlint,pr-title,python-ci'},
+  @{Class='site'; Language='typescript'; Checks='markdown-lint,link-check,actionlint,pr-title,node-ci'}
+)) {
+  foreach ($strict in @($false, $true)) {
+    $legacy = Get-CheckPolicy -Class $case.Class -Language $case.Language -Strict:$strict
+    $off = Get-CheckPolicy -Class $case.Class -Language $case.Language -Strict:$strict -RequirePrPolicy:$false
+    $on = Get-CheckPolicy -Class $case.Class -Language $case.Language -Strict:$strict -RequirePrPolicy
+    if (($legacy.RequiredChecks -join ',') -ne $case.Checks -or ($off.RequiredChecks -join ',') -ne $case.Checks) { throw 'legacy opt-in defaults changed' }
+    if (($on.RequiredChecks -join ',') -ne ($case.Checks + ',pr-policy') -or $on.WorkflowPath -ne $legacy.WorkflowPath -or $on.RequireChecks -ne $legacy.RequireChecks) { throw 'opt-in lost class checks or changed strictness' }
+  }
+}
+$rejected = $false
+try { Get-CheckPolicy -Repo alawein/career-engine -Class tool -Language typescript -CheckProfile hub-check -RequirePrPolicy | Out-Null } catch { $rejected = $_.Exception.Message -match 'RequirePrPolicy.*hub-check' }
+if (-not $rejected) { throw 'hub accepted optional policy' }
+Write-Host 'PASS: optional helper preserves legacy classes and rejects hub'
+
 $ruleRoot = Join-Path $PSScriptRoot '../../rulesets'
 foreach ($spec in @(
   @{ File='main-hub.json'; Checks='check'; Rules='deletion,non_fast_forward,required_status_checks' },
@@ -50,12 +73,16 @@ $fakeCommand = Get-Command gh -ErrorAction Stop
 if ($fakeCommand.Source -ne (Join-Path $PSScriptRoot 'gh.cmd') -or (Get-Command gh.exe -ErrorAction SilentlyContinue)) { throw 'fake gh command did not resolve safely' }
 $env:FAKE_GH_LOG = Join-Path $env:TEMP 'kit-check-policy-fake-gh.log'
 $scripts = Split-Path -Parent $PSScriptRoot
-function Invoke-PolicyScript([string]$Name, [string]$Case, [string]$Repo, [string]$Class, [string]$Profile, [switch]$Strict) {
+function Invoke-PolicyScript([string]$Name, [string]$Case, [string]$Repo, [string]$Class, [string]$Profile, [switch]$Strict, [switch]$RequirePrPolicy, [string]$Language = 'typescript') {
   $env:FAKE_GH_CASE = $Case
+  $env:FAKE_GH_CLASS = $Class
+  $env:FAKE_GH_LANGUAGE = $Language
   Set-Content -LiteralPath $env:FAKE_GH_LOG -Value ''
   $extraArgs = @()
   if ($Strict) { $extraArgs += '-Strict' }
-  $output = (& $pwshPath -NoProfile -File (Join-Path $scripts $Name) -Repo $Repo -Class $Class -CheckProfile $Profile @extraArgs 2>&1 | Out-String)
+  if ($RequirePrPolicy) { $extraArgs += '-RequirePrPolicy' }
+  if ($Class) { $extraArgs += @('-Class', $Class) }
+  $output = (& $pwshPath -NoProfile -File (Join-Path $scripts $Name) -Repo $Repo -Language $Language -CheckProfile $Profile @extraArgs 2>&1 | Out-String)
   $code = $LASTEXITCODE
   $calls = Get-Content -LiteralPath $env:FAKE_GH_LOG -Raw
   if ($calls -match '(?m)^api\s+-X\s+|(?m)^api\s+--method\s+|(?m)^api\s+.*--input') { throw "$Name attempted a mutation" }
@@ -124,6 +151,57 @@ try {
     $incompatible = Invoke-PolicyScript $name 'hub-good' 'alawein/meshal-site' 'site' 'hub-check'
     if ($incompatible.Code -eq 0 -or $incompatible.Calls.Trim()) { throw "$name called gh for incompatible hub policy" }
   }
+
+  $originalRules = @{}
+  foreach ($file in @('main-public.json', 'main-private.json', 'main-site.json')) { $originalRules[$file] = [Convert]::ToBase64String([IO.File]::ReadAllBytes((Join-Path $ruleRoot $file))) }
+  foreach ($name in @('setup-repo.ps1', 'verify-repo.ps1')) {
+    $hubOpt = Invoke-PolicyScript $name hub-good alawein/career-engine tool hub-check -RequirePrPolicy
+    if ($hubOpt.Code -ne 2 -or $hubOpt.Calls.Trim() -or $hubOpt.Out -notmatch 'RequirePrPolicy.*hub-check') { throw "$name did not reject hub opt-in before gh" }
+    $nonstrict = Invoke-PolicyScript $name policy-private-ready alawein/example docs standard -RequirePrPolicy
+    if ($nonstrict.Code -ne 2 -or $nonstrict.Out -notmatch 'RequirePrPolicy.*Strict' -or $nonstrict.Calls -match '/rulesets') { throw "$name silently accepted private non-strict opt-in" }
+    foreach ($case in @(
+      @{Class='docs'; Language='typescript'; Visibility='public'; Checks='markdown-lint,link-check,actionlint,pr-title,pr-policy'; Template='main-public.json'},
+      @{Class='tool'; Language='typescript'; Visibility='public'; Checks='markdown-lint,link-check,actionlint,pr-title,node-ci,pr-policy'; Template='main-public.json'},
+      @{Class='tool'; Language='python'; Visibility='public'; Checks='markdown-lint,link-check,actionlint,pr-title,python-ci,pr-policy'; Template='main-public.json'},
+      @{Class='docs'; Language='typescript'; Visibility='private'; Checks='markdown-lint,link-check,actionlint,pr-title,pr-policy'},
+      @{Class='tool'; Language='python'; Visibility='private'; Checks='markdown-lint,link-check,actionlint,pr-title,python-ci,pr-policy'},
+      @{Class='site'; Language='typescript'; Visibility='private'; Checks='markdown-lint,link-check,actionlint,pr-title,node-ci,pr-policy'; Template='main-site.json'}
+    )) {
+      $strict = $case.Visibility -eq 'private' -and $case.Class -ne 'site'
+      $ready = Invoke-PolicyScript $name "policy-$($case.Visibility)-ready" alawein/example $case.Class standard -Language $case.Language -Strict:$strict -RequirePrPolicy
+      if ($name -eq 'verify-repo.ps1') {
+        if ($ready.Out -match 'FAIL[^\r\n]*(required checks|ci\.yml with)' -or $ready.Out -notmatch 'PASS[^\r\n]*required checks') { throw "$name rejected ready opt-in $($case.Class): $($ready.Out)" }
+      } else {
+        if ($ready.Code -ne 0 -or $ready.Out -notmatch '(?m)^DRY\s+gh api -X (?:PUT|POST) repos/alawein/example/rulesets(?:/[13])? --input -\s+<-\s+(.+)$') { throw "missing opt-in payload: $($ready.Out)" }
+        $planned = $Matches[1] | ConvertFrom-Json
+        $status = @($planned.rules | Where-Object type -eq required_status_checks)
+        $contexts = @($status[0].parameters.required_status_checks | ForEach-Object context)
+        if ($status.Count -ne 1 -or ($contexts -join ',') -ne $case.Checks) { throw "opt-in payload lost complete contexts: $($contexts -join ',')" }
+        if ($case.Template) {
+          $expected = Get-Content -LiteralPath (Join-Path $ruleRoot $case.Template) -Raw | ConvertFrom-Json
+          ($expected.rules | Where-Object type -eq required_status_checks).parameters.required_status_checks = @($case.Checks -split ',' | ForEach-Object { [pscustomobject]@{context=$_} })
+          if (($planned | ConvertTo-Json -Depth 12 -Compress) -cne ($expected | ConvertTo-Json -Depth 12 -Compress)) { throw 'opt-in modified unrelated template policy' }
+        }
+      }
+      foreach ($bad in @('missing-gate', 'placeholder')) {
+        $incomplete = Invoke-PolicyScript $name "policy-$($case.Visibility)-$bad" alawein/example $case.Class standard -Language $case.Language -Strict:$strict -RequirePrPolicy
+        if ($incomplete.Code -eq 0 -or ($name -eq 'setup-repo.ps1' -and $incomplete.Out -match 'DRY[^\r\n]*required_status_checks')) { throw "$name accepted $bad opt-in" }
+      }
+      if ($name -eq 'verify-repo.ps1') {
+        $wrong = Invoke-PolicyScript $name "policy-$($case.Visibility)-wrong-context" alawein/example $case.Class standard -Language $case.Language -Strict:$strict -RequirePrPolicy
+        if ($wrong.Out -notmatch 'FAIL[^\r\n]*required checks') { throw 'opt-in accepted wrong rules contexts' }
+      }
+    }
+  }
+  $omitted = Invoke-PolicyScript verify-repo.ps1 policy-public-extra-context alawein/example '' standard -RequirePrPolicy
+  if ($omitted.Out -notmatch 'PASS[^\r\n]*required checks') { throw 'omitted class rejected additional unknown language context' }
+  $missingPolicy = Invoke-PolicyScript verify-repo.ps1 policy-public-missing-context alawein/example '' standard -RequirePrPolicy
+  if ($missingPolicy.Out -notmatch 'FAIL[^\r\n]*required checks') { throw 'omitted class accepted missing policy context' }
+  $legacySubset = Invoke-PolicyScript verify-repo.ps1 policy-public-missing-context alawein/example '' standard
+  if ($legacySubset.Out -notmatch 'PASS[^\r\n]*required checks') { throw 'legacy unknown-class subset changed' }
+  foreach ($file in $originalRules.Keys) { if ([Convert]::ToBase64String([IO.File]::ReadAllBytes((Join-Path $ruleRoot $file))) -cne $originalRules[$file]) { throw 'setup mutated checked-in ruleset JSON' } }
+  Write-Host 'PASS: opt-in dry-run payloads, private strictness, readiness and omitted-class rules'
+
   Write-Host 'PASS: fake gh script policy cases and mutation refusal'
 } finally {
   $env:PATH = $savedPath

@@ -17,3 +17,4 @@ One line per session, newest at the bottom. Format:
 - 2026-10-01 | Scheduled audit source | Read-only repository permissions do not bound runner cache authority | Execute a literal reviewed implementation SHA and bind local source tests to its digest.
 - 2026-10-01 | Release branches | Dotted version branches failed the hyphen-only PR policy | Use hyphens in release branches, keep SemVer tags, and test the documented branch through the real checker.
 - 2026-10-01 | Public artwork | Approved public scene bytes were available while private generation remained separate | Reuse only the selected byte-identical pair with a text heading and source manifest; keep social-preview upload evidence separate.
+- 2026-10-01 | Optional required contexts | Appending one gate can drop language checks or silently pass private defaults | Preserve complete class lists, require private strictness explicitly, and verify policy even when class is omitted.

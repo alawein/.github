@@ -111,6 +111,58 @@ data is `UNKNOWN` and exits nonzero. An empty observed response is distinct from
 unavailable data. `hygiene-weekly.yml` is the kit's weekly/manual caller; a
 schedule declaration does not prove a successful scheduled run.
 
+## Opt in to PR policy and hygiene
+
+The new opt-in callers use signed annotated `v1.3.0`, verified on 2026-10-01
+at `b5f8bc3a916b41e22e5e09ec72f34c01428c2933`. Existing stubs and generated
+starters retain their v1.2.0 pins and default checks.
+
+Adoption has two phases: `v1.3.0` supplies the released reusable workflow
+code; reviewed kit main supplies the follow-on templates and `-RequirePrPolicy`
+setup/verification support. Copy those templates and run the helpers from
+reviewed main after adoption merges; retain the released workflow pins.
+
+1. Merge the two jobs in
+   [pr-policy.jobs.yml](../templates/workflows/pr-policy.jobs.yml) under the
+   existing `jobs:` in `.github/workflows/ci.yml`. This is a fragment, never
+   a standalone workflow. Retain every existing producer and bare gate.
+2. Set `pull_request.types` to
+   `[opened, edited, synchronize, reopened, ready_for_review, converted_to_draft]`.
+   Retain push to main, concurrency and top-level `contents: read`.
+3. Keep the full release SHA identical in the policy `uses:` and `kit-ref`.
+   The bare `pr-policy` gate requires success; failed, cancelled, skipped or
+   absent producer results fail. Released kit fixtures run in the kit.
+4. Copy [hygiene-weekly.yml](../templates/workflows/hygiene-weekly.yml) beside
+   CI. Its `uses:` pins the same release. It has no `kit-ref`; the released
+   workflow uses the independently reviewed literal audit-source pin above.
+5. Set hygiene's `expected-required-checks` to current effective contexts:
+   the original four, plus `node-ci` or `python-ci` for code classes. Add
+   `pr-policy` only after its live required-context promotion. The kit caller
+   expects all five contexts; the distributed template starts with four.
+6. Run actionlint on the complete assembled workflows and the consumer's
+   existing checks. Observe an eligible successful PR policy check at the
+   current head before changing live required contexts.
+
+`Get-CheckPolicy`, `setup-repo.ps1` and `verify-repo.ps1` accept
+`-RequirePrPolicy`, defaulting off. It appends one context after the complete
+class list and keeps the workflow path and strictness calculation. The switch
+refuses `hub-check` before GitHub calls. Private repos also need explicit
+`-Strict`, unless class `site` already implies it. Verification without
+`-Class` still requires the original four plus policy when opted in, while
+allowing unknown language contexts. Missing gates and placeholder pins fail
+opt-in readiness. The checked-in ruleset JSON templates remain unchanged.
+
+Setup plans whole-repo settings, labels and rulesets; it is for owner-approved
+bootstrap, not narrow live promotion. For an existing repo, save its live
+ruleset JSON and add only `pr-policy` after eligible success, then read back
+required contexts, signing, bypass and merge fields. Preserve existing class
+checks, security, reviewer, label and permission settings. No site adoption
+follows automatically.
+
+For a manual 20-PR review sample, use the
+[review observations template](../templates/agent/review-observations.template.md).
+Record measured results and source evidence; no automated writes or spend.
+
 ## Check names and gate jobs
 
 A called workflow reports its checks as `<caller job> / <called job>`, for
@@ -169,8 +221,9 @@ This release preserves `require-test` and paired local/external link inputs, and
 
 ## Pin policy
 
-- Every `uses:` points to a full 40-character commit SHA, with the tag in a
-  trailing comment. A tag can be moved. A SHA cannot.
+- External actions and reusable workflow calls pin full 40-character commit
+  SHAs, with the tag in a trailing comment. Same-repository `./` calls use
+  the current revision. A tag can be moved. A SHA cannot.
 - After the first green run in a repo, turn on the setting that rejects
   unpinned actions (`sha_pinning_required`). `setup-repo.ps1
   -EnableShaPinning` does it.

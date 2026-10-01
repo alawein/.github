@@ -1,0 +1,22 @@
+# Opt-in jobs fragment: merge these jobs under jobs in .github/workflows/ci.yml.
+# Never copy this fragment beside CI as a standalone workflow.
+# Add ready_for_review and converted_to_draft to pull_request.types; retain
+# opened, edited, synchronize, reopened, push to main, permissions and concurrency.
+# Keep contents: read at the caller's top level. No inherited secrets needed.
+run-pr-policy:
+  uses: alawein/.github/.github/workflows/pr-policy.yml@b5f8bc3a916b41e22e5e09ec72f34c01428c2933 # v1.3.0
+  with:
+    kit-ref: b5f8bc3a916b41e22e5e09ec72f34c01428c2933
+
+pr-policy:
+  needs: [run-pr-policy]
+  if: ${{ always() }}
+  runs-on: ubuntu-24.04
+  timeout-minutes: 1
+  permissions: {}
+  steps:
+    - name: Require policy success
+      env:
+        RESULT: ${{ needs.run-pr-policy.result }}
+      run: |
+        test "$RESULT" = "success"

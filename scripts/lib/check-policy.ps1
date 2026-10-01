@@ -4,9 +4,11 @@ function Get-CheckPolicy {
     [string]$Class,
     [string]$Language,
     [ValidateSet('standard', 'hub-check')][string]$CheckProfile = 'standard',
-    [switch]$Strict
+    [switch]$Strict,
+    [switch]$RequirePrPolicy
   )
   if ($CheckProfile -eq 'hub-check') {
+    if ($RequirePrPolicy) { throw 'RequirePrPolicy is incompatible with hub-check' }
     if ($Repo -cne 'alawein/career-engine' -or $Class -cne 'tool' -or $Language -cne 'typescript') {
       throw 'hub-check requires the approved hub TypeScript tool'
     }
@@ -22,6 +24,7 @@ function Get-CheckPolicy {
   elseif ($Class -eq 'tool') {
     $checks += $(if ($Language -eq 'python') { 'python-ci' } else { 'node-ci' })
   }
+  if ($RequirePrPolicy) { $checks += 'pr-policy' }
   return [pscustomobject]@{
     RequiredChecks = $checks
     WorkflowPath = '.github/workflows/ci.yml'
