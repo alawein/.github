@@ -25,23 +25,23 @@ concurrency:
 
 jobs:
   run-markdown-lint:
-    uses: alawein/.github/.github/workflows/lint-markdown.yml@cfae30c70243ff09a1edc1546b8ed24a3c5c0eeb # v1.1.0
+    uses: alawein/.github/.github/workflows/lint-markdown.yml@6f6dbe7f3a23ab830a32007bb52b83fd1bb40563 # v1.2.0
 
   run-link-check:
-    uses: alawein/.github/.github/workflows/check-links.yml@cfae30c70243ff09a1edc1546b8ed24a3c5c0eeb # v1.1.0
+    uses: alawein/.github/.github/workflows/check-links.yml@6f6dbe7f3a23ab830a32007bb52b83fd1bb40563 # v1.2.0
     with:
       offline: true
 
   run-actionlint:
-    uses: alawein/.github/.github/workflows/lint-actions.yml@cfae30c70243ff09a1edc1546b8ed24a3c5c0eeb # v1.1.0
+    uses: alawein/.github/.github/workflows/lint-actions.yml@6f6dbe7f3a23ab830a32007bb52b83fd1bb40563 # v1.2.0
 
   run-pr-title:
     permissions:
       pull-requests: read
-    uses: alawein/.github/.github/workflows/pr-title.yml@cfae30c70243ff09a1edc1546b8ed24a3c5c0eeb # v1.1.0
+    uses: alawein/.github/.github/workflows/pr-title.yml@6f6dbe7f3a23ab830a32007bb52b83fd1bb40563 # v1.2.0
 
   run-python-ci:
-    uses: alawein/.github/.github/workflows/python-ci.yml@cfae30c70243ff09a1edc1546b8ed24a3c5c0eeb # v1.1.0
+    uses: alawein/.github/.github/workflows/python-ci.yml@6f6dbe7f3a23ab830a32007bb52b83fd1bb40563 # v1.2.0
     with:
       python-version: "3.13"
       installer: uv
