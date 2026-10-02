@@ -9,8 +9,8 @@ import tempfile
 import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
-AUDIT_SOURCE_SHA = "ce04a21e332e42c3137b26f3becb0de77086b6cb"
-AUDIT_SOURCE_HASH = "444859e0388579527564800c508432a9c1f28a1ddaa076b23b6353e4dea4f374"
+AUDIT_SOURCE_SHA = "63f7c5cd0a24a99018fc8e0997579449813e6030"
+AUDIT_SOURCE_HASH = "23fc6af7bddb825ad5afb5148139c62d3ebe3805cc4a7d10c09b30a5b971e733"
 RELEASE_SHA = "b5f8bc3a916b41e22e5e09ec72f34c01428c2933"
 BASH = (str(Path(os.environ.get("ProgramFiles", "C:/Program Files")) / "Git/bin/bash.exe")
         if os.name == "nt" else shutil.which("bash"))
@@ -72,9 +72,30 @@ class MetadataWorkflowTests(unittest.TestCase):
         script = self.shell_step("ci.yml", "Require policy and metadata tests")
         for result, tests, expected in (("success", "success", 0), ("cancelled", "success", 1),
                                        ("failure", "success", 1), ("skipped", "success", 1),
-                                       ("success", "failure", 1), ("success", "cancelled", 1)):
+                                       ("success", "failure", 1), ("success", "cancelled", 1),
+                                       ("success", "skipped", 1), ("success", "", 1), ("", "success", 1)):
             code = subprocess.run([BASH, "-c", script], env={**os.environ, "RESULT": result, "TESTS": tests}).returncode
             self.assertEqual(code, expected)
+
+    def test_title_gate_only_accepts_skipped_on_actual_main_push(self):
+        paths = [ROOT / ".github/workflows/ci.yml"] + sorted((ROOT / "templates/workflows").glob("*.yml"))
+        for path in paths:
+            text = path.read_text(encoding="utf-8")
+            if "\n  pr-title:\n" not in text:
+                continue
+            job = re.split(r"\n  [\w-]+:\n", text.split("\n  pr-title:\n", 1)[1], maxsplit=1)[0]
+            script = job.split("        run:", 1)[1].strip()
+            if script.startswith("|"):
+                script = "\n".join(line[10:] for line in script[1:].splitlines() if line.startswith("          "))
+            else:
+                script = script.strip("'")
+            for event, ref in (("pull_request", "refs/pull/1/merge"), ("push", "refs/heads/main"),
+                               ("workflow_dispatch", "refs/heads/main"), ("push", "refs/heads/topic")):
+                for result in ("success", "failure", "cancelled", "skipped", ""):
+                    with self.subTest(path=path.relative_to(ROOT), event=event, ref=ref, result=result):
+                        code = subprocess.run([BASH, "-c", script], env={**os.environ, "RESULT": result, "EVENT": event, "REF": ref}).returncode
+                        accepted = result == "success" or (result == "skipped" and event == "push" and ref == "refs/heads/main")
+                        self.assertEqual(code, 0 if accepted else 1)
 
     def test_opt_in_consumer_gate_requires_success(self):
         fragment = (ROOT / "templates/workflows/pr-policy.jobs.yml").read_text(encoding="utf-8")

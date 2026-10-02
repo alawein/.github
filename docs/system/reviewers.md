@@ -5,7 +5,7 @@ Reviews advise; required CI and owner judgment govern promotion. Follow
 [agent authority and gates](agents.md#safety-floor) and
 [delivery protections](delivery.md#merging-and-checks).
 
-Revision: `2026-09-30`. Cite these stable IDs with this document's reviewed
+Revision: `2026-10-02`. Cite these stable IDs with this document's reviewed
 revision or digest. Account settings, permissions, billing, entitlement,
 effective configuration and technical MAIOS enforcement are UNVERIFIED until
 observed directly. Local configuration is not proof of activation or enforcement.
@@ -77,6 +77,23 @@ substantive defects, at most 20% false positives, at most 10% duplicates and
 median triage at most 5 minutes per PR. These are policy targets, not measured
 results. Record all outcomes and denominators, independently confirmed fixes,
 cost, triage time and escaped defects; zero findings is not a pass.
+
+Use the existing PR's Test evidence for each authorized observation. Count
+eligible changes, changes actually exposed to the reviewer, completed reviews
+and missing or skipped reviews separately. For completed reviews, record unique
+accepted defects, false positives, duplicates, verified fixes, triage minutes,
+review latency, cost and subsequently discovered escaped defects. Unknown
+values remain unknown; missing reviews never enter the completed denominator.
+Record the inspected revision and disposition so duplicates and accepted
+findings can be checked later.
+
+After ten authorized maintenance changes, compare useful defects caught with
+time spent maintaining gates, waiting and triaging. Simplify an optional layer
+when its recorded burden exceeds its assurance value. A quiet sample does not
+justify removing correctness, signing, security, or required checks. An
+optional secondary reviewer stops after five completed reviews with no unique
+accepted substantive defect; preserve required review. These are provisional
+decision rules, not observed outcomes or permission for new access or spending.
 
 ## Access and spending
 

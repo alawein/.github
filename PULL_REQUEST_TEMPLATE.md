@@ -17,6 +17,12 @@ Closes #
 ## Test evidence
 
 <!-- Commands run and results, or screenshots. If none, write n/a and why. -->
+<!-- During an authorized observation: record change time, gate upkeep, waiting,
+     review triage and useful defects caught. Keep eligible changes, reviewer
+     exposure, completed reviews and missing reviews distinct. Record finding
+     dispositions, fixes, latency, cost and escaped defects when observed.
+     Use unknown for unmeasured values. See docs/system/reviewers.md for stop
+     rules; these prompts do not authorize review requests or spending. -->
 
 ## Risk and rollback
 
