@@ -20,6 +20,7 @@ other pages link to it.
 | [delivery.md](delivery.md) | The flow, branches, commits, PR titles and rules, labels, merging, rulesets, versions and releases, environments, Vercel, dependencies, security, secrets, backups, incidents |
 | [projects.md](projects.md) | Issues, the Work board, milestones, triage, the weekly review, definition of done |
 | [agents.md](agents.md) | How AI agents work in a repo: instructions file, session routine, work loop, parallel work, model routing, safety floor |
+| [reviewers.md](reviewers.md) | Reviewer routing, findings, and CodeRabbit as the sole automatic reviewer after named activation |
 | [agents-examples.md](agents-examples.md) | Five sample task briefs |
 
 Pages outside this folder: [ci.md](../ci.md) (shared workflows and pin bumps),

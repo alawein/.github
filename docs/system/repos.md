@@ -223,8 +223,8 @@ Rules that hold in every class:
 ## Day one
 
 A repo is ready for its first commit when it has all of these. Every starter
-ships them. `AGENTS.md` comes filled in for the class, so edit it to fit the
-repo.
+ships them, except the lockfile, which appears on first install. `AGENTS.md`
+comes filled in for the class, so edit it to fit the repo.
 
 | File | What it is |
 | --- | --- |
@@ -236,7 +236,7 @@ repo.
 | `.markdownlint-cli2.yaml` | The markdown lint rules the shared check uses (the README opens with a picture element) |
 | `.lycheeignore` | Skips the banner images until they exist. Delete the line when they do |
 | task list | `package.json` scripts or a `justfile` with `lint`, `test`, `build`, `check`, `fix` |
-| lockfile | `package-lock.json` or `uv.lock`, committed. CI installs from it and fails without it |
+| lockfile | Created on first install as `package-lock.json` or `uv.lock`, then committed. Starters omit it until that install. CI installs from it and fails without it |
 | `.github/workflows/ci.yml` | A stub that calls the shared workflows. Its pin is a full commit SHA of the kit |
 | `.github/dependabot.yml` | Weekly grouped updates for the package manager and for Actions |
 | `.github/CODEOWNERS` | The owner of every path |

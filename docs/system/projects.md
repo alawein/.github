@@ -11,7 +11,7 @@ follows on the same line.
 ## The short version
 
 - Track repo work in a GitHub issue, unless the specific `No-issue:` exception
-  in [delivery](delivery.md#pull-requests) applies.
+  in [delivery](delivery.md#pull-request-rules) applies.
 - One board, named Work, shows every open issue across every repo.
 - Milestones exist only for a release or a dated push.
 - Inbox is emptied at least weekly, on Monday.
