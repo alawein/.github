@@ -223,7 +223,7 @@ Rules that hold in every class:
 ## Day one
 
 A repo is ready for its first commit when it has all of these. Every starter
-ships them, except the lockfile, which appears on first install. `AGENTS.md`
+ships the applicable files, except the lockfile, which appears on first install. `AGENTS.md`
 comes filled in for the class, so edit it to fit the repo.
 
 | File | What it is |
