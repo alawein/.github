@@ -84,8 +84,13 @@ PR linkage. The existing title producer retains its behavior.
 
 The kit runs metadata fixtures and an always-report `pr-policy` gate that
 requires successful policy and test producers, including on push to main.
-Cancellation, failure or skipped producers cannot pass this gate. The original
-four required contexts and distributed v1.2.0 pins remain unchanged. Other
+Cancellation, failure or skipped producers cannot pass this gate. The metadata
+suite also generates docs, profile, TypeScript, Python, site and lab outputs
+with `new-repo.ps1`, then executes their actual PR-title guards with the generated
+environment bindings across 180 event/ref/result cases. Only an actual push to
+`refs/heads/main` may accept a skipped title producer. This tests generated
+workflow behavior, not fresh installation or hosted deployment settings.
+The original four required contexts and distributed v1.2.0 pins remain unchanged. Other
 consumers opt in after a reviewed signed release. Require `pr-policy` in live
 rules only after observing an eligible successful PR run at its current SHA.
 

@@ -37,8 +37,14 @@ None yet. List each variable name here, never its value. Values live in Vercel.
 
 ## Deploy
 
-Vercel builds every push. `main` is production. Every other branch and pull
-request gets a protected preview.
+After the owner connects and configures a Vercel project, verify `main` as its
+production branch and enable preview protection. The starter does not provision
+hosting or prove those settings. Eligible branches and PRs can get previews.
+
+The existing `vercel.json` skips all `dependabot/*` builds, including application
+dependency updates, so those PRs have no Vercel preview. CI checks still apply;
+record the preview exception in review evidence. See the
+[Vercel guidance](https://github.com/alawein/.github/blob/main/docs/vercel.md).
 
 ## Contributing
 

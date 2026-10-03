@@ -10,7 +10,8 @@ follows on the same line.
 
 ## The short version
 
-- Every piece of work that changes a repo is a GitHub issue.
+- Track repo work in a GitHub issue, unless the specific `No-issue:` exception
+  in [delivery](delivery.md#pull-requests) applies.
 - One board, named Work, shows every open issue across every repo.
 - Milestones exist only for a release or a dated push.
 - Inbox is emptied at least weekly, on Monday.
@@ -28,7 +29,8 @@ agent or a person can start cold.
   plan and writes nothing".
 - One issue, one PR. If an issue needs three PRs, it is three issues under one
   milestone, or one issue with a short checklist of PRs.
-- The issue number goes in the PR body as `Closes #12`.
+- Link the issue with `Closes #12`, or explain the specific `No-issue:` exception
+  in ready human PR prose; owner review checks its meaning.
 - Agents may open issues. They land in Inbox and wait for triage.
 - Write for the reader: what and why in the first two lines.
 
@@ -162,7 +164,8 @@ First Monday of each quarter, also:
 A piece of work is done when every line is true.
 
 - [ ] Each line of its "done when" list is true.
-- [ ] The PR is merged and the issue is closed by `Closes #N`.
+- [ ] The PR is merged within its selected mode; its issue is closed by
+      `Closes #N`, or the specific `No-issue:` exception is reviewed.
 - [ ] The required checks passed, and a behavior change has a test.
 - [ ] It is deployed, and you checked the live result: the URL, the command, or
       the screenshot.

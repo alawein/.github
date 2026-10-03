@@ -7,7 +7,7 @@ Reviews advise; required CI and owner judgment govern promotion. Follow
 
 Revision: `2026-10-02`. Cite these stable IDs with this document's reviewed
 revision or digest. Account settings, permissions, billing, entitlement,
-effective configuration and technical MAIOS enforcement are UNVERIFIED until
+effective configuration and technical enforcement are UNVERIFIED until
 observed directly. Local configuration is not proof of activation or enforcement.
 
 | ID | Scope | Requirement | Verification | Authority |
@@ -15,7 +15,7 @@ observed directly. Local configuration is not proof of activation or enforcement
 | RV-001 | Review routing | One automatic reviewer; secondary review only on named request | Approved reviewer, risk, paths and revision | Owner |
 | RV-002 | Findings | Advisory, evidence-backed and deduplicated | Finding, consequence, proof and resolution | Owner |
 | RV-003 | Access and spend | Selected repos, private-data gate and explicit allowance | Current permissions, scan and spend record | Owner |
-| RV-004 | Protected delivery | Preserve required checks, signing and owner-only merge | Current checks and signature evidence | Owner |
+| RV-004 | Protected delivery | Preserve checks, signing and selected-mode merge permission | Current checks and signature evidence | Owner |
 
 ## Automatic review
 

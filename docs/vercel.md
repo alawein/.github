@@ -41,9 +41,13 @@ starts as temporary (307), and a skip for Dependabot builds.
 - `permanent: false` gives a 307. Vercel defaults to 308, and browsers cache 308
   and 301 answers, so a wrong one cannot be recalled. Move to 308 only after 7
   clean days (step 6 below).
-- Dependabot branches for GitHub Actions change workflow files only, so a
-  preview adds nothing. The `ignoreCommand` skips them. Delete that line if the
-  repo also takes npm updates and you want previews of them.
+- The existing `ignoreCommand` skips every `dependabot/*` branch, including npm
+  and other application dependency updates, not just workflow-only updates.
+  Exit 0 ignores the build; exit 1 continues it. These PRs have no preview,
+  so record the exception and retain CI checks. Any skip-policy change needs
+  a separate proposal. See [Vercel's reference](https://vercel.com/docs/project-configuration/vercel-json#ignorecommand).
+- Copying this file does not connect a Vercel project or enable protection.
+  Verify the configured production branch and preview protection after setup.
 - A branch-scoped domain such as `staging.example.com` can point at one preview
   branch. It stays behind protection, so an unfinished site is not public.
 

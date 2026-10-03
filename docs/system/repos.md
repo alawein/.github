@@ -402,5 +402,7 @@ software.
 The starters hold copies of the kit's workflow stubs, dependabot files,
 CODEOWNERS, README template, and the agent files in `templates/agent/`
 (`AGENTS.md`, `CLAUDE.md`, `lessons.md`). When one of those changes, copy it
-into the starters in the same pull request. The pins in each stub point at the
-kit's `v1.0.0` commit.
+into the actual starters in the same pull request, then test real generator
+outputs, including class aliases. Workflow examples alone do not cover them.
+[Pin guidance](../pins.md) owns the current legacy and opt-in pins; a guard or
+documentation correction does not release the kit or migrate consumers.
