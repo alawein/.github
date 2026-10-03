@@ -23,10 +23,23 @@ def fixture():
     rules.append({"type": "required_status_checks", "parameters": {"required_status_checks": [{"context": name} for name in CHECKS]}})
     return {ROOT: {"default_branch": "main", "allow_squash_merge": True, "allow_merge_commit": False, "allow_rebase_merge": False},
             ROOT + "/rules/branches/main?per_page=100&page=1": rules,
+            ROOT + "/branches/main/protection": classic_fixture(False),
             ROOT + "/rulesets?includes_parents=true&per_page=100&page=1": [{"id": 1, "enforcement": "active"}],
             ROOT + "/rulesets/1?includes_parents=true": {"enforcement": "active", "bypass_actors": []},
             ROOT + "/pulls?state=open&per_page=100&page=1": [],
             ROOT + "/branches?per_page=100&page=1": [{"name": "main", "commit": {"sha": "a" * 40}}]}
+
+
+def classic_fixture(protected=True):
+    return {"allow_deletions": {"enabled": not protected},
+            "allow_force_pushes": {"enabled": not protected},
+            "required_signatures": {"enabled": protected},
+            "required_linear_history": {"enabled": protected},
+            "enforce_admins": {"enabled": protected},
+            "required_pull_request_reviews": {"required_approving_review_count": 0} if protected else None,
+            "required_status_checks": {"contexts": CHECKS + ["independent-review"],
+                                       "checks": [{"context": name, "app_id": 15368} for name in CHECKS]
+                                       + [{"context": "independent-review", "app_id": None}]} if protected else None}
 
 
 class HygieneTests(unittest.TestCase):
@@ -150,6 +163,64 @@ class HygieneTests(unittest.TestCase):
         result = self.audit(self.fetch, REPO)
         self.assertIsNone(result["observed"]["orphan_branches"])
         self.assertEqual(result["status"], "UNKNOWN")
+
+    def test_classic_controls_are_not_lost_in_an_empty_ruleset_view(self):
+        self.data[ROOT + "/rules/branches/main?per_page=100&page=1"] = []
+        self.data[ROOT + "/branches/main/protection"] = classic_fixture()
+        result = self.audit(self.fetch, REPO)
+        self.assertEqual(result["status"], "PASS")
+        self.assertIn(ROOT + "/branches/main/protection", self.calls)
+        self.assertIn("independent-review", result["observed"]["classic_required_checks"])
+        self.assertEqual(result["observed"]["classic_required_approvals"], 0)
+        self.assertTrue(result["observed"]["classic_enforce_admins"])
+        self.assertIn({"source": "classic", "context": "independent-review", "app_id": None},
+                      result["observed"]["check_producers"])
+
+    def test_unavailable_or_malformed_classic_never_proves_absence(self):
+        self.data[ROOT + "/rules/branches/main?per_page=100&page=1"] = []
+        for response in (PermissionError("denied"), OSError("not found"), {}, [],
+                         {**classic_fixture(), "allow_deletions": {"enabled": "false"}}):
+            with self.subTest(response=response):
+                self.data[ROOT + "/branches/main/protection"] = response
+                result = self.audit(self.fetch, REPO)
+                self.assertEqual(result["status"], "UNKNOWN")
+                self.assertIsNone(result["observed"]["effective_rules"])
+                self.assertIsNone(result["observed"]["required_checks"])
+                self.assertFalse(any("Missing effective" in f or "Missing required" in f for f in result["findings"]))
+
+    def test_denied_ruleset_view_preserves_positive_classic_observation(self):
+        self.data[ROOT + "/rules/branches/main?per_page=100&page=1"] = PermissionError("denied")
+        self.data[ROOT + "/branches/main/protection"] = classic_fixture()
+        result = self.audit(self.fetch, REPO)
+        self.assertEqual(result["status"], "UNKNOWN")
+        self.assertIn("required_signatures", result["observed"]["classic_rules"])
+        self.assertIsNone(result["observed"]["effective_rules"])
+        self.assertEqual(result["coverage"]["classic"]["status"], "OBSERVED")
+        self.assertEqual(result["coverage"]["rulesets"]["status"], "UNKNOWN")
+
+    def test_false_classic_flags_are_absent_but_missing_flags_are_unknown(self):
+        self.data[ROOT + "/rules/branches/main?per_page=100&page=1"] = []
+        self.data[ROOT + "/branches/main/protection"] = classic_fixture()
+        self.data[ROOT + "/branches/main/protection"]["required_signatures"]["enabled"] = False
+        result = self.audit(self.fetch, REPO)
+        self.assertEqual(result["status"], "WARN")
+        self.assertTrue(any("required_signatures" in f for f in result["findings"]))
+        del self.data[ROOT + "/branches/main/protection"]["required_signatures"]
+        self.assertEqual(self.audit(self.fetch, REPO)["status"], "UNKNOWN")
+
+    def test_ruleset_producer_identity_is_source_labeled(self):
+        checks = self.data[ROOT + "/rules/branches/main?per_page=100&page=1"][-1]["parameters"]["required_status_checks"]
+        checks[0]["integration_id"] = 42
+        result = self.audit(self.fetch, REPO)
+        self.assertIn({"source": "rulesets", "context": CHECKS[0], "app_id": 42}, result["observed"]["check_producers"])
+
+    def test_bad_merge_flag_types_stay_unknown(self):
+        for value in (None, 0, 1, "true", "false"):
+            with self.subTest(value=value):
+                self.data[ROOT]["allow_squash_merge"] = value
+                result = self.audit(self.fetch, REPO)
+                self.assertEqual(result["status"], "UNKNOWN")
+                self.assertIsNone(result["observed"]["squash_only"])
 
 
 if __name__ == "__main__":

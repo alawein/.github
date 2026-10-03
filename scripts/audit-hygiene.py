@@ -67,27 +67,96 @@ def audit(fetch, repository: str, *, required_checks=REQUIRED_CHECKS, now=None) 
             else:
                 unknown.append("Repository default branch missing or malformed.")
 
+    result["coverage"] = {
+        "scope": "Configured main protection, not PR check execution or production acceptance.",
+        "rulesets": {"endpoint": root + "/rules/branches/main", "status": "UNKNOWN"},
+        "classic": {"endpoint": root + "/branches/main/protection", "status": "UNKNOWN"},
+        "bypass_actors": "Active repository/inherited rulesets only; not classic bypass coverage."}
+    for key in ("effective_rules", "required_checks", "ruleset_rules", "ruleset_required_checks",
+                "classic_rules", "classic_required_checks", "classic_required_approvals", "classic_enforce_admins"):
+        observed[key] = None
+    observed["check_producers"] = []
+
+    def producers(checks, source, identity):
+        if not isinstance(checks, list):
+            raise ValueError("invalid checks")
+        records = []
+        for check in checks:
+            if not isinstance(check, dict) or not isinstance(check.get("context"), str) or not check["context"]:
+                raise ValueError("invalid context")
+            app = check.get(identity)
+            if app is not None and (type(app) is not int or app < -1):
+                raise ValueError("invalid producer")
+            # Null/-1 identifies no bound app, not an independent trusted producer.
+            records.append({"source": source, "context": check["context"], "app_id": app})
+        return records
+
     rules = pages(root + "/rules/branches/main")
-    observed["effective_rules"] = None
-    observed["required_checks"] = None
     if rules is not None:
         try:
             types = {rule["type"] for rule in rules}
             if any(not isinstance(kind, str) for kind in types):
                 raise ValueError("invalid rule type")
-            checks = {check["context"] for rule in rules if rule["type"] == "required_status_checks"
-                      for check in rule["parameters"]["required_status_checks"]}
-            if any(not isinstance(context, str) or not context for context in checks):
-                raise ValueError("invalid check context")
-            observed["effective_rules"], observed["required_checks"] = sorted(types), sorted(checks)
-            missing_rules = REQUIRED_RULES - types
-            missing_checks = set(required_checks) - checks
-            if missing_rules:
-                findings.append("Missing effective main rules: " + ", ".join(sorted(missing_rules)))
-            if missing_checks:
-                findings.append("Missing required checks: " + ", ".join(sorted(missing_checks)))
+            records = [record for rule in rules if rule["type"] == "required_status_checks"
+                       for record in producers(rule["parameters"]["required_status_checks"], "rulesets", "integration_id")]
+            observed["ruleset_rules"] = sorted(types)
+            observed["ruleset_required_checks"] = sorted({record["context"] for record in records})
+            observed["check_producers"].extend(records)
+            result["coverage"]["rulesets"]["status"] = "OBSERVED"
         except (KeyError, TypeError, ValueError):
-            unknown.append("Effective rules missing or malformed.")
+            unknown.append("Ruleset branch rules missing or malformed.")
+
+    classic = get(root + "/branches/main/protection", dict)
+    if classic is not None:
+        try:
+            types = set()
+            for field, rule, enabled in (("allow_deletions", "deletion", False),
+                                         ("allow_force_pushes", "non_fast_forward", False),
+                                         ("required_signatures", "required_signatures", True),
+                                         ("required_linear_history", "required_linear_history", True)):
+                value = classic[field]["enabled"]
+                if type(value) is not bool:
+                    raise ValueError("invalid classic flag")
+                if value is enabled:
+                    types.add(rule)
+            admins = classic["enforce_admins"]["enabled"]
+            if type(admins) is not bool:
+                raise ValueError("invalid admin flag")
+            review = classic["required_pull_request_reviews"]
+            approvals = None
+            if review is not None:
+                approvals = review["required_approving_review_count"]
+                if type(approvals) is not int or not 0 <= approvals <= 6:
+                    raise ValueError("invalid approval count")
+                types.add("pull_request")
+            status = classic["required_status_checks"]
+            contexts, records = [], []
+            if status is not None:
+                contexts = status["contexts"]
+                if not isinstance(contexts, list) or any(not isinstance(c, str) or not c for c in contexts):
+                    raise ValueError("invalid classic contexts")
+                records = producers(status.get("checks", []), "classic", "app_id")
+                bound = {record["context"] for record in records}
+                records.extend({"source": "classic", "context": c, "app_id": None} for c in contexts if c not in bound)
+                contexts = sorted(set(contexts) | bound)
+                types.add("required_status_checks")
+            observed["classic_rules"], observed["classic_required_checks"] = sorted(types), contexts
+            observed["classic_required_approvals"], observed["classic_enforce_admins"] = approvals, admins
+            observed["check_producers"].extend(records)
+            result["coverage"]["classic"]["status"] = "OBSERVED"
+        except (KeyError, TypeError, ValueError):
+            unknown.append("Classic main protection missing or malformed.")
+
+    # Partial coverage can establish a positive source observation, never absence.
+    if observed["ruleset_rules"] is not None and observed["classic_rules"] is not None:
+        types = set(observed["ruleset_rules"]) | set(observed["classic_rules"])
+        checks = set(observed["ruleset_required_checks"]) | set(observed["classic_required_checks"])
+        observed["effective_rules"], observed["required_checks"] = sorted(types), sorted(checks)
+        missing_rules, missing_checks = REQUIRED_RULES - types, set(required_checks) - checks
+        if missing_rules:
+            findings.append("Missing effective main rules: " + ", ".join(sorted(missing_rules)))
+        if missing_checks:
+            findings.append("Missing required checks: " + ", ".join(sorted(missing_checks)))
 
     rulesets = pages(root + "/rulesets?includes_parents=true")
     observed["bypass_actors"] = None

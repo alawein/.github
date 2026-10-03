@@ -91,16 +91,25 @@ rules only after observing an eligible successful PR run at its current SHA.
 
 `hygiene.yml` accepts `expected-required-checks`, a comma-separated list defaulting
 to the original four contexts; it has no `kit-ref` input. Callers pin the reviewed
-workflow release SHA on `uses:`. The workflow separately pins audit source to
-reviewed commit `ce04a21e332e42c3137b26f3becb0de77086b6cb` for every caller,
-including the kit's weekly run. Caller input cannot select executable code.
+workflow release SHA on `uses:`. Released v1.3.0 separately pins audit source to
+implementation commit `ce04a21e332e42c3137b26f3becb0de77086b6cb`.
+The current source workflow pins `63f7c5cd0a24a99018fc8e0997579449813e6030`;
+the kit's local weekly caller uses it after merge. Unchanged v1.3.0 callers
+retain the released implementation. Caller input cannot select executable code.
 Audit source changes require review and a coordinated implementation pin and
 source-digest fixture update. Read-only repository permissions alone do not
 restrict the runner's cache token; no cache-mode enforcement is claimed.
 Its caller grants `contents: read` and
 `pull-requests: read`; its existing automatic token becomes in-memory `GH_TOKEN`.
-It uses GET-only REST calls, paginates lists, and reports effective main rules,
-active ruleset bypass actors (including inherited rulesets), squash flags,
+It uses GET-only REST calls and paginates lists. The current-source audit observes
+classic protection and ruleset rules/checks separately, with their endpoint
+coverage. Combined
+fields are null unless both views are known; incomplete views cannot establish
+missing protection. Producer IDs retain their source; null/-1 means no bound
+app, not independent review. Classic approval count zero does not prove human
+approval. Bypass actors cover active rulesets (including inherited rulesets),
+not classic bypass policy; classic administrator enforcement is separate.
+The report also observes squash flags,
 ready PR count and branches without open PRs whose last commit is 30 days old.
 Commit age does not prove branch creation age. A per-repository report cannot
 enforce the global three-PR admission limit.
@@ -110,6 +119,12 @@ upload or mutating API. Observed drift is `WARN`; denied, malformed or incomplet
 data is `UNKNOWN` and exits nonzero. An empty observed response is distinct from
 unavailable data. `hygiene-weekly.yml` is the kit's weekly/manual caller; a
 schedule declaration does not prove a successful scheduled run.
+
+The existing hosted token may lack [Administration read](https://docs.github.com/en/rest/branches/branch-protection#get-branch-protection)
+for the classic endpoint. Preserve UNKNOWN instead of expanding permissions
+to obtain a complete report. Configured protection is separate from eligible
+PR execution, check conclusions, signing, artifact behavior and production.
+The PR-title gate permits a skipped producer only on an actual main-push event.
 
 ## Opt in to PR policy and hygiene
 
@@ -134,7 +149,7 @@ reviewed main after adoption merges; retain the released workflow pins.
    absent producer results fail. Released kit fixtures run in the kit.
 4. Copy [hygiene-weekly.yml](../templates/workflows/hygiene-weekly.yml) beside
    CI. Its `uses:` pins the same release. It has no `kit-ref`; the released
-   workflow uses the independently reviewed literal audit-source pin above.
+    workflow uses v1.3.0's independently reviewed literal audit-source pin above.
 5. Set hygiene's `expected-required-checks` to current effective contexts:
    the original four, plus `node-ci` or `python-ci` for code classes. Add
    `pr-policy` only after its live required-context promotion. The kit caller
