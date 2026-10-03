@@ -236,7 +236,7 @@ comes filled in for the class, so edit it to fit the repo.
 | `.markdownlint-cli2.yaml` | The markdown lint rules the shared check uses (the README opens with a picture element) |
 | `.lycheeignore` | Skips the banner images until they exist. Delete the line when they do |
 | task list | `package.json` scripts or a `justfile` with `lint`, `test`, `build`, `check`, `fix` |
-| lockfile | Created on first install as `package-lock.json` or `uv.lock`, then committed. Starters omit it until that install. CI installs from it and fails without it |
+| lockfile | npm and uv starters create `package-lock.json` or `uv.lock` on first install; commit it. Node CI runs `npm ci`. Python CI runs `uv sync --locked` when `installer` is `uv`. Docs/profile starters have no package lockfile |
 | `.github/workflows/ci.yml` | A stub that calls the shared workflows. Its pin is a full commit SHA of the kit |
 | `.github/dependabot.yml` | Weekly grouped updates for the package manager and for Actions |
 | `.github/CODEOWNERS` | The owner of every path |
