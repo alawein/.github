@@ -9,7 +9,9 @@ UNVERIFIED, never PASS. Follow [agent policy](../../docs/system/agents.md) and
 
 - Task: {{REAL_TASK_ID_OR_DESCRIPTION; do not invent an ID}}
 - Goal and authorized local scope: {{GOAL_AND_SCOPE}}
-- Repository and branch: {{REPO_AND_BRANCH}}
+- Repository, target and working branch: {{REPO_TARGET_AND_BRANCH}}
+- Selected task mode and owner instruction: {{A_B_OR_C_AND_NAMED_SCOPE}}
+- Merge permission: {{EXPLICIT_APPROVAL_OR_SCOPED_MODE_C_OR_PENDING}}
 - Base revision: {{BASE_COMMIT}}
 - Reviewed revision or dirty-tree digest: {{REVISION_OR_SHA256}}
 - Digest method and manifest: {{SORTED_PATH_AND_SHA256_MANIFEST; include new files}}

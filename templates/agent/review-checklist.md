@@ -45,6 +45,8 @@ gated action.
 - [ ] CI files: permissions stay minimal, and actions stay pinned.
 - [ ] Owner gates, signing, no bypass actors, no stacks or queue, the three-PR
       cap and zero PR test retries remain intact.
+- [ ] Repository, target, scope and selected mode are recorded. Owner merge
+      permission is distinct from GitHub review approval and green checks.
 
 ## Evidence
 

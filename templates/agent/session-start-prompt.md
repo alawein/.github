@@ -38,7 +38,10 @@ GATES (stop and wait for my typed words first)
 - Permanently deleting data, unmerged work, or a repo.
 - Sending anything other people will read, outside the normal PR.
 - Touching anyone else's repo.
-- Merging. Only I merge.
+- Publishing and merging: follow my selected (a), (b) or (c) task mode under
+  AG-001. Name the repo, target branch and scope. If I have not selected a mode,
+  ask before publishing. Mode (b) waits for my explicit merge approval; checks
+  and GitHub review approval do not supply it.
 
 PHASES
 1. Plan. Say the goal, scope, and steps in five lines or fewer. Then go
@@ -50,8 +53,8 @@ PHASES
 5. Review. Read your own diff. Then review it against the review checklist
    in the alawein/.github repo, templates/agent/review-checklist.md. Fix or
    report every finding.
-6. Record. Open the PR from the template (only if remote actions are allowed
-   in AGENTS.md). Add one dated line to docs/lessons.md.
+6. Record. Open the PR from the template within the selected task mode.
+   Add one dated line to docs/lessons.md.
 
 CLOSE OUT (your last message, under 150 words)
 - What changed, in one or two lines.

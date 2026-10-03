@@ -8,7 +8,7 @@ other pages link to it.
   pick a class        make the folder          work and ship
   ------------        ---------------          -------------
   profile, docs,  --> new-repo.ps1        -->  issue, branch, draft PR,
-  tool, site, lab     copies a starter         checks, owner merges
+  tool, site, lab     copies a starter         checks, selected-mode merge
   (repos.md)          (templates/starters)     (projects.md, delivery.md)
 ```
 

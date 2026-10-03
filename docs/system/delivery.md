@@ -14,22 +14,17 @@ reviewed before it joins `main`.
 
 ## Who does what
 
-One person owns every repo and reads every diff. AI coding agents do much of
-the typing. The split is fixed:
+The owner selects the execution mode for each named repository, target branch
+and change scope before publishing. The three modes and separate gates live in
+the [agent Safety floor](agents.md#safety-floor); every procedure below follows
+that selection. Agents prepare changes, checks, independent review and PR text,
+then publish and merge only as that mode permits. Mode (b) waits for explicit
+owner merge approval even when checks and GitHub review are green.
 
-- Agents prepare local changes, checks, review evidence and PR text.
-- Agents never merge, never turn on auto-merge, and never change settings,
-  rulesets, secrets, or tokens.
-- The owner reads the diff, turns on auto-merge, and owns every release.
-
-Every procedure below is subject to the named owner gates in the
-[agent Safety floor](agents.md#safety-floor), including commits, pushes,
-draft PRs, sends, spend, publication, deletion, secret rotation and every
-remote change. LOCAL-ONLY is the default. Descriptions of desired settings
-are not proof they are active; live account state is UNVERIFIED until checked.
-
-Decision: agents have no merge rights. Why: a fast writer needs one slow,
-careful reader, and the reader must be a person.
+Settings, rulesets, secrets, app access, releases and deployments need separate
+named authorization. Desired settings are not proof they are active; live
+account state is UNVERIFIED until checked. Historical grants remain evidence
+for their original scope, rather than permission for a new task.
 
 ## The flow
 
@@ -43,7 +38,7 @@ careful reader, and the reader must be a person.
  branch: type/short-topic                board: Doing
      |
      v
- owner approves commit, push and draft PR
+ publish as the selected task mode permits
      |
      v
  checks run on every push                four shared checks + tests
@@ -52,7 +47,7 @@ careful reader, and the reader must be a person.
  self-review, then a fresh-agent review  board: Review
      |
      v
- owner reads the diff, turns on auto-merge
+ merge as the selected task mode permits
      |
      v
  squash merge to main, branch deleted
@@ -60,7 +55,7 @@ careful reader, and the reader must be a person.
      +--> versioned repos: release PR -> tag -> release
      |
      v
- deploy (Vercel builds main)
+ deploy (connected Vercel project, when authorized)
      |
      v
  verify the live result                  board: Done
@@ -73,12 +68,12 @@ careful reader, and the reader must be a person.
 | --- | --- | --- |
 | Issue | Prepare a goal and a "done when" list | Named approval before posting |
 | Branch | `type/short-topic` from a fresh `main` | One topic |
-| Draft PR | Open after the approved commit and push | Named owner approval for each action |
+| Draft PR | Open after local checks and scoped push | Selected task mode |
 | Checks | Shared checks plus the repo's tests | All required checks green |
 | Review | You read your own diff first. A second agent session with no memory of the work reads it next | Notes fixed or answered |
-| Merge | Owner enables auto-merge. It fires when checks pass | Owner only |
+| Merge | Squash after required checks and independent review | Selected mode; explicit owner approval in (a) and (b) |
 | Release | Only repos that publish versions (see Versions and releases) | Owner-approved PR, signed tag and publish |
-| Deploy | Vercel builds `main` after the merge | Owner authorizes the deployment effect |
+| Deploy | A connected Vercel project builds eligible `main` changes | Separately authorized effect and verified settings |
 | Verify | Open the live URL or run the smoke test | Done when it works live |
 | Learn | One line in the log; prepare an issue for a recurring mistake | Named approval before posting |
 
@@ -148,9 +143,9 @@ Format: `type(scope): summary`. GitHub uses it as the squash commit title.
   qualify. The metadata check proves syntax, not issue existence or a meaningful
   explanation; owner review checks the exception, including issues-off profiles.
 - Include the real task ID in evidence and, when public-safe, the Why section.
-  Do not invent MAIOS IDs or rename branches to add one.
-- After named approval, open it as a draft. A ready-state change also needs
-  approval, passing checks and the recorded review of the current diff.
+  Do not invent private task IDs or rename branches to add one.
+- Open it as a draft within the selected mode. Mark it ready after passing
+  checks and the recorded review of the current diff, within that same mode.
 - A behavior change comes with a test. For a bug fix the test fails before the
   fix.
 - Stacked PRs (a PR based on another unmerged PR) are not used. Land the base
@@ -209,8 +204,9 @@ An agent's diff can look right and be wrong. Look for these first:
 - Squash commit title is the PR title. The message is blank.
 - The branch may fall behind `main`. Use the Update branch button or rebase
   locally. Branch history does not reach `main`.
-- Auto-merge is allowed. The owner turns it on per PR after reading the diff
-  (`gh pr merge --auto --squash`). It fires when the required checks pass.
+- Auto-merge may be used only where enabled and within the selected mode's
+  merge permission (`gh pr merge --auto --squash`). Required checks and current
+  independent review still apply; mode (b) requires explicit owner approval.
 - No merge queue. No bypass actors on any ruleset, so the rules bind the owner
   too. A bad rule requires a separately approved repair, saved prior JSON and
   immediate restoration of enforcement; do not add a bot bypass.
@@ -418,8 +414,10 @@ here uses it.
   create projects elsewhere. The free Hobby plan is for non-commercial use. A
   site that earns money needs a paid plan.
 - The project name equals the repo name. Never reuse a name in two scopes.
-- Connect each project to its GitHub repo. The production branch is `main`.
-  Nothing else deploys to production.
+- After separate authorization, connect the project to its GitHub repo and
+  verify `main` as its production branch. Starter files do not provision the
+  project or establish deployment/protection settings. The environment table
+  describes the intended configured state, with the preview exception below.
 - Production deploys come from a merged PR, never from a laptop, and never
   through a linked personal project.
 - Deployment Protection is Standard: previews sit behind a login and the
@@ -431,8 +429,10 @@ here uses it.
   `package.json`.
 - Check the preview before merge when a change touches what a visitor sees. Put
   the preview URL, and a screenshot if useful, in the PR.
-- Skip builds that add nothing, such as Dependabot branches that only change
-  workflow files, with `ignoreCommand` in `vercel.json`.
+- The site's current starter `ignoreCommand` skips every `dependabot/*` branch,
+  including application dependency updates. Those PRs get no Vercel preview;
+  CI still applies. Report this exception when preview evidence is absent.
+  Changing the skip policy needs a separate proposal.
 - A redirect starts temporary (307). Change it to 308 only after 7 clean days,
   because browsers cache a 308 and it cannot be recalled.
 - Never move or remove a domain without the saved baselines and the steps in
@@ -499,15 +499,15 @@ Dependabot (GitHub's bot that opens PRs for new versions) runs in every repo.
 
 1. Patch or minor group: read the PR's release notes summary and the lockfile
    diff. Look for new packages that were not there before. After checks and
-   current review, only the owner turns on auto-merge.
+   current review, follow the selected task mode before merge or auto-merge.
 2. Major: read the release notes for breaking changes. Run the app or the
    tests locally. Check that the preview works. Merge alone, not with others.
 3. Any bump with an install script, a new maintainer, or a sudden size jump:
    stop and look at the package's page before merging.
 4. Stuck for a week: propose closure or a documented pin for owner approval.
 
-Decision: Dependabot PRs are never merged without a person turning on
-auto-merge. Why: a dependency update is code from a stranger.
+Decision: Dependabot creation never grants merge permission. Each update needs
+checks, current review and a selected task mode covering its scope.
 
 ## Security baseline
 
@@ -694,5 +694,5 @@ the owner's separate approval for each remote rollback.
 
 Follow [reviewers.md](reviewers.md): CodeRabbit is the sole automatic reviewer
 after named owner activation; secondary review is scoped and manual. Review
-findings are advisory. Preserve required checks, owner-only merge, three
-waiting PRs, no stacks, no queue and no bypass actors.
+findings are advisory. Preserve required checks, selected-mode merge permission,
+three waiting PRs, no stacks, no queue and no bypass actors.

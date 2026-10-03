@@ -39,11 +39,12 @@ only to run this repo's Markdown check.
 
 ## Remote actions
 
-Mode: LOCAL-ONLY. Every send, spend, publish, purge or delete, commit, push,
-merge, PR creation, secret rotation or other remote change needs owner
-approval naming the action, target and scope. Only the owner merges or enables
-auto-merge. A general request to continue does not cross an unnamed gate.
-Follow the [shared authority and evidence rules](docs/system/agents.md).
+For each new task, name the repository, target branch and scope, and follow
+the owner's selected publishing mode under AG-001 in the shared agent policy.
+If no mode is selected, ask before publishing. Checks and review approval do
+not supply owner merge permission. Other gated actions need named approval;
+never expose secrets.
+Follow the [shared authority and evidence rules](docs/system/agents.md#safety-floor).
 
 ## Review guidelines
 

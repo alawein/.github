@@ -54,12 +54,11 @@ Shell: PowerShell on Windows, bash in CI.
 
 ## Remote actions
 
-Mode: LOCAL-ONLY. Follow AG-001 in the shared agent policy.
-
-Every send, spend, publish, purge or delete, commit, push, merge, PR creation,
-secret rotation or other remote change needs owner approval naming the action,
-target and scope. Only the owner merges or enables auto-merge. General
-"Continue" never crosses an unnamed gate. Never expose secrets.
+For each new task, name the repository, target branch and scope, and follow
+the owner's selected publishing mode under AG-001 in the shared agent policy.
+If no mode is selected, ask before publishing. Checks and review approval do
+not supply owner merge permission. Other gated actions need named approval;
+never expose secrets.
 
 ## Verify before you say done
 
@@ -80,6 +79,6 @@ None yet. A repo skill lives at `.claude/skills/NAME/SKILL.md` and is listed her
 
 ## Close out
 
-1. Prepare PR text from the template locally; opening it needs named approval.
+1. Prepare PR text from the template; open it only within the selected mode.
 2. Add one line to `docs/lessons.md`.
 3. Leave no stray files: stage named paths only, never `git add -A`.
