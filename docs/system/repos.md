@@ -220,6 +220,41 @@ Rules that hold in every class:
 - Large or private data is never committed. The lab README says where it comes
   from and how to fetch it.
 
+## Stack conventions
+
+Follow the existing framework and package layout when changing a repository.
+Colocate code that changes together and name each module for its purpose.
+Directory depth and file count are signals to inspect a confusing area, not
+reasons to flatten working routes or package boundaries.
+
+Python modules use `snake_case`, for example `release_manifest.py` and
+`test_release_manifest.py`. Preserve `__init__.py` and namespace package layouts.
+Do not use `release-manifest.py` as an importable module name.
+
+TypeScript source follows the repository's established filename style.
+`user.service.ts` is suitable for a service architecture; `packet.ts` is suitable
+for a focused packet module. Do not introduce `helpers.ts` as a catch-all.
+Tests use the existing test layout and runner.
+
+Framework entrypoints retain required names and exports: Next.js `page.tsx`,
+`layout.tsx` and `route.ts`, Astro pages, and package entrypoints. A framework
+default export is valid. Named exports are preferred where the local public
+interface already uses them.
+
+Use existing ESLint flat config, Ruff or Biome configuration. Do not add a
+second linter, hook manager or package manager just to adopt these conventions.
+Keep aliases and relative imports consistent with the existing package API.
+
+Keep one documentation owner per topic. Update a contract when its interface
+changes, and use the decision-record convention below when an ADR is warranted.
+Age or lack of a textual importer does not prove a file is unused: inspect
+framework discovery, CLI registrations, templates, fixtures and build inputs.
+
+Apply a structural migration to one named component at a time. Update imports,
+exports, references and build inputs in the same change, then run the affected
+product checks. Do not rename public interfaces or move private records merely
+to satisfy a generic layout example.
+
 ## Day one
 
 A repo is ready for its first commit when it has all of these. Every starter

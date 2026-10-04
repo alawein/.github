@@ -16,6 +16,10 @@ line must prevent a mistake.
    file adds restrictions; it cannot relax owner gates or account policy.
    Follow AG-002 in the shared agent policy for precedence.
 
+Stack naming and structure guidance lives in `docs/system/repos.md#stack-conventions`
+in `alawein/.github`. Follow the current framework and package layout; do not
+copy the shared guidance into this instruction file.
+
 ## Commands
 
 | Task | Command |
