@@ -4,7 +4,7 @@
 
 .DESCRIPTION
   Applies, in this order: repo settings, Actions token permissions, Dependabot
-  alerts on and security updates off, private vulnerability reporting (public repos),
+  alerts and security updates off, private vulnerability reporting (public repos),
   topics, labels (from templates\labels.yml), the branch ruleset, the tag
   ruleset, and (optional) SHA pinning. It also reads the first-time-contributor
   approval setting (public repos) and says what to change if it is weak.
@@ -334,8 +334,8 @@ Write-Host "`n== 2. Actions token: read only, cannot approve pull requests =="
 
 # ---------- 3. Dependabot ----------
 
-Write-Host "`n== 3. Dependabot alerts on, security updates off (free on any plan) =="
-[void](Invoke-GhWrite 'PUT' "repos/$Repo/vulnerability-alerts" '')
+Write-Host "`n== 3. Dependabot alerts off, security updates off (owner decision 2026-10-06) =="
+[void](Invoke-GhWrite 'DELETE' "repos/$Repo/vulnerability-alerts" '')
 [void](Invoke-GhWrite 'DELETE' "repos/$Repo/automated-security-fixes" '')
 if ($isPublic) {
   Write-Host 'Private vulnerability reporting (the "Report a vulnerability" button that SECURITY.md points to):'
