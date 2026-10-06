@@ -194,7 +194,7 @@ function Get-PrEvidence {
   $result = New-Object System.Collections.Generic.List[object]
   foreach ($p in @(($merged -join "`n") | ConvertFrom-Json)) { if ($p) { $result.Add([pscustomobject]@{ Number = $p.number; State = 'MERGED'; HeadSha = $p.headRefOid }) } }
   foreach ($p in @(($closed -join "`n") | ConvertFrom-Json)) { if ($p) { $result.Add([pscustomobject]@{ Number = $p.number; State = 'CLOSED'; HeadSha = $p.headRefOid }) } }
-  return , @($result)
+  return , $result.ToArray()
 }
 
 function Test-RepoArchived {

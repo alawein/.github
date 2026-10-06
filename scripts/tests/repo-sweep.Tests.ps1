@@ -193,6 +193,27 @@ try {
   Assert-True (Branch-Exists $repo 'feat/no-pr') 'skipped repos lose nothing'
   Write-Host 'PASS: clean'
 
+  # ---------- the real PR lookup, with only the gh call replaced ----------
+  . (Join-Path $PSScriptRoot '../repo-sweep.ps1')   # restores the real Get-PrEvidence and Test-RepoArchived
+  $script:GhJson = @{ merged = '[]'; closed = '[]' }
+  function Invoke-Gh {
+    if ($args -contains 'merged') { return $script:GhJson.merged }
+    if ($args -contains 'closed') { return $script:GhJson.closed }
+    return $null
+  }
+  $none = Get-PrEvidence -Slug 'acme/clean-me' -Branch 'feat/x'
+  Assert-True ($null -ne $none -and @($none).Count -eq 0) 'no PRs gives an empty list, not an error'
+  $script:GhJson.merged = '[{"number":9,"headRefOid":"abc123"}]'
+  $script:GhJson.closed = '[{"number":4,"headRefOid":"def456"}]'
+  $both = Get-PrEvidence -Slug 'acme/clean-me' -Branch 'feat/x'
+  Assert-True ($both.Count -eq 2 -and $both[0].State -eq 'MERGED' -and $both[0].HeadSha -eq 'abc123' -and $both[1].State -eq 'CLOSED') 'merged and closed PRs are read from gh JSON'
+  function Invoke-Gh { return $null }
+  Assert-True ($null -eq (Get-PrEvidence -Slug 'acme/clean-me' -Branch 'feat/x')) 'gh failure gives $null'
+  Assert-True ($null -eq (Test-RepoArchived -Slug 'acme/clean-me')) 'archived lookup failure gives $null'
+  function Invoke-Gh { return 'true' }
+  Assert-True ((Test-RepoArchived -Slug 'acme/clean-me') -eq $true) 'archived repo detected'
+  Write-Host 'PASS: real PR lookup'
+
   # ---------- the script file itself never forces or fetches ----------
   $src = Get-Content -LiteralPath (Join-Path $PSScriptRoot '../repo-sweep.ps1') -Raw
   Assert-True ($src -notmatch "'--force'|'-f'|'fetch'|'prune'|'push'|'-X'") 'no force, fetch, prune, push or API write in the script'
