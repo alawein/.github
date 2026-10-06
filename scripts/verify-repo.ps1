@@ -250,12 +250,15 @@ if (-not $ids.ContainsKey($branchName)) {
     }
     $sc = $rs.rules | Where-Object { $_.type -eq 'required_status_checks' } | Select-Object -First 1
     if ($sc) {
-      $ctx = @($sc.parameters.required_status_checks | ForEach-Object { $_.context } | Sort-Object)
+      try { $observedChecks = @(Get-StatusCheckRequirements $rs) }
+      catch { Write-Host ('STOP: malformed ruleset ' + $branchName + ': ' + $_.Exception.Message); exit 2 }
+      $ctx = @($observedChecks | ForEach-Object { $_.context } | Sort-Object)
       $want = @($RequiredChecks | Sort-Object)
-      $same = (($ctx -join ',') -eq ($want -join ','))
+      $same = (@($RequiredChecks | Where-Object { -not (Test-StatusCheckRequirement ([pscustomobject]@{context=$_}) $observedChecks) }).Count -eq 0)
       # With no -Class the test check is unknown, so only require the base names.
-      if (-not $Class) { $same = (@($BaseChecks | Where-Object { $ctx -notcontains $_ }).Count -eq 0) }
-      Add-Result "$branchName required checks" $same ("have: " + ($ctx -join ', ') + "; want: " + ($want -join ', '))
+      if (-not $Class) { $same = (@($BaseChecks | Where-Object { $ctx -cnotcontains $_ }).Count -eq 0) }
+      $producers = @($observedChecks | Where-Object { $null -ne $_.integration_id } | ForEach-Object { "$($_.context)@$($_.integration_id)" })
+      Add-Result "$branchName required checks" $same ("have: " + ($ctx -join ', ') + "; baseline: " + ($want -join ', ') + "; producers: " + ($producers -join ', '))
     } elseif ($CheckProfile -eq 'hub-check' -or $requirePrivateChecks) {
       Add-Result "$branchName required checks" $false ('missing required context: ' + ($RequiredChecks -join ', '))
     } elseif ($isPublic -or $useStrict) {

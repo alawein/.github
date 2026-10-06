@@ -13,7 +13,10 @@
   3 seconds apart, and the script stops on any 403 or 429. Reads stop on 403,
   429 or any error other than 404, so a failed read never turns into a write.
   Safe to run again: settings and topics are replaced with the same values,
-  labels and rulesets are matched by name and updated in place.
+  labels and rulesets are matched by name and updated in place. Existing
+  rulesets are validated before any write; extra check requirements, producer
+  bindings, additional protected refs and parameterized protections are retained.
+  Exclusions and unsupported scope shapes stop before writing. Requires PowerShell 7.
   It never deletes anything; removal requires named owner approval.
   At the end of an -Apply run it calls verify-repo.ps1 to read everything back.
 
@@ -270,6 +273,46 @@ function Get-CiState {
   return [pscustomobject]@{ Missing = $missing; Placeholders = $placeholders }
 }
 
+# Read and validate the existing rulesets before the first settings write.
+# A list/detail 404 is unavailable configuration, not proof of an empty list.
+$rs = Invoke-GhRead @('api', "repos/$Repo/rulesets", '--paginate', '--slurp')
+if ($rs.Code -ne 0) { Write-Host 'STOP: cannot read existing rulesets'; exit 2 }
+$rulesetIds = @{}
+$existingRulesets = @{}
+try {
+  $pages = $rs.Out | ConvertFrom-Json -NoEnumerate -ErrorAction Stop
+  if ($pages -isnot [array] -or $pages.Count -eq 0) { throw 'expected paginated ruleset arrays' }
+  foreach ($page in $pages) {
+    if ($page -isnot [array]) { throw 'expected a ruleset array on each page' }
+    foreach ($item in $page) {
+      if ($item.id -notmatch '^[1-9][0-9]*$' -or $item.name -isnot [string] -or [string]::IsNullOrWhiteSpace($item.name) -or $rulesetIds.ContainsKey($item.name)) {
+        throw 'malformed or ambiguous ruleset identity'
+      }
+      $rulesetIds[$item.name] = $item.id
+    }
+  }
+} catch { Write-Host ('STOP: malformed ruleset list: ' + $_.Exception.Message); exit 2 }
+foreach ($name in @('main-protection', 'main-guard', 'release-tags')) {
+  if (-not $rulesetIds.ContainsKey($name)) { continue }
+  $detail = Invoke-GhRead @('api', ("repos/$Repo/rulesets/" + $rulesetIds[$name]))
+  if ($detail.Code -ne 0) { Write-Host "STOP: cannot read existing ruleset $name"; exit 2 }
+  try {
+    $parsed = $detail.Out | ConvertFrom-Json -ErrorAction Stop
+    if ($parsed.name -cne $name) { throw 'ruleset name does not match the list' }
+    [void]@(Get-StatusCheckRequirements $parsed)
+    $expectedTarget = if ($name -eq 'release-tags') { 'tag' } else { 'branch' }
+    [void](Get-RulesetRefScope $parsed -ExpectedTarget $expectedTarget)
+    $baselineFile = switch ($name) {
+      'main-protection' { 'main-public.json' }
+      'main-guard' { if ($useStrict -and $CheckProfile -ne 'hub-check') { 'main-site.json' } else { 'main-private.json' } }
+      'release-tags' { 'tags.json' }
+    }
+    $parameterBaseline = Get-Content -LiteralPath (Join-Path $KitRoot "rulesets/$baselineFile") -Raw | ConvertFrom-Json
+    [void](Merge-StatusCheckRules $parameterBaseline $parsed)
+  } catch { Write-Host ("STOP: malformed existing ruleset ${name}: " + $_.Exception.Message); exit 2 }
+  $existingRulesets[$name] = $parsed
+}
+
 # ---------- 1. repo settings ----------
 
 Write-Host "`n== 1. Repo settings =="
@@ -366,17 +409,13 @@ if ($stock.Count -gt 0) {
 # ---------- 6. rulesets ----------
 
 Write-Host "`n== 6. Rulesets =="
-$rs = Invoke-GhRead @('api', "repos/$Repo/rulesets", '--jq', '.[] | [.id,.name] | @tsv')
-$rulesetIds = @{}
-if ($rs.Code -eq 0 -and $rs.Out) {
-  foreach ($row in ($rs.Out -split "`r?`n")) {
-    $p = $row -split "`t"
-    if ($p.Count -ge 2) { $rulesetIds[$p[1]] = $p[0] }
-  }
-}
-
 function Set-Ruleset([string]$Name, [string]$Json) {
   if ($rulesetIds.ContainsKey($Name)) {
+    try {
+      $desired = $Json | ConvertFrom-Json -ErrorAction Stop
+      $merged = Merge-StatusCheckRules $desired $existingRulesets[$Name]
+      $Json = ConvertTo-Json -InputObject $merged -Depth 30
+    } catch { Write-Host ("STOP: cannot preserve ruleset ${Name}: " + $_.Exception.Message); exit 2 }
     [void](Invoke-GhWrite 'PUT' ("repos/$Repo/rulesets/" + $rulesetIds[$Name]) $Json)
   } else {
     [void](Invoke-GhWrite 'POST' "repos/$Repo/rulesets" $Json)
@@ -397,7 +436,11 @@ else {
     Write-Host ('Not ready: these workflow files still pin the all-zero placeholder SHA: ' + ($placeholders -join ', '))
     Write-Host '  Fix: replace every @0000000000000000000000000000000000000000 with a real commit SHA of alawein/.github (docs\ci.md, "After the first commit"), merge that, then run this again.'
   }
-  if ($isPublic) {
+  if ($RequirePrPolicy -and -not $ciReady) {
+    Write-Host 'SKIP branch ruleset: opt-in workflow readiness failed; existing protections are retained without an update.'
+    $script:Skipped++
+  }
+  elseif ($isPublic) {
     if (-not $ciReady) {
       if ($missing.Count -gt 0) { Write-Host ("SKIP branch ruleset: $workflowPath is missing or lacks jobs: " + ($missing -join ', ')) }
       else { Write-Host 'SKIP branch ruleset: the placeholder pins above would keep the required checks from ever reporting.' }

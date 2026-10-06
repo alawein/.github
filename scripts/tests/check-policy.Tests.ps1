@@ -52,7 +52,66 @@ try { Get-CheckPolicy -Repo alawein/career-engine -Class tool -Language typescri
 if (-not $rejected) { throw 'hub accepted optional policy' }
 Write-Host 'PASS: optional helper preserves legacy classes and rejects hub'
 
+$existing = '{"target":"branch","conditions":{"ref_name":{"include":["refs/heads/main"],"exclude":[]}},"rules":[{"type":"required_status_checks","parameters":{"strict_required_status_checks_policy":true,"do_not_enforce_on_create":false,"required_status_checks":[{"context":"check","integration_id":42}]}}]}' | ConvertFrom-Json
+$desired = '{"target":"branch","conditions":{"ref_name":{"include":["refs/heads/main"],"exclude":[]}},"rules":[{"type":"required_status_checks","parameters":{"strict_required_status_checks_policy":false,"do_not_enforce_on_create":true,"required_status_checks":[{"context":"check"}]}}]}' | ConvertFrom-Json
+$merged = Merge-StatusCheckRules $desired $existing
+$parameters = ($merged.rules | Where-Object type -eq required_status_checks).parameters
+if (-not $parameters.strict_required_status_checks_policy -or $parameters.do_not_enforce_on_create -or $parameters.required_status_checks.Count -ne 1 -or $parameters.required_status_checks[0].integration_id -ne 42) { throw 'merge weakened freshness, creation enforcement or an existing producer' }
+$existing.rules[0].parameters.do_not_enforce_on_create = 'unknown'
+$rejected = $false
+try { Merge-StatusCheckRules $desired $existing | Out-Null } catch { $rejected = $true }
+if (-not $rejected) { throw 'merge accepted an unknown enforcement boolean' }
+Write-Host 'PASS: strongest status policy and malformed boolean refusal'
+
 $ruleRoot = Join-Path $PSScriptRoot '../../rulesets'
+$scopeDesired = Get-Content -LiteralPath (Join-Path $ruleRoot 'main-public.json') -Raw | ConvertFrom-Json
+$scopeExisting = Get-Content -LiteralPath (Join-Path $ruleRoot 'main-public.json') -Raw | ConvertFrom-Json
+$scopeExisting.conditions.ref_name.include += 'refs/heads/release/*'
+$scopeMerged = Merge-StatusCheckRules $scopeDesired $scopeExisting
+if (($scopeMerged.conditions.ref_name.include -join ',') -cne 'refs/heads/main,refs/heads/release/*') { throw 'setup dropped an existing protected release ref' }
+$scopeExisting.conditions.ref_name.include = @('refs/heads/release/*')
+$scopeDesired = Get-Content -LiteralPath (Join-Path $ruleRoot 'main-public.json') -Raw | ConvertFrom-Json
+$scopeMerged = Merge-StatusCheckRules $scopeDesired $scopeExisting
+if (($scopeMerged.conditions.ref_name.include -join ',') -cne 'refs/heads/release/*,refs/heads/main') { throw 'setup failed to add baseline scope while retaining an existing ref' }
+foreach ($badScope in @(
+  '{"target":"branch","conditions":{"ref_name":{"include":["refs/heads/main"],"exclude":["refs/heads/release/*"]}}}',
+  '{"target":"branch","conditions":{"ref_name":{"include":["refs/heads/main"],"exclude":[]},"repository_name":{"include":["example"]}}}',
+  '{"target":"branch","conditions":{"ref_name":{"include":"refs/heads/main","exclude":[]}}}',
+  '{"target":"branch","conditions":{"ref_name":{"include":["refs/heads/main"],"exclude":null}}}',
+  '{"target":"branch","conditions":{"ref_name":{"include":["refs/heads/main"],"exclude":[],"unknown":true}}}',
+  '{"target":"branch","conditions":{"ref_name":{"include":["~DEFAULT_BRANCH"],"exclude":[]}}}',
+  '{"target":"branch","conditions":{"ref_name":{"include":["~ALL"],"exclude":[]}}}',
+  '{"target":"branch","conditions":{"ref_name":{"include":["refs/tags/v*"],"exclude":[]}}}',
+  '{"target":"tag","conditions":{"ref_name":{"include":["refs/tags/v*"],"exclude":[]}}}'
+)) {
+  $rejected = $false
+  try { Get-RulesetRefScope ($badScope | ConvertFrom-Json) -ExpectedTarget branch | Out-Null } catch { $rejected = $true }
+  if (-not $rejected) { throw "accepted an incompatible or malformed scope: $badScope" }
+}
+Write-Host 'PASS: existing additional protected refs retained'
+
+$parameterDesired = Get-Content -LiteralPath (Join-Path $ruleRoot 'main-public.json') -Raw | ConvertFrom-Json
+$parameterExisting = Get-Content -LiteralPath (Join-Path $ruleRoot 'main-public.json') -Raw | ConvertFrom-Json
+($parameterDesired.rules | Where-Object type -eq pull_request).parameters.required_approving_review_count = 2
+$existingPrParameters = ($parameterExisting.rules | Where-Object type -eq pull_request).parameters
+$existingPrParameters.allowed_merge_methods = @('merge', 'squash')
+$existingPrParameters.require_code_owner_review = $true
+$parameterMerged = Merge-StatusCheckRules $parameterDesired $parameterExisting
+$mergedPrParameters = ($parameterMerged.rules | Where-Object type -eq pull_request).parameters
+if ($mergedPrParameters.required_approving_review_count -ne 2 -or ($mergedPrParameters.allowed_merge_methods -join ',') -cne 'squash' -or -not $mergedPrParameters.require_code_owner_review) { throw 'merge kept weaker existing pull-request parameters instead of satisfying the baseline' }
+$existingPrParameters.required_approving_review_count = 4
+$parameterMerged = Merge-StatusCheckRules $parameterDesired $parameterExisting
+if (($parameterMerged.rules | Where-Object type -eq pull_request).parameters.required_approving_review_count -ne 4) { throw 'merge lowered a stronger existing approval count' }
+($parameterDesired.rules | Where-Object type -eq pull_request).parameters | Add-Member future_strength 2
+$existingPrParameters | Add-Member future_strength 1
+$rejected = $false
+try { Merge-StatusCheckRules $parameterDesired $parameterExisting | Out-Null } catch { $rejected = $_.Exception.Message -match 'cannot determine protection strength' }
+if (-not $rejected) { throw 'merge guessed at unknown parameter strength' }
+$rejected = $false
+try { Merge-RuleParameters $null ('{"type":"pull_request","parameters":{}}' | ConvertFrom-Json) | Out-Null } catch { $rejected = $_.Exception.Message -match 'missing.*parameter' }
+if (-not $rejected) { throw 'merge retained an unreadable extra pull-request rule' }
+Write-Host 'PASS: stronger baseline and existing pull-request protections retained'
+
 foreach ($spec in @(
   @{ File='main-hub.json'; Checks='check'; Rules='deletion,non_fast_forward,required_status_checks' },
   @{ File='main-site.json'; Checks='markdown-lint,link-check,actionlint,pr-title,node-ci'; Rules='deletion,non_fast_forward,required_linear_history,pull_request,required_status_checks' }
@@ -78,11 +137,20 @@ function Invoke-PolicyScript([string]$Name, [string]$Case, [string]$Repo, [strin
   $env:FAKE_GH_CLASS = $Class
   $env:FAKE_GH_LANGUAGE = $Language
   Set-Content -LiteralPath $env:FAKE_GH_LOG -Value ''
-  $extraArgs = @()
-  if ($Strict) { $extraArgs += '-Strict' }
-  if ($RequirePrPolicy) { $extraArgs += '-RequirePrPolicy' }
-  if ($Class) { $extraArgs += @('-Class', $Class) }
-  $output = (& $pwshPath -NoProfile -File (Join-Path $scripts $Name) -Repo $Repo -Language $Language -CheckProfile $Profile @extraArgs 2>&1 | Out-String)
+  # Load the same fake in the child process instead of starting a PowerShell
+  # process for every API request. Each production script still runs isolated.
+  $quotedFixture = (Join-Path $PSScriptRoot 'fake-gh.ps1').Replace("'", "''")
+  $quotedScript = (Join-Path $scripts $Name).Replace("'", "''")
+  $scriptArgs = @{ Repo=$Repo; Language=$Language; CheckProfile=$Profile }
+  if ($Class) { $scriptArgs.Class = $Class }
+  if ($Strict) { $scriptArgs.Strict = $true }
+  if ($RequirePrPolicy) { $scriptArgs.RequirePrPolicy = $true }
+  $quotedArgs = @($scriptArgs.Keys | ForEach-Object {
+    $value = $scriptArgs[$_]
+    if ($value -is [bool]) { "$_=`$true" } else { "$_='" + $value.Replace("'", "''") + "'" }
+  }) -join ';'
+  $bootstrap = ". '$quotedFixture'; function global:gh { Invoke-FakeGh @args }; `$scriptArgs=@{$quotedArgs}; & '$quotedScript' @scriptArgs; exit `$LASTEXITCODE"
+  $output = (& $pwshPath -NoProfile -Command $bootstrap 2>&1 | Out-String)
   $code = $LASTEXITCODE
   $calls = Get-Content -LiteralPath $env:FAKE_GH_LOG -Raw
   if ($calls -match '(?m)^api\s+-X\s+|(?m)^api\s+--method\s+|(?m)^api\s+.*--input') { throw "$Name attempted a mutation" }
@@ -201,6 +269,42 @@ try {
   if ($legacySubset.Out -notmatch 'PASS[^\r\n]*required checks') { throw 'legacy unknown-class subset changed' }
   foreach ($file in $originalRules.Keys) { if ([Convert]::ToBase64String([IO.File]::ReadAllBytes((Join-Path $ruleRoot $file))) -cne $originalRules[$file]) { throw 'setup mutated checked-in ruleset JSON' } }
   Write-Host 'PASS: opt-in dry-run payloads, private strictness, readiness and omitted-class rules'
+
+  $extraChecks = Invoke-PolicyScript verify-repo.ps1 checks-extra-bound alawein/example tool standard
+  if ($extraChecks.Code -ne 0 -or $extraChecks.Out -notmatch 'PASS[^\r\n]*required checks[^\r\n]*browser-tests') { throw "baseline plus extra bound checks failed verification: $($extraChecks.Out)" }
+  foreach ($excludedScope in @('checks-scope-exclude-main', 'checks-scope-exclude-all')) {
+    $excluded = Invoke-PolicyScript verify-repo.ps1 $excludedScope alawein/example tool standard
+    if ($excluded.Code -ne 1 -or $excluded.Out -notmatch 'FAIL[^\r\n]*main-protection ref') { throw "verification accepted an excluded protected main: $($excluded.Out)" }
+  }
+  $missingCheck = Invoke-PolicyScript verify-repo.ps1 checks-missing-baseline alawein/example tool standard
+  if ($missingCheck.Code -ne 1 -or $missingCheck.Out -notmatch 'FAIL[^\r\n]*required checks') { throw 'missing baseline passed verification' }
+  $preserve = Invoke-PolicyScript setup-repo.ps1 checks-extra-bound alawein/example tool standard
+  if ($preserve.Code -ne 0 -or $preserve.Out -notmatch '(?m)^DRY\s+gh api -X PUT repos/alawein/example/rulesets/3 --input -\s+<-\s+(.+)$') { throw "missing preservation plan: $($preserve.Out)" }
+  $firstPlan = $Matches[1]
+  $planned = $firstPlan | ConvertFrom-Json
+  $status = $planned.rules | Where-Object type -eq required_status_checks
+  $checks = @($status.parameters.required_status_checks)
+  if ($checks.Count -ne 7 -or @($checks | Where-Object { $_.context -ne 'browser-tests' -and $_.integration_id -ne 15368 }).Count -or @($checks | Where-Object { $_.context -eq 'browser-tests' -and $_.integration_id -in @(99,100) }).Count -ne 2 -or -not $status.parameters.strict_required_status_checks_policy) { throw 'setup weakened additional checks, producer bindings or strictness' }
+  if (($planned.conditions.ref_name.include -join ',') -cne 'refs/heads/main,refs/heads/release/*' -or @($planned.conditions.ref_name.exclude).Count -ne 0) { throw 'setup weakened existing protected ref scope' }
+  $parameterPlan = Invoke-PolicyScript setup-repo.ps1 checks-pr-weak alawein/example tool standard
+  if ($parameterPlan.Code -ne 0 -or $parameterPlan.Out -notmatch '(?m)^DRY\s+gh api -X PUT repos/alawein/example/rulesets/3 --input -\s+<-\s+(.+)$') { throw "missing parameter preservation plan: $($parameterPlan.Out)" }
+  $plannedParameters = (($Matches[1] | ConvertFrom-Json).rules | Where-Object type -eq pull_request).parameters
+  if (($plannedParameters.allowed_merge_methods -join ',') -cne 'squash' -or $plannedParameters.required_approving_review_count -ne 2 -or -not $plannedParameters.require_code_owner_review -or -not $plannedParameters.require_extra_approval_for_unattributed_changes) { throw 'setup did not enforce the baseline while retaining stronger existing PR parameters' }
+  $env:FAKE_GH_RULESET = Join-Path $env:TEMP 'kit-check-policy-ruleset.json'
+  try {
+    Set-Content -LiteralPath $env:FAKE_GH_RULESET -Value $firstPlan
+    $repeat = Invoke-PolicyScript setup-repo.ps1 checks-extra-bound alawein/example tool standard
+    if ($repeat.Code -ne 0 -or $repeat.Out -notmatch '(?m)^DRY\s+gh api -X PUT repos/alawein/example/rulesets/3 --input -\s+<-\s+(.+)$' -or $Matches[1] -cne $firstPlan) { throw 'repeated setup changed the preserved ruleset' }
+  } finally { Remove-Item Env:FAKE_GH_RULESET -ErrorAction SilentlyContinue }
+  foreach ($bad in @('checks-list-unavailable', 'checks-list-malformed', 'checks-list-empty-object', 'checks-detail-unavailable', 'checks-detail-malformed', 'checks-detail-bad-json', 'checks-binding-malformed', 'checks-scope-excluded', 'checks-scope-exclude-main', 'checks-scope-exclude-all', 'checks-scope-unsupported', 'checks-scope-malformed', 'checks-scope-target', 'checks-pr-count-malformed', 'checks-pr-flag-malformed', 'checks-pr-incompatible')) {
+    $unreadable = Invoke-PolicyScript setup-repo.ps1 $bad alawein/example tool standard
+    if ($unreadable.Code -ne 2 -or $unreadable.Out -notmatch 'STOP' -or $unreadable.Out -match '(?m)^DRY\s+gh api -X') { throw "unreadable existing rulesets allowed a write plan: $bad $($unreadable.Out)" }
+  }
+  Write-Host 'PASS: extra checks, bindings and refs retained, missing baseline fails, unreadable preflight stops, repeated setup stable'
+  $bound = [pscustomobject]@{context='browser-tests';integration_id=99}
+  if (-not (Test-StatusCheckRequirement $bound @($bound)) -or (Test-StatusCheckRequirement $bound @([pscustomobject]@{context='browser-tests';integration_id=100})) -or (Test-StatusCheckRequirement $bound @([pscustomobject]@{context='browser-tests'})) -or (Test-StatusCheckRequirement $bound @([pscustomobject]@{context='Browser-tests';integration_id=99}))) { throw 'producer comparison accepted the wrong producer, unbound check or changed context' }
+  if (-not (Test-StatusCheckRequirement ([pscustomobject]@{context='browser-tests'}) @($bound))) { throw 'an unbound baseline rejected a stronger producer binding' }
+  Write-Host 'PASS: producer equality and stronger bound-baseline comparison'
 
   Write-Host 'PASS: fake gh script policy cases and mutation refusal'
 } finally {
