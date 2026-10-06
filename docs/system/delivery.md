@@ -80,6 +80,28 @@ for their original scope, rather than permission for a new task.
 Decision: a mistake that happens twice becomes a check, a test, or a rule.
 Why: memory fades, and a check does not.
 
+## Delivery rules
+
+The short rule set every agent and person follows. The sections below hold the
+detail.
+
+- One topic is one branch (`type/short-topic`) and one PR.
+- Make commits locally and sign them (`git commit -S`). Rulesets require signed
+  commits, and a commit made through the API is unsigned, so its PR stays blocked.
+- The PR body links an issue or has a `No-issue: <reason>` line.
+- Open the PR, mark it ready, then run `gh pr merge --auto --squash`. Squash is
+  the only merge method, and GitHub deletes the remote branch on merge.
+- After merges, run `pwsh scripts/repo-sweep.ps1 clean` to preview and `clean -Apply`
+  to remove merged local branches and their clean worktrees. It never forces,
+  fetches, or deletes ignored or untracked files.
+- At session start, run `pwsh scripts/repo-sweep.ps1 status -Brief`. It lists a
+  dirty `main`, drift from origin, branches older than 14 days, more than three
+  topic branches, stashes, and missing worktree folders.
+- Rerunning a failed check reuses the old PR body. After editing the body, let the
+  edit start the run; do not rerun the old one.
+- Where a repo requires an `independent-review` status, post it only after a fresh
+  isolated review of the current head passes.
+
 ## Branches, commits, and pull requests
 
 ### Branches
@@ -95,7 +117,8 @@ Why: memory fades, and a check does not.
   (extra working folders on the same repo), each on its own branch, and keep
   them on different files where you can.
 - At most three PRs wait for review at once, including dependency PRs.
-- Branch deletion after merge is an owner-approved setting or named action.
+- GitHub deletes the remote branch on merge (the repo setting is on). Local
+  branches go with `scripts/repo-sweep.ps1 clean`.
 
 ### Commits
 
