@@ -19,7 +19,7 @@ workflow changes, regenerate it from those files.
 
 ## Pins that are not `uses:` lines
 
-Dependabot cannot bump these. Change the version and the checksum together. For actionlint, read
+No bot bumps these. Change the version and the checksum together. For actionlint, read
 the checksum from the release's `actionlint_<version>_checksums.txt` (or the asset digest in
 `GET repos/rhysd/actionlint/releases/tags/v<version>`).
 

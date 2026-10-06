@@ -33,7 +33,7 @@ jobs:
         with:
           persist-credentials: false
       # Release archive pinned by version and sha256 (the value GitHub publishes for the
-      # linux_amd64 asset of tag v1.7.12). Not a `uses:`, so Dependabot will not bump it:
+      # linux_amd64 asset of tag v1.7.12). Not a `uses:`, so it is bumped by hand:
       # change the version and the checksum together (see docs/pins.md).
       - name: actionlint v1.7.12
         shell: bash

@@ -54,15 +54,9 @@ class PolicyTests(unittest.TestCase):
             with self.subTest(branch=branch):
                 self.assertTrue(self.check(event(branch)))
 
-    def test_bot_exemption_requires_all_three_identity_fields(self):
+    def test_bot_branches_get_no_exemption(self):
         bot = event("dependabot/npm/x", "")
         bot["pull_request"]["user"] = {"login": "dependabot[bot]", "type": "Bot"}
-        self.assertEqual(self.check(bot), [])
-        for key, value in (("login", "dependabot"), ("type", "User")):
-            forged = copy.deepcopy(bot)
-            forged["pull_request"]["user"][key] = value
-            self.assertTrue(self.check(forged))
-        bot["pull_request"]["head"]["ref"] = "codex/task"
         self.assertTrue(self.check(bot))
 
     def test_draft_may_defer_linkage_but_not_branch_rules(self):

@@ -100,8 +100,6 @@ def check(event: dict) -> list[str]:
     if not valid:
         return ["Malformed pull_request metadata."]
     branch = head["ref"]
-    if user["login"] == "dependabot[bot]" and user["type"] == "Bot" and branch.startswith("dependabot/") and len(branch) > 11:
-        return []
     errors = []
     if not BRANCH.fullmatch(branch) or DATE.search(branch):
         errors.append("Branch must use a house type and a lowercase hyphenated topic without dates.")

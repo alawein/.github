@@ -10,7 +10,7 @@ A change is big or risky when any of these is true:
 - It touches login, permissions, or anything that handles personal data.
 - It changes a database schema or migrates data.
 - It changes deploy settings, environment variables, or a domain.
-- It changes a workflow, a ruleset, or a Dependabot file.
+- It changes a workflow or a ruleset.
 - It adds or upgrades a dependency by a major version.
 - It changes a public interface that others call.
 

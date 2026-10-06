@@ -167,7 +167,7 @@ if ($Class -eq 'profile') {
 $va = Get-Api @("repos/$Repo/vulnerability-alerts")
 Add-Result 'Dependabot alerts on' ($va.Code -eq 0) ("GET vulnerability-alerts exit " + $va.Code)
 $sf = Get-Api @("repos/$Repo/automated-security-fixes")
-Add-Result 'Dependabot security updates on' ($sf.Json -and $sf.Json.enabled -eq $true) ("enabled=" + $(if ($sf.Json) { $sf.Json.enabled } else { 'unreadable' }))
+Add-Result 'Dependabot security updates off' (-not ($sf.Json -and $sf.Json.enabled -eq $true)) ("enabled=" + $(if ($sf.Json) { $sf.Json.enabled } else { 'unreadable' }))
 if ($isPublic) {
   $sa = $i.security_and_analysis
   $ss = $null; $pp = $null
@@ -321,7 +321,7 @@ else { Add-Note 'topics' ("count " + $tn.Count + " (optional on private repos)")
 
 Add-Result 'README.md' (Test-Path-Api 'README.md') 'root README'
 Add-Result "$workflowPath with the required jobs" $ciOk ("$workflowPath defines " + ($RequiredChecks -join ', '))
-Add-Result 'dependabot.yml' (Test-Path-Api '.github/dependabot.yml') '.github/dependabot.yml'
+Add-Result 'no dependabot.yml' (-not (Test-Path-Api '.github/dependabot.yml')) 'Dependabot version updates are off'
 if ($isPublic) {
   Add-Result 'CODEOWNERS' (Test-Path-Api '.github/CODEOWNERS') '.github/CODEOWNERS'
   $sec = (Test-Path-Api 'SECURITY.md') -or (Test-Path-Api '.github/SECURITY.md') -or (Test-Path-Api 'docs/SECURITY.md')
