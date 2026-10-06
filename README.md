@@ -22,7 +22,9 @@ Choose a [repo class](docs/system/repos.md), then preview a new local folder:
 `new-repo.ps1` plans first; `-Create` writes the new folder. The printed next
 steps cover its dependencies and first commit. To preview the standard for an
 existing repo, run `scripts/setup-repo.ps1` without `-Apply`; see
-[CI setup](docs/ci.md) before applying it.
+[CI setup](docs/ci.md) before applying it. To see stale branches and clean up
+merged ones across your checkouts, use `scripts/repo-sweep.ps1`; the rules are in
+[Delivery](docs/system/delivery.md#delivery-rules).
 
 ## Checks
 
