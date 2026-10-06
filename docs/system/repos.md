@@ -94,12 +94,12 @@ applies and what does not.
 | Required signed commits | Yes | Left out on purpose, because a tool that pushes unsigned would be blocked | Sign commits locally anyway (`commit.gpgsign true`) |
 | Required checks | Yes | Only with `-Strict`, and only when `ci.yml` defines the jobs | Run `setup-repo.ps1 -Strict` again after CI exists |
 | Secret scanning and push protection | Yes, free | Plan-dependent | Run a local scanner before every push (below) |
-| CodeQL and dependency review | Yes, free | Plan-dependent | None. Keep alerts on |
-| Dependabot alerts (passive, no PRs) | Yes | Yes, free | Not needed |
+| CodeQL and dependency review | Yes, free | Plan-dependent | None. Review dependencies by hand |
+| Dependabot alerts and security updates | Off by owner decision | Off by owner decision | Not needed |
 | Private vulnerability reporting, first-time contributor approval | Yes | No such setting | `SECURITY.md` tells reporters to open a task issue with no details |
 | Merge settings, Actions token settings, labels | Yes | Yes | Not needed |
 
-Dependabot is off by owner decision 2026-10-06; keep vulnerability alerts passive, no automated update PRs.
+Dependabot is off by owner decision 2026-10-06: no `dependabot.yml`, no update PRs, no security-update PRs, and vulnerability alerts are off.
 
 Check your plan under Settings, Billing. `setup-repo.ps1 -Apply` turns on
 private vulnerability reporting for a public repo and reads the fork PR

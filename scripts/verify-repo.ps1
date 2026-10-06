@@ -6,7 +6,7 @@
   Makes GET calls only. Prints PASS or FAIL per line (NOTE for things that
   do not apply). Exit code is 0 when there are no FAIL lines, 1 otherwise.
   A read that fails with anything but 404 (403, 429, 5xx) stops the audit, exit 2.
-  Checks: default branch, merge settings, wiki and projects, Dependabot,
+  Checks: default branch, merge settings, wiki and projects, Dependabot (alerts, security updates and version config all off),
   secret scanning and private vulnerability reporting (public only), Actions token, branch ruleset, tag ruleset,
   required check names, labels, topics, license file, community files.
 
@@ -165,7 +165,7 @@ if ($Class -eq 'profile') {
 # ---------- security ----------
 
 $va = Get-Api @("repos/$Repo/vulnerability-alerts")
-Add-Result 'Dependabot alerts on' ($va.Code -eq 0) ("GET vulnerability-alerts exit " + $va.Code)
+Add-Result 'Dependabot alerts off' ($va.Code -ne 0) ("GET vulnerability-alerts exit " + $va.Code + " (404 means off)")
 $sf = Get-Api @("repos/$Repo/automated-security-fixes")
 Add-Result 'Dependabot security updates off' (-not ($sf.Json -and $sf.Json.enabled -eq $true)) ("enabled=" + $(if ($sf.Json) { $sf.Json.enabled } else { 'unreadable' }))
 if ($isPublic) {

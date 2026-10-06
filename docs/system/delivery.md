@@ -514,7 +514,7 @@ checks, current review and a selected task mode covering its scope.
 
 ### Every repo
 
-- Dependabot alerts on (passive, no PRs). Security update PRs and version updates off.
+- Dependabot fully off: alerts, security update PRs and version updates (owner decision 2026-10-06).
 - Actions token default is read-only (`contents: read`). Raise a permission per
   job, never for the whole file.
 - Workflows never use `pull_request_target`, which runs with secrets, and never

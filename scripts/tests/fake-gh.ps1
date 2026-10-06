@@ -109,7 +109,7 @@ if ($path -match '/rulesets/([123])$') {
 if ($env:FAKE_GH_CASE -like 'labels-*' -and $path -match '/contents/(README\.md)$') { $Matches[1]; $global:LASTEXITCODE = 0; return }
 if ($env:FAKE_GH_CASE -like 'checks-*' -and $path -match '/contents/(README\.md|\.github/CODEOWNERS|SECURITY\.md)$') { $Matches[1]; $global:LASTEXITCODE = 0; return }
 if ($path -match '/contents/') { 'HTTP 404'; $global:LASTEXITCODE = 1; return }
-if ($path -match '/vulnerability-alerts$') { '{}'; $global:LASTEXITCODE = 0; return }
+if ($path -match '/vulnerability-alerts$') { 'HTTP 404'; $global:LASTEXITCODE = 1; return }
 if ($path -match '/automated-security-fixes$') { '{"enabled":false}'; $global:LASTEXITCODE = 0; return }
 if ($path -match '/private-vulnerability-reporting$') { '{"enabled":true}'; $global:LASTEXITCODE = 0; return }
 if ($path -match '/actions/permissions/workflow$') { '{"default_workflow_permissions":"read","can_approve_pull_request_reviews":false}'; $global:LASTEXITCODE = 0; return }
