@@ -69,6 +69,16 @@ if ($path -match '/rulesets/([123])$') {
     if ($env:FAKE_GH_CASE -eq 'checks-scope-unsupported') { $o.conditions | Add-Member repository_name ([pscustomobject]@{include=@('example')}) }
     if ($env:FAKE_GH_CASE -eq 'checks-scope-malformed') { $o.conditions.ref_name.include = 'refs/heads/main' }
     if ($env:FAKE_GH_CASE -eq 'checks-scope-target') { $o.target = 'tag' }
+    $prParameters = ($o.rules | Where-Object type -eq pull_request).parameters
+    if ($env:FAKE_GH_CASE -eq 'checks-pr-weak') {
+      $prParameters.allowed_merge_methods = @('merge', 'squash')
+      $prParameters.required_approving_review_count = 2
+      $prParameters.require_code_owner_review = $true
+      $prParameters | Add-Member require_extra_approval_for_unattributed_changes $true
+    }
+    if ($env:FAKE_GH_CASE -eq 'checks-pr-count-malformed') { $prParameters.required_approving_review_count = 'unknown' }
+    if ($env:FAKE_GH_CASE -eq 'checks-pr-flag-malformed') { $prParameters.require_code_owner_review = 'unknown' }
+    if ($env:FAKE_GH_CASE -eq 'checks-pr-incompatible') { $prParameters.allowed_merge_methods = @('merge') }
   }
   else {
     $ruleFile = if ($env:FAKE_GH_CASE -in @('site-ready', 'site-wrong')) { 'main-site.json' } else { 'main-private.json' }

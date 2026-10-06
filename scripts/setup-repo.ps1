@@ -302,6 +302,13 @@ foreach ($name in @('main-protection', 'main-guard', 'release-tags')) {
     [void]@(Get-StatusCheckRequirements $parsed)
     $expectedTarget = if ($name -eq 'release-tags') { 'tag' } else { 'branch' }
     [void](Get-RulesetRefScope $parsed -ExpectedTarget $expectedTarget)
+    $baselineFile = switch ($name) {
+      'main-protection' { 'main-public.json' }
+      'main-guard' { if ($useStrict -and $CheckProfile -ne 'hub-check') { 'main-site.json' } else { 'main-private.json' } }
+      'release-tags' { 'tags.json' }
+    }
+    $parameterBaseline = Get-Content -LiteralPath (Join-Path $KitRoot "rulesets/$baselineFile") -Raw | ConvertFrom-Json
+    [void](Merge-StatusCheckRules $parameterBaseline $parsed)
   } catch { Write-Host ("STOP: malformed existing ruleset ${name}: " + $_.Exception.Message); exit 2 }
   $existingRulesets[$name] = $parsed
 }

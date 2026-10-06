@@ -95,6 +95,48 @@ function Get-RulesetRefScope {
   return $scope
 }
 
+function Merge-RuleParameters {
+  param($DesiredRule, $ExistingRule)
+  $retained = $ExistingRule | ConvertTo-Json -Depth 30 | ConvertFrom-Json
+  $current = $retained.parameters
+  $baseline = $DesiredRule.parameters
+  if (($ExistingRule.type -eq 'pull_request' -or $null -ne $current -or $null -ne $baseline) -and $current -isnot [pscustomobject]) {
+    throw "rule $($ExistingRule.type) has missing or malformed parameters"
+  }
+  if ($null -ne $baseline -and $baseline -isnot [pscustomobject]) { throw 'baseline rule has malformed parameters' }
+  $approvalFlags = @('dismiss_stale_reviews_on_push', 'require_code_owner_review', 'require_last_push_approval', 'required_review_thread_resolution', 'require_extra_approval_for_unattributed_changes')
+  if ($ExistingRule.type -eq 'pull_request') {
+    foreach ($name in @('required_approving_review_count', 'allowed_merge_methods')) {
+      if ($current.PSObject.Properties.Name -cnotcontains $name) { throw "pull_request has a missing required parameter $name" }
+    }
+    foreach ($parameters in @($current, $baseline)) {
+      if ($null -eq $parameters) { continue }
+      foreach ($name in $parameters.PSObject.Properties.Name) {
+        $value = $parameters.$name
+        if ($name -in $approvalFlags -and $value -isnot [bool]) { throw "pull_request has an invalid $name" }
+        if ($name -eq 'required_approving_review_count' -and (($value -isnot [int] -and $value -isnot [long]) -or $value -lt 0)) { throw 'pull_request has an invalid approval count' }
+        if ($name -eq 'allowed_merge_methods' -and ($value -isnot [array] -or $value.Count -eq 0 -or @($value | Where-Object { $_ -isnot [string] -or $_ -cnotin @('merge', 'squash', 'rebase') }).Count)) { throw 'pull_request has invalid allowed merge methods' }
+      }
+    }
+  }
+  foreach ($name in $baseline.PSObject.Properties.Name) {
+    if ($current.PSObject.Properties.Name -cnotcontains $name) { throw "rule $($ExistingRule.type) is missing baseline parameter $name" }
+    $wanted = $baseline.$name
+    $present = $current.$name
+    if ($ExistingRule.type -eq 'pull_request' -and $name -eq 'required_approving_review_count') { $current.$name = [Math]::Max($wanted, $present) }
+    elseif ($ExistingRule.type -eq 'pull_request' -and $name -in $approvalFlags) { $current.$name = $wanted -or $present }
+    elseif ($ExistingRule.type -eq 'pull_request' -and $name -eq 'allowed_merge_methods') {
+      $methods = @($present | Where-Object { $wanted -ccontains $_ } | Select-Object -Unique)
+      if ($methods.Count -eq 0) { throw 'pull_request allowed merge methods have no compatible intersection' }
+      $current.$name = $methods
+    }
+    elseif ((ConvertTo-Json -InputObject $wanted -Depth 30 -Compress) -cne (ConvertTo-Json -InputObject $present -Depth 30 -Compress)) {
+      throw "cannot determine protection strength for $($ExistingRule.type).$name"
+    }
+  }
+  return $retained
+}
+
 function Merge-StatusCheckRules {
   param($Desired, $Existing)
   $desiredScope = Get-RulesetRefScope $Desired
@@ -135,10 +177,10 @@ function Merge-StatusCheckRules {
   foreach ($rule in $Existing.rules) {
     if ($rule.type -eq 'required_status_checks') { continue }
     $matching = @($Desired.rules | Where-Object { $_.type -ceq $rule.type })
-    if ($matching.Count -eq 0) { $Desired.rules += $rule }
-    elseif ($rule.parameters) {
-      $Desired.rules = @($Desired.rules | ForEach-Object { if ($_.type -ceq $rule.type) { $rule } else { $_ } })
-    }
+    if ($matching.Count -gt 1) { throw "ambiguous baseline rule $($rule.type)" }
+    $retained = Merge-RuleParameters $(if ($matching.Count) { $matching[0] } else { $null }) $rule
+    if ($matching.Count -eq 0) { $Desired.rules += $retained }
+    else { $Desired.rules = @($Desired.rules | ForEach-Object { if ($_.type -ceq $rule.type) { $retained } else { $_ } }) }
   }
   return $Desired
 }

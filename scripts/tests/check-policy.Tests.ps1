@@ -90,6 +90,28 @@ foreach ($badScope in @(
 }
 Write-Host 'PASS: existing additional protected refs retained'
 
+$parameterDesired = Get-Content -LiteralPath (Join-Path $ruleRoot 'main-public.json') -Raw | ConvertFrom-Json
+$parameterExisting = Get-Content -LiteralPath (Join-Path $ruleRoot 'main-public.json') -Raw | ConvertFrom-Json
+($parameterDesired.rules | Where-Object type -eq pull_request).parameters.required_approving_review_count = 2
+$existingPrParameters = ($parameterExisting.rules | Where-Object type -eq pull_request).parameters
+$existingPrParameters.allowed_merge_methods = @('merge', 'squash')
+$existingPrParameters.require_code_owner_review = $true
+$parameterMerged = Merge-StatusCheckRules $parameterDesired $parameterExisting
+$mergedPrParameters = ($parameterMerged.rules | Where-Object type -eq pull_request).parameters
+if ($mergedPrParameters.required_approving_review_count -ne 2 -or ($mergedPrParameters.allowed_merge_methods -join ',') -cne 'squash' -or -not $mergedPrParameters.require_code_owner_review) { throw 'merge kept weaker existing pull-request parameters instead of satisfying the baseline' }
+$existingPrParameters.required_approving_review_count = 4
+$parameterMerged = Merge-StatusCheckRules $parameterDesired $parameterExisting
+if (($parameterMerged.rules | Where-Object type -eq pull_request).parameters.required_approving_review_count -ne 4) { throw 'merge lowered a stronger existing approval count' }
+($parameterDesired.rules | Where-Object type -eq pull_request).parameters | Add-Member future_strength 2
+$existingPrParameters | Add-Member future_strength 1
+$rejected = $false
+try { Merge-StatusCheckRules $parameterDesired $parameterExisting | Out-Null } catch { $rejected = $_.Exception.Message -match 'cannot determine protection strength' }
+if (-not $rejected) { throw 'merge guessed at unknown parameter strength' }
+$rejected = $false
+try { Merge-RuleParameters $null ('{"type":"pull_request","parameters":{}}' | ConvertFrom-Json) | Out-Null } catch { $rejected = $_.Exception.Message -match 'missing.*parameter' }
+if (-not $rejected) { throw 'merge retained an unreadable extra pull-request rule' }
+Write-Host 'PASS: stronger baseline and existing pull-request protections retained'
+
 foreach ($spec in @(
   @{ File='main-hub.json'; Checks='check'; Rules='deletion,non_fast_forward,required_status_checks' },
   @{ File='main-site.json'; Checks='markdown-lint,link-check,actionlint,pr-title,node-ci'; Rules='deletion,non_fast_forward,required_linear_history,pull_request,required_status_checks' }
@@ -264,13 +286,17 @@ try {
   $checks = @($status.parameters.required_status_checks)
   if ($checks.Count -ne 7 -or @($checks | Where-Object { $_.context -ne 'browser-tests' -and $_.integration_id -ne 15368 }).Count -or @($checks | Where-Object { $_.context -eq 'browser-tests' -and $_.integration_id -in @(99,100) }).Count -ne 2 -or -not $status.parameters.strict_required_status_checks_policy) { throw 'setup weakened additional checks, producer bindings or strictness' }
   if (($planned.conditions.ref_name.include -join ',') -cne 'refs/heads/main,refs/heads/release/*' -or @($planned.conditions.ref_name.exclude).Count -ne 0) { throw 'setup weakened existing protected ref scope' }
+  $parameterPlan = Invoke-PolicyScript setup-repo.ps1 checks-pr-weak alawein/example tool standard
+  if ($parameterPlan.Code -ne 0 -or $parameterPlan.Out -notmatch '(?m)^DRY\s+gh api -X PUT repos/alawein/example/rulesets/3 --input -\s+<-\s+(.+)$') { throw "missing parameter preservation plan: $($parameterPlan.Out)" }
+  $plannedParameters = (($Matches[1] | ConvertFrom-Json).rules | Where-Object type -eq pull_request).parameters
+  if (($plannedParameters.allowed_merge_methods -join ',') -cne 'squash' -or $plannedParameters.required_approving_review_count -ne 2 -or -not $plannedParameters.require_code_owner_review -or -not $plannedParameters.require_extra_approval_for_unattributed_changes) { throw 'setup did not enforce the baseline while retaining stronger existing PR parameters' }
   $env:FAKE_GH_RULESET = Join-Path $env:TEMP 'kit-check-policy-ruleset.json'
   try {
     Set-Content -LiteralPath $env:FAKE_GH_RULESET -Value $firstPlan
     $repeat = Invoke-PolicyScript setup-repo.ps1 checks-extra-bound alawein/example tool standard
     if ($repeat.Code -ne 0 -or $repeat.Out -notmatch '(?m)^DRY\s+gh api -X PUT repos/alawein/example/rulesets/3 --input -\s+<-\s+(.+)$' -or $Matches[1] -cne $firstPlan) { throw 'repeated setup changed the preserved ruleset' }
   } finally { Remove-Item Env:FAKE_GH_RULESET -ErrorAction SilentlyContinue }
-  foreach ($bad in @('checks-list-unavailable', 'checks-list-malformed', 'checks-list-empty-object', 'checks-detail-unavailable', 'checks-detail-malformed', 'checks-detail-bad-json', 'checks-binding-malformed', 'checks-scope-excluded', 'checks-scope-exclude-main', 'checks-scope-exclude-all', 'checks-scope-unsupported', 'checks-scope-malformed', 'checks-scope-target')) {
+  foreach ($bad in @('checks-list-unavailable', 'checks-list-malformed', 'checks-list-empty-object', 'checks-detail-unavailable', 'checks-detail-malformed', 'checks-detail-bad-json', 'checks-binding-malformed', 'checks-scope-excluded', 'checks-scope-exclude-main', 'checks-scope-exclude-all', 'checks-scope-unsupported', 'checks-scope-malformed', 'checks-scope-target', 'checks-pr-count-malformed', 'checks-pr-flag-malformed', 'checks-pr-incompatible')) {
     $unreadable = Invoke-PolicyScript setup-repo.ps1 $bad alawein/example tool standard
     if ($unreadable.Code -ne 2 -or $unreadable.Out -notmatch 'STOP' -or $unreadable.Out -match '(?m)^DRY\s+gh api -X') { throw "unreadable existing rulesets allowed a write plan: $bad $($unreadable.Out)" }
   }
