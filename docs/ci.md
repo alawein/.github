@@ -172,6 +172,15 @@ refuses `hub-check` before GitHub calls. Private repos also need explicit
 allowing unknown language contexts. Missing gates and placeholder pins fail
 opt-in readiness. The checked-in ruleset JSON templates remain unchanged.
 
+Class check lists are minimum requirements. Verification accepts additional
+required checks and reports their GitHub App producer bindings. Setup reads
+and validates the paginated existing rulesets before its first settings write.
+Unavailable or malformed configuration stops the run. A ruleset update retains
+existing requirements, complete producer records, strict check freshness,
+additional rule types and existing parameterized protections, then adds any
+missing baseline checks. Repeated setup keeps that merged configuration stable.
+An unbound baseline does not replace a check already bound to an app.
+
 Setup plans whole-repo settings, labels and rulesets; it is for owner-approved
 bootstrap, not narrow live promotion. For an existing repo, save its live
 ruleset JSON and add only `pr-policy` after eligible success, then read back

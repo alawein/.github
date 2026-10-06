@@ -52,6 +52,17 @@ try { Get-CheckPolicy -Repo alawein/career-engine -Class tool -Language typescri
 if (-not $rejected) { throw 'hub accepted optional policy' }
 Write-Host 'PASS: optional helper preserves legacy classes and rejects hub'
 
+$existing = '{"rules":[{"type":"required_status_checks","parameters":{"strict_required_status_checks_policy":true,"do_not_enforce_on_create":false,"required_status_checks":[{"context":"check","integration_id":42}]}}]}' | ConvertFrom-Json
+$desired = '{"rules":[{"type":"required_status_checks","parameters":{"strict_required_status_checks_policy":false,"do_not_enforce_on_create":true,"required_status_checks":[{"context":"check"}]}}]}' | ConvertFrom-Json
+$merged = Merge-StatusCheckRules $desired $existing
+$parameters = ($merged.rules | Where-Object type -eq required_status_checks).parameters
+if (-not $parameters.strict_required_status_checks_policy -or $parameters.do_not_enforce_on_create -or $parameters.required_status_checks.Count -ne 1 -or $parameters.required_status_checks[0].integration_id -ne 42) { throw 'merge weakened freshness, creation enforcement or an existing producer' }
+$existing.rules[0].parameters.do_not_enforce_on_create = 'unknown'
+$rejected = $false
+try { Merge-StatusCheckRules $desired $existing | Out-Null } catch { $rejected = $true }
+if (-not $rejected) { throw 'merge accepted an unknown enforcement boolean' }
+Write-Host 'PASS: strongest status policy and malformed boolean refusal'
+
 $ruleRoot = Join-Path $PSScriptRoot '../../rulesets'
 foreach ($spec in @(
   @{ File='main-hub.json'; Checks='check'; Rules='deletion,non_fast_forward,required_status_checks' },
@@ -78,11 +89,20 @@ function Invoke-PolicyScript([string]$Name, [string]$Case, [string]$Repo, [strin
   $env:FAKE_GH_CLASS = $Class
   $env:FAKE_GH_LANGUAGE = $Language
   Set-Content -LiteralPath $env:FAKE_GH_LOG -Value ''
-  $extraArgs = @()
-  if ($Strict) { $extraArgs += '-Strict' }
-  if ($RequirePrPolicy) { $extraArgs += '-RequirePrPolicy' }
-  if ($Class) { $extraArgs += @('-Class', $Class) }
-  $output = (& $pwshPath -NoProfile -File (Join-Path $scripts $Name) -Repo $Repo -Language $Language -CheckProfile $Profile @extraArgs 2>&1 | Out-String)
+  # Load the same fake in the child process instead of starting a PowerShell
+  # process for every API request. Each production script still runs isolated.
+  $quotedFixture = (Join-Path $PSScriptRoot 'fake-gh.ps1').Replace("'", "''")
+  $quotedScript = (Join-Path $scripts $Name).Replace("'", "''")
+  $scriptArgs = @{ Repo=$Repo; Language=$Language; CheckProfile=$Profile }
+  if ($Class) { $scriptArgs.Class = $Class }
+  if ($Strict) { $scriptArgs.Strict = $true }
+  if ($RequirePrPolicy) { $scriptArgs.RequirePrPolicy = $true }
+  $quotedArgs = @($scriptArgs.Keys | ForEach-Object {
+    $value = $scriptArgs[$_]
+    if ($value -is [bool]) { "$_=`$true" } else { "$_='" + $value.Replace("'", "''") + "'" }
+  }) -join ';'
+  $bootstrap = ". '$quotedFixture'; function global:gh { Invoke-FakeGh @args }; `$scriptArgs=@{$quotedArgs}; & '$quotedScript' @scriptArgs; exit `$LASTEXITCODE"
+  $output = (& $pwshPath -NoProfile -Command $bootstrap 2>&1 | Out-String)
   $code = $LASTEXITCODE
   $calls = Get-Content -LiteralPath $env:FAKE_GH_LOG -Raw
   if ($calls -match '(?m)^api\s+-X\s+|(?m)^api\s+--method\s+|(?m)^api\s+.*--input') { throw "$Name attempted a mutation" }
@@ -201,6 +221,33 @@ try {
   if ($legacySubset.Out -notmatch 'PASS[^\r\n]*required checks') { throw 'legacy unknown-class subset changed' }
   foreach ($file in $originalRules.Keys) { if ([Convert]::ToBase64String([IO.File]::ReadAllBytes((Join-Path $ruleRoot $file))) -cne $originalRules[$file]) { throw 'setup mutated checked-in ruleset JSON' } }
   Write-Host 'PASS: opt-in dry-run payloads, private strictness, readiness and omitted-class rules'
+
+  $extraChecks = Invoke-PolicyScript verify-repo.ps1 checks-extra-bound alawein/example tool standard
+  if ($extraChecks.Code -ne 0 -or $extraChecks.Out -notmatch 'PASS[^\r\n]*required checks[^\r\n]*browser-tests') { throw "baseline plus extra bound checks failed verification: $($extraChecks.Out)" }
+  $missingCheck = Invoke-PolicyScript verify-repo.ps1 checks-missing-baseline alawein/example tool standard
+  if ($missingCheck.Code -ne 1 -or $missingCheck.Out -notmatch 'FAIL[^\r\n]*required checks') { throw 'missing baseline passed verification' }
+  $preserve = Invoke-PolicyScript setup-repo.ps1 checks-extra-bound alawein/example tool standard
+  if ($preserve.Code -ne 0 -or $preserve.Out -notmatch '(?m)^DRY\s+gh api -X PUT repos/alawein/example/rulesets/3 --input -\s+<-\s+(.+)$') { throw "missing preservation plan: $($preserve.Out)" }
+  $firstPlan = $Matches[1]
+  $planned = $firstPlan | ConvertFrom-Json
+  $status = $planned.rules | Where-Object type -eq required_status_checks
+  $checks = @($status.parameters.required_status_checks)
+  if ($checks.Count -ne 7 -or @($checks | Where-Object { $_.context -ne 'browser-tests' -and $_.integration_id -ne 15368 }).Count -or @($checks | Where-Object { $_.context -eq 'browser-tests' -and $_.integration_id -in @(99,100) }).Count -ne 2 -or -not $status.parameters.strict_required_status_checks_policy) { throw 'setup weakened additional checks, producer bindings or strictness' }
+  $env:FAKE_GH_RULESET = Join-Path $env:TEMP 'kit-check-policy-ruleset.json'
+  try {
+    Set-Content -LiteralPath $env:FAKE_GH_RULESET -Value $firstPlan
+    $repeat = Invoke-PolicyScript setup-repo.ps1 checks-extra-bound alawein/example tool standard
+    if ($repeat.Code -ne 0 -or $repeat.Out -notmatch '(?m)^DRY\s+gh api -X PUT repos/alawein/example/rulesets/3 --input -\s+<-\s+(.+)$' -or $Matches[1] -cne $firstPlan) { throw 'repeated setup changed the preserved ruleset' }
+  } finally { Remove-Item Env:FAKE_GH_RULESET -ErrorAction SilentlyContinue }
+  foreach ($bad in @('checks-list-unavailable', 'checks-list-malformed', 'checks-list-empty-object', 'checks-detail-unavailable', 'checks-detail-malformed', 'checks-detail-bad-json', 'checks-binding-malformed')) {
+    $unreadable = Invoke-PolicyScript setup-repo.ps1 $bad alawein/example tool standard
+    if ($unreadable.Code -ne 2 -or $unreadable.Out -notmatch 'STOP' -or $unreadable.Out -match '(?m)^DRY\s+gh api -X') { throw "unreadable existing rulesets allowed a write plan: $bad $($unreadable.Out)" }
+  }
+  Write-Host 'PASS: extra checks and bindings retained, missing baseline fails, unreadable preflight stops, repeated setup stable'
+  $bound = [pscustomobject]@{context='browser-tests';integration_id=99}
+  if (-not (Test-StatusCheckRequirement $bound @($bound)) -or (Test-StatusCheckRequirement $bound @([pscustomobject]@{context='browser-tests';integration_id=100})) -or (Test-StatusCheckRequirement $bound @([pscustomobject]@{context='browser-tests'})) -or (Test-StatusCheckRequirement $bound @([pscustomobject]@{context='Browser-tests';integration_id=99}))) { throw 'producer comparison accepted the wrong producer, unbound check or changed context' }
+  if (-not (Test-StatusCheckRequirement ([pscustomobject]@{context='browser-tests'}) @($bound))) { throw 'an unbound baseline rejected a stronger producer binding' }
+  Write-Host 'PASS: producer equality and stronger bound-baseline comparison'
 
   Write-Host 'PASS: fake gh script policy cases and mutation refusal'
 } finally {
