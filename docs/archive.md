@@ -8,7 +8,10 @@ Other files point here and do not copy it.
 Two decisions, both final:
 
 - **Prefix.** Every archived repo is named `ARCHIVE-<old-name>`. One prefix, no exceptions. The old
-  profile repo becomes `ARCHIVE-<owner>` (the owner name after the prefix). The earlier `RETIRED-` prefix is replaced everywhere.
+  profile repo becomes `ARCHIVE-<owner>` (the owner name after the prefix).
+  Existing `RETIRED-*` names are temporary keep-archived labels recorded in the
+  MAIOS registry `archived.other` list. Renaming them to `ARCHIVE-*` needs a
+  separate owner letter naming each repo; do not rename in a catalog metadata pass.
 - **Never delete.** An archived repo is never deleted. Deleting loses the record (next section).
   Isolation, not deletion, is how an archived repo stays out of the way.
 
@@ -73,7 +76,7 @@ by hand, then applies these settings by hand:
 
 | Part | Rule |
 | --- | --- |
-| Name | `ARCHIVE-<old-name>`. Keep the old name after the prefix, even if it breaks the naming rules. A leading `RETIRED-` is dropped. |
+| Name | Target name is `ARCHIVE-<old-name>`; keep the old name after the prefix, even if it breaks the naming rules. Repos still named `RETIRED-*` stay that way until an owner letter authorizes rename (Prefix above). On that authorized rename, drop a leading `RETIRED-` and prefix the remainder with `ARCHIVE-`. |
 | Archived flag | On. The archive step comes last. The repo is then read-only. |
 | Topics | `archived`, `do-not-use`, `stats-only`, `origin-<year>` (the year the repo was created), then the old content topics. Drop old status topics such as `retired`, `frozen`, `demo`, `active`. Maximum 20. |
 | Description | `[ARCHIVE]`, a space, then the old description, at most 350 characters. No description? `[ARCHIVE] No description was recorded`. |

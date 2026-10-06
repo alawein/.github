@@ -62,6 +62,13 @@ with visibility would need a rename.
 Decision: a TypeScript lab uses the `typescript` starter with a `-lab` name. Why:
 one more starter for a rare case is more upkeep than it saves.
 
+## Family
+
+Family is domain metadata, not a folder and not a class. The single assignment
+list lives in MAIOS `profiles/repos.json` (`families`, per-repo `family`,
+`family_tie_break`). This page does not restate the list. Path stays
+`<owner>/<repo>`; do not nest repos under family folders.
+
 ## Visibility
 
 - Default is private. Make a repo public only when someone else should read or
