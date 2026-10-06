@@ -336,6 +336,33 @@ any workflow in this repo or in a caller repo.
   ruff and pytest. Inputs: `python-version`, `installer`, `uv-version`,
   `requirements-file`, `working-directory`, `run-lint`, `run-test`.
 
+## Keeping CI lean
+
+Runner time is rounded up per job, and every run of every PR uses it. These
+rules apply to any caller of the kit.
+
+- Rerun on `edited` only what reads the PR title or body. Kit callers keep
+  `edited` because the title and policy gates live in the same workflow. A repo
+  with no such gates should leave it out.
+- Trigger on `push` for `main` only, plus `pull_request` for `main`, so a branch
+  with an open PR does not run twice.
+- Cancel superseded runs with a `concurrency` group per PR and
+  `cancel-in-progress` on `pull_request` events. Never cancel `main` pushes or
+  scheduled runs.
+- Set `timeout-minutes` on every job, sized to the slowest normal run plus a
+  margin.
+- Prefer fewer jobs. Each job repeats setup and rounds up to a whole minute, so
+  fold small steps together unless they must report separate required check
+  names.
+- Do not put workflow-level `paths` filters on workflows that produce required
+  checks. A skipped workflow leaves its required check pending. Skip inside a
+  job, or use an always-running aggregator job.
+- Run browser, end-to-end and performance suites weekly or on demand unless a
+  PR needs them. Install only the browser the suite uses.
+- Skip heavy jobs that are not required while a PR is a draft. Add
+  `ready_for_review` to `pull_request.types` so they run when it is ready.
+- Cache dependencies and keep artifact retention short, 7 to 14 days.
+
 ## Decisions
 
 - Decision: gate jobs carry the required check names. Why: a called job reports
