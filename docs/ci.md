@@ -15,8 +15,7 @@ steps to add one by hand.
    `check-links-nightly.yml` from the same folder beside it.
 3. Set the pin after each `@` to a full commit SHA of `alawein/.github` (see
    "After the first commit" and "Bump a pin").
-4. Copy the matching `templates/dependabot-*.yml` to `.github/dependabot.yml`.
-5. Run `scripts/setup-repo.ps1`. It requires the check names that `ci.yml`
+4. Run `scripts/setup-repo.ps1`. It requires the check names that `ci.yml`
    defines.
 
 For the approved private TypeScript hub `alawein/career-engine`, the local
@@ -31,12 +30,12 @@ CI run.
 
 ## Which workflow runs where
 
-| Class | Stub | Dependabot file | Test check |
-| --- | --- | --- | --- |
-| profile, docs | `docs.yml` | `dependabot-actions.yml` | none |
-| tool in TypeScript | `node.yml` | `dependabot-npm.yml` | `node-ci` |
-| tool in Python, lab | `python.yml` | `dependabot-pip.yml` | `python-ci` |
-| site | `site.yml` | `dependabot-npm.yml` | `node-ci` |
+| Class | Stub | Test check |
+| --- | --- | --- |
+| profile, docs | `docs.yml` | none |
+| tool in TypeScript | `node.yml` | `node-ci` |
+| tool in Python, lab | `python.yml` | `python-ci` |
+| site | `site.yml` | `node-ci` |
 
 | Reusable workflow | Check it backs | Runs |
 | --- | --- | --- |
@@ -265,10 +264,8 @@ This release preserves `require-test` and paired local/external link inputs, and
   unpinned actions (`sha_pinning_required`). `setup-repo.ps1
   -EnableShaPinning` does it.
 - [pins.md](pins.md) lists every pin, the date it was verified, and its source.
-- Dependabot (`github-actions` ecosystem, weekly, 7-day cooldown) proposes
-  bumps as one grouped PR. This repo's own `.github/dependabot.yml` does the
-  same for the workflows here, caps version PRs at one, and explicitly groups
-  version updates. Security updates are outside that limit and cooldown.
+- Dependabot is off. No bot proposes bumps and no repo carries a
+  `dependabot.yml`. Bump pins by hand, in their own PR.
 - Two pins are not `uses:` lines and need a manual bump: the actionlint version
   and sha256 in `lint-actions.yml`, and the default `uv-version` in
   `python-ci.yml`. The list is in `pins.md`.
@@ -310,7 +307,6 @@ any workflow in this repo or in a caller repo.
   with that.
 - A first-time contributor's run waits for the owner's approval. Keep the repo
   setting on "Require approval for first-time contributors".
-- Dependabot PRs get a read-only token too. That is enough here.
 
 ## Defaults worth knowing
 

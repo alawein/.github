@@ -99,8 +99,8 @@ launch.
   "not doing". It can be reopened. An issue list that only grows stops being
   read.
 
-Decision: Monday for the weekly review. Why: Dependabot opens its PRs on
-Monday, so the review clears them in the same sitting.
+Decision: Monday for the weekly review. Why: it starts the week with one fixed
+sitting for open PRs, alerts and failed runs.
 
 ## GitHub and Notion
 
@@ -137,7 +137,7 @@ Monday. Thirty minutes. Do it in this order.
    say why it waits.
 3. Doing column: anything there more than a week? Split it, finish it, or drop
    it.
-4. Dependabot PRs across repos: merge, or close with a reason. Method is in
+4. Dependency updates you started by hand: finish or close with a reason. Method is in
    [delivery.md](delivery.md), "Review a bump".
 5. Security: look at the Security tab alerts of each active repo.
 6. Failed runs: `gh run list --status failure --limit 20` in active repos. Fix

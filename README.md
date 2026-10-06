@@ -42,7 +42,7 @@ run the individual tasks. The Markdown runner is pinned to
 | [Brand](docs/brand.md) and [archive](docs/archive.md) | Repo images and retirement rules |
 | [Vercel](docs/vercel.md) | Site deployment and domain guidance |
 | [Starters](templates/starters) | Minimal docs, TypeScript, Python, site, and lab repos |
-| [Templates](templates) | Workflows, Dependabot, ownership, README, and review files |
+| [Templates](templates) | Workflows, ownership, README, and review files |
 | [Issue forms](.github/ISSUE_TEMPLATE) | Shared bug, feature, and task forms with chooser settings |
 | [Scripts](scripts) and [rulesets](rulesets) | Local setup and GitHub policy definitions |
 | [.github/workflows](.github/workflows) | Reusable checks and this kit's own CI |

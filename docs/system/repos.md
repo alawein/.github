@@ -39,7 +39,7 @@ and the banner. Visibility is a separate choice (see "Visibility").
 | archive | A retired repo, read only, named `ARCHIVE-<old-name>` | none | none | none | none |
 
 Only the site class uses Vercel. Archive rules are in
-[archive.md](../archive.md). The stubs, Dependabot files, and what each check
+[archive.md](../archive.md). The stubs and what each check
 does are in [ci.md](../ci.md).
 
 How to choose. Stop at the first yes.
@@ -87,10 +87,12 @@ applies and what does not.
 | Required signed commits | Yes | Left out on purpose, because a tool that pushes unsigned would be blocked | Sign commits locally anyway (`commit.gpgsign true`) |
 | Required checks | Yes | Only with `-Strict`, and only when `ci.yml` defines the jobs | Run `setup-repo.ps1 -Strict` again after CI exists |
 | Secret scanning and push protection | Yes, free | Plan-dependent | Run a local scanner before every push (below) |
-| CodeQL and dependency review | Yes, free | Plan-dependent | None. Keep Dependabot on |
-| Dependabot alerts and security updates | Yes | Yes, free | Not needed |
+| CodeQL and dependency review | Yes, free | Plan-dependent | None. Keep alerts on |
+| Dependabot alerts (passive, no PRs) | Yes | Yes, free | Not needed |
 | Private vulnerability reporting, first-time contributor approval | Yes | No such setting | `SECURITY.md` tells reporters to open a task issue with no details |
 | Merge settings, Actions token settings, labels | Yes | Yes | Not needed |
+
+Dependabot is off by owner decision 2026-10-06; keep vulnerability alerts passive, no automated update PRs.
 
 Check your plan under Settings, Billing. `setup-repo.ps1 -Apply` turns on
 private vulnerability reporting for a public repo and reads the fork PR
@@ -273,7 +275,6 @@ comes filled in for the class, so edit it to fit the repo.
 | task list | `package.json` scripts or a `justfile` with `lint`, `test`, `build`, `check`, `fix` |
 | lockfile | npm and uv starters create `package-lock.json` or `uv.lock` on first install; commit it. Node CI runs `npm ci`. Python CI runs `uv sync --locked` when `installer` is `uv`. Docs/profile starters have no package lockfile |
 | `.github/workflows/ci.yml` | A stub that calls the shared workflows. Its pin is a full commit SHA of the kit |
-| `.github/dependabot.yml` | Weekly grouped updates for the package manager and for Actions |
 | `.github/CODEOWNERS` | The owner of every path |
 | one passing test | Even in a docs repo the link check plays this part |
 | `AGENTS.md` | Short instructions for AI coding agents, from `templates/agent/AGENTS.template.md`, filled in for the class |
@@ -434,7 +435,7 @@ software.
 
 ## Keeping starters current
 
-The starters hold copies of the kit's workflow stubs, dependabot files,
+The starters hold copies of the kit's workflow stubs,
 CODEOWNERS, README template, and the agent files in `templates/agent/`
 (`AGENTS.md`, `CLAUDE.md`, `lessons.md`). When one of those changes, copy it
 into the actual starters in the same pull request, then test real generator

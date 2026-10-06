@@ -89,9 +89,8 @@ Why: memory fades, and a check does not.
   `feat/build`, `fix/label-join`, `docs/readme-links`.
 - Types: feat, fix, docs, chore, refactor, test.
 - Topics have no empty hyphen segments or calendar dates. Agent-prefixed
-  branches such as `codex/task` fail the opt-in metadata check. Only the exact
-  `dependabot[bot]` author of type `Bot` on a generated `dependabot/` branch is
-  exempt from human branch naming and linkage.
+  branches such as `codex/task` fail the opt-in metadata check. No author is
+  exempt from branch naming and linkage.
 - One agent per branch. Run parallel agents in separate Git worktrees
   (extra working folders on the same repo), each on its own branch, and keep
   them on different files where you can.
@@ -465,18 +464,10 @@ here uses it.
 
 ## Dependencies
 
-Dependabot (GitHub's bot that opens PRs for new versions) runs in every repo.
+Dependabot (GitHub's bot that opens PRs for new versions) is off in every repo by
+owner decision 2026-10-06. No bot opens update PRs. Update dependencies by hand, on
+purpose, one topic per PR.
 
-- Schedule: weekly, Monday, for npm or Python packages and for GitHub Actions.
-- A new version waits 7 days before Dependabot proposes it (the cooldown). Most
-  bad releases are pulled in the first week.
-- Minor and patch updates arrive as one grouped PR per ecosystem. A major
-  update arrives as its own PR.
-- Security updates arrive at once. The cooldown does not delay them.
-- The kit caps open version PRs at one per configured ecosystem and explicitly
-  marks its minor/patch group as version updates. Security PRs are outside that
-  cap. This is not an atomic global three-waiting-PR limit. If arrivals exceed it,
-  pause new promotion and ask the owner to resolve the backlog without stacks.
 - Review release notes and the lockfile diff, including changed install scripts
   and new transitive dependencies; run affected consumer checks before promoting
   an update. Do not add dependencies, scopes or test skips to make an update pass.
@@ -487,7 +478,7 @@ Dependabot (GitHub's bot that opens PRs for new versions) runs in every repo.
 - Packages are pinned by a committed lockfile (`package-lock.json`, `uv.lock`).
   CI installs exactly what the lockfile says (`npm ci`, `uv sync --locked`).
   Ranges in the manifest are fine when the lockfile is committed.
-- Tools that Dependabot cannot bump (a downloaded binary, a Docker image tag)
+- Tools that are not packages (a downloaded binary, a Docker image tag)
   are pinned by version and checksum, and listed in the repo's pins file.
 - Runtimes (Node, Python) move once a year in their own PR, when the old one is
   within six months of end of life.
@@ -506,7 +497,7 @@ Dependabot (GitHub's bot that opens PRs for new versions) runs in every repo.
    stop and look at the package's page before merging.
 4. Stuck for a week: propose closure or a documented pin for owner approval.
 
-Decision: Dependabot creation never grants merge permission. Each update needs
+Decision: an update never grants merge permission. Each update needs
 checks, current review and a selected task mode covering its scope.
 
 ## Security baseline
@@ -523,7 +514,7 @@ checks, current review and a selected task mode covering its scope.
 
 ### Every repo
 
-- Dependabot alerts and security updates on.
+- Dependabot alerts on (passive, no PRs). Security update PRs and version updates off.
 - Actions token default is read-only (`contents: read`). Raise a permission per
   job, never for the whole file.
 - Workflows never use `pull_request_target`, which runs with secrets, and never
