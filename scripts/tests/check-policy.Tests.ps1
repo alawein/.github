@@ -52,8 +52,8 @@ try { Get-CheckPolicy -Repo alawein/career-engine -Class tool -Language typescri
 if (-not $rejected) { throw 'hub accepted optional policy' }
 Write-Host 'PASS: optional helper preserves legacy classes and rejects hub'
 
-$existing = '{"rules":[{"type":"required_status_checks","parameters":{"strict_required_status_checks_policy":true,"do_not_enforce_on_create":false,"required_status_checks":[{"context":"check","integration_id":42}]}}]}' | ConvertFrom-Json
-$desired = '{"rules":[{"type":"required_status_checks","parameters":{"strict_required_status_checks_policy":false,"do_not_enforce_on_create":true,"required_status_checks":[{"context":"check"}]}}]}' | ConvertFrom-Json
+$existing = '{"target":"branch","conditions":{"ref_name":{"include":["refs/heads/main"],"exclude":[]}},"rules":[{"type":"required_status_checks","parameters":{"strict_required_status_checks_policy":true,"do_not_enforce_on_create":false,"required_status_checks":[{"context":"check","integration_id":42}]}}]}' | ConvertFrom-Json
+$desired = '{"target":"branch","conditions":{"ref_name":{"include":["refs/heads/main"],"exclude":[]}},"rules":[{"type":"required_status_checks","parameters":{"strict_required_status_checks_policy":false,"do_not_enforce_on_create":true,"required_status_checks":[{"context":"check"}]}}]}' | ConvertFrom-Json
 $merged = Merge-StatusCheckRules $desired $existing
 $parameters = ($merged.rules | Where-Object type -eq required_status_checks).parameters
 if (-not $parameters.strict_required_status_checks_policy -or $parameters.do_not_enforce_on_create -or $parameters.required_status_checks.Count -ne 1 -or $parameters.required_status_checks[0].integration_id -ne 42) { throw 'merge weakened freshness, creation enforcement or an existing producer' }
@@ -64,6 +64,32 @@ if (-not $rejected) { throw 'merge accepted an unknown enforcement boolean' }
 Write-Host 'PASS: strongest status policy and malformed boolean refusal'
 
 $ruleRoot = Join-Path $PSScriptRoot '../../rulesets'
+$scopeDesired = Get-Content -LiteralPath (Join-Path $ruleRoot 'main-public.json') -Raw | ConvertFrom-Json
+$scopeExisting = Get-Content -LiteralPath (Join-Path $ruleRoot 'main-public.json') -Raw | ConvertFrom-Json
+$scopeExisting.conditions.ref_name.include += 'refs/heads/release/*'
+$scopeMerged = Merge-StatusCheckRules $scopeDesired $scopeExisting
+if (($scopeMerged.conditions.ref_name.include -join ',') -cne 'refs/heads/main,refs/heads/release/*') { throw 'setup dropped an existing protected release ref' }
+$scopeExisting.conditions.ref_name.include = @('refs/heads/release/*')
+$scopeDesired = Get-Content -LiteralPath (Join-Path $ruleRoot 'main-public.json') -Raw | ConvertFrom-Json
+$scopeMerged = Merge-StatusCheckRules $scopeDesired $scopeExisting
+if (($scopeMerged.conditions.ref_name.include -join ',') -cne 'refs/heads/release/*,refs/heads/main') { throw 'setup failed to add baseline scope while retaining an existing ref' }
+foreach ($badScope in @(
+  '{"target":"branch","conditions":{"ref_name":{"include":["refs/heads/main"],"exclude":["refs/heads/release/*"]}}}',
+  '{"target":"branch","conditions":{"ref_name":{"include":["refs/heads/main"],"exclude":[]},"repository_name":{"include":["example"]}}}',
+  '{"target":"branch","conditions":{"ref_name":{"include":"refs/heads/main","exclude":[]}}}',
+  '{"target":"branch","conditions":{"ref_name":{"include":["refs/heads/main"],"exclude":null}}}',
+  '{"target":"branch","conditions":{"ref_name":{"include":["refs/heads/main"],"exclude":[],"unknown":true}}}',
+  '{"target":"branch","conditions":{"ref_name":{"include":["~DEFAULT_BRANCH"],"exclude":[]}}}',
+  '{"target":"branch","conditions":{"ref_name":{"include":["~ALL"],"exclude":[]}}}',
+  '{"target":"branch","conditions":{"ref_name":{"include":["refs/tags/v*"],"exclude":[]}}}',
+  '{"target":"tag","conditions":{"ref_name":{"include":["refs/tags/v*"],"exclude":[]}}}'
+)) {
+  $rejected = $false
+  try { Get-RulesetRefScope ($badScope | ConvertFrom-Json) -ExpectedTarget branch | Out-Null } catch { $rejected = $true }
+  if (-not $rejected) { throw "accepted an incompatible or malformed scope: $badScope" }
+}
+Write-Host 'PASS: existing additional protected refs retained'
+
 foreach ($spec in @(
   @{ File='main-hub.json'; Checks='check'; Rules='deletion,non_fast_forward,required_status_checks' },
   @{ File='main-site.json'; Checks='markdown-lint,link-check,actionlint,pr-title,node-ci'; Rules='deletion,non_fast_forward,required_linear_history,pull_request,required_status_checks' }
@@ -224,6 +250,10 @@ try {
 
   $extraChecks = Invoke-PolicyScript verify-repo.ps1 checks-extra-bound alawein/example tool standard
   if ($extraChecks.Code -ne 0 -or $extraChecks.Out -notmatch 'PASS[^\r\n]*required checks[^\r\n]*browser-tests') { throw "baseline plus extra bound checks failed verification: $($extraChecks.Out)" }
+  foreach ($excludedScope in @('checks-scope-exclude-main', 'checks-scope-exclude-all')) {
+    $excluded = Invoke-PolicyScript verify-repo.ps1 $excludedScope alawein/example tool standard
+    if ($excluded.Code -ne 1 -or $excluded.Out -notmatch 'FAIL[^\r\n]*main-protection ref') { throw "verification accepted an excluded protected main: $($excluded.Out)" }
+  }
   $missingCheck = Invoke-PolicyScript verify-repo.ps1 checks-missing-baseline alawein/example tool standard
   if ($missingCheck.Code -ne 1 -or $missingCheck.Out -notmatch 'FAIL[^\r\n]*required checks') { throw 'missing baseline passed verification' }
   $preserve = Invoke-PolicyScript setup-repo.ps1 checks-extra-bound alawein/example tool standard
@@ -233,17 +263,18 @@ try {
   $status = $planned.rules | Where-Object type -eq required_status_checks
   $checks = @($status.parameters.required_status_checks)
   if ($checks.Count -ne 7 -or @($checks | Where-Object { $_.context -ne 'browser-tests' -and $_.integration_id -ne 15368 }).Count -or @($checks | Where-Object { $_.context -eq 'browser-tests' -and $_.integration_id -in @(99,100) }).Count -ne 2 -or -not $status.parameters.strict_required_status_checks_policy) { throw 'setup weakened additional checks, producer bindings or strictness' }
+  if (($planned.conditions.ref_name.include -join ',') -cne 'refs/heads/main,refs/heads/release/*' -or @($planned.conditions.ref_name.exclude).Count -ne 0) { throw 'setup weakened existing protected ref scope' }
   $env:FAKE_GH_RULESET = Join-Path $env:TEMP 'kit-check-policy-ruleset.json'
   try {
     Set-Content -LiteralPath $env:FAKE_GH_RULESET -Value $firstPlan
     $repeat = Invoke-PolicyScript setup-repo.ps1 checks-extra-bound alawein/example tool standard
     if ($repeat.Code -ne 0 -or $repeat.Out -notmatch '(?m)^DRY\s+gh api -X PUT repos/alawein/example/rulesets/3 --input -\s+<-\s+(.+)$' -or $Matches[1] -cne $firstPlan) { throw 'repeated setup changed the preserved ruleset' }
   } finally { Remove-Item Env:FAKE_GH_RULESET -ErrorAction SilentlyContinue }
-  foreach ($bad in @('checks-list-unavailable', 'checks-list-malformed', 'checks-list-empty-object', 'checks-detail-unavailable', 'checks-detail-malformed', 'checks-detail-bad-json', 'checks-binding-malformed')) {
+  foreach ($bad in @('checks-list-unavailable', 'checks-list-malformed', 'checks-list-empty-object', 'checks-detail-unavailable', 'checks-detail-malformed', 'checks-detail-bad-json', 'checks-binding-malformed', 'checks-scope-excluded', 'checks-scope-exclude-main', 'checks-scope-exclude-all', 'checks-scope-unsupported', 'checks-scope-malformed', 'checks-scope-target')) {
     $unreadable = Invoke-PolicyScript setup-repo.ps1 $bad alawein/example tool standard
     if ($unreadable.Code -ne 2 -or $unreadable.Out -notmatch 'STOP' -or $unreadable.Out -match '(?m)^DRY\s+gh api -X') { throw "unreadable existing rulesets allowed a write plan: $bad $($unreadable.Out)" }
   }
-  Write-Host 'PASS: extra checks and bindings retained, missing baseline fails, unreadable preflight stops, repeated setup stable'
+  Write-Host 'PASS: extra checks, bindings and refs retained, missing baseline fails, unreadable preflight stops, repeated setup stable'
   $bound = [pscustomobject]@{context='browser-tests';integration_id=99}
   if (-not (Test-StatusCheckRequirement $bound @($bound)) -or (Test-StatusCheckRequirement $bound @([pscustomobject]@{context='browser-tests';integration_id=100})) -or (Test-StatusCheckRequirement $bound @([pscustomobject]@{context='browser-tests'})) -or (Test-StatusCheckRequirement $bound @([pscustomobject]@{context='Browser-tests';integration_id=99}))) { throw 'producer comparison accepted the wrong producer, unbound check or changed context' }
   if (-not (Test-StatusCheckRequirement ([pscustomobject]@{context='browser-tests'}) @($bound))) { throw 'an unbound baseline rejected a stronger producer binding' }

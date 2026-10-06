@@ -66,8 +66,45 @@ function Test-StatusCheckRequirement {
   return $false
 }
 
+function Get-RulesetRefScope {
+  param($Ruleset, [string]$ExpectedTarget)
+  if ($Ruleset.target -isnot [string] -or $Ruleset.target -cnotin @('branch', 'tag') -or ($ExpectedTarget -and $Ruleset.target -cne $ExpectedTarget)) {
+    throw 'ruleset has an unsupported or incompatible target'
+  }
+  $conditions = $Ruleset.conditions
+  if ($conditions -isnot [pscustomobject] -or $conditions.PSObject.Properties.Name -cnotcontains 'ref_name' -or @($conditions.PSObject.Properties.Name | Where-Object { $_ -cne 'ref_name' }).Count) {
+    throw 'ruleset must contain only supported ref_name conditions'
+  }
+  $scope = $conditions.ref_name
+  if ($scope -isnot [pscustomobject] -or @($scope.PSObject.Properties.Name | Where-Object { $_ -cnotin @('include', 'exclude') }).Count) {
+    throw 'ruleset has an unsupported ref_name condition'
+  }
+  foreach ($name in @('include', 'exclude')) {
+    if ($scope.PSObject.Properties.Name -cnotcontains $name -or $scope.$name -isnot [array]) { throw "ruleset ref_name $name must be an array" }
+  }
+  if ($scope.include.Count -eq 0) { throw 'ruleset ref_name include must not be empty' }
+  # Exclusions can overlap the baseline or additional refs. Do not guess at
+  # fnmatch semantics or silently remove them during a whole-repo setup.
+  if ($scope.exclude.Count -ne 0) { throw 'ruleset ref exclusions require an explicit scope reconciliation' }
+  $prefix = if ($Ruleset.target -eq 'branch') { 'refs/heads/' } else { 'refs/tags/' }
+  foreach ($pattern in $scope.include) {
+    if ($pattern -isnot [string] -or $pattern.Length -le $prefix.Length -or -not $pattern.StartsWith($prefix, [StringComparison]::Ordinal) -or $pattern.Trim() -cne $pattern -or $pattern -match '[\r\n]') {
+      throw 'ruleset has an unsupported or malformed ref include pattern'
+    }
+  }
+  return $scope
+}
+
 function Merge-StatusCheckRules {
   param($Desired, $Existing)
+  $desiredScope = Get-RulesetRefScope $Desired
+  $currentScope = Get-RulesetRefScope $Existing -ExpectedTarget $Desired.target
+  $mergedIncludes = @($currentScope.include)
+  foreach ($pattern in $desiredScope.include) {
+    if ($mergedIncludes -cnotcontains $pattern) { $mergedIncludes += $pattern }
+  }
+  $Desired.conditions = $Existing.conditions | ConvertTo-Json -Depth 30 | ConvertFrom-Json
+  $Desired.conditions.ref_name.include = $mergedIncludes
   $currentChecks = @(Get-StatusCheckRequirements $Existing)
   $baselineChecks = @(Get-StatusCheckRequirements $Desired)
   $currentStatus = $Existing.rules | Where-Object type -eq required_status_checks | Select-Object -First 1

@@ -55,6 +55,7 @@ if ($path -match '/rulesets/([123])$') {
       }
     }
     if ($env:FAKE_GH_CASE -in @('checks-extra-bound', 'checks-missing-baseline', 'checks-binding-malformed')) {
+      $o.conditions.ref_name.include += 'refs/heads/release/*'
       $status = $o.rules | Where-Object type -eq required_status_checks
       foreach ($check in $status.parameters.required_status_checks) { $check | Add-Member integration_id 15368 }
       $status.parameters.required_status_checks += @([pscustomobject]@{context='browser-tests';integration_id=99}, [pscustomobject]@{context='browser-tests';integration_id=100})
@@ -62,6 +63,12 @@ if ($path -match '/rulesets/([123])$') {
       if ($env:FAKE_GH_CASE -eq 'checks-missing-baseline') { $status.parameters.required_status_checks = @($status.parameters.required_status_checks | Where-Object context -ne node-ci) }
       if ($env:FAKE_GH_CASE -eq 'checks-binding-malformed') { $status.parameters.required_status_checks[0].integration_id = 'unknown' }
     }
+    if ($env:FAKE_GH_CASE -eq 'checks-scope-excluded') { $o.conditions.ref_name.exclude = @('refs/heads/release/*') }
+    if ($env:FAKE_GH_CASE -eq 'checks-scope-exclude-main') { $o.conditions.ref_name.exclude = @('refs/heads/main') }
+    if ($env:FAKE_GH_CASE -eq 'checks-scope-exclude-all') { $o.conditions.ref_name.exclude = @('~ALL') }
+    if ($env:FAKE_GH_CASE -eq 'checks-scope-unsupported') { $o.conditions | Add-Member repository_name ([pscustomobject]@{include=@('example')}) }
+    if ($env:FAKE_GH_CASE -eq 'checks-scope-malformed') { $o.conditions.ref_name.include = 'refs/heads/main' }
+    if ($env:FAKE_GH_CASE -eq 'checks-scope-target') { $o.target = 'tag' }
   }
   else {
     $ruleFile = if ($env:FAKE_GH_CASE -in @('site-ready', 'site-wrong')) { 'main-site.json' } else { 'main-private.json' }

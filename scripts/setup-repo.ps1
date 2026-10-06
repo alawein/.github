@@ -15,7 +15,8 @@
   Safe to run again: settings and topics are replaced with the same values,
   labels and rulesets are matched by name and updated in place. Existing
   rulesets are validated before any write; extra check requirements, producer
-  bindings and parameterized protections are retained. Requires PowerShell 7.
+  bindings, additional protected refs and parameterized protections are retained.
+  Exclusions and unsupported scope shapes stop before writing. Requires PowerShell 7.
   It never deletes anything; removal requires named owner approval.
   At the end of an -Apply run it calls verify-repo.ps1 to read everything back.
 
@@ -299,6 +300,8 @@ foreach ($name in @('main-protection', 'main-guard', 'release-tags')) {
     $parsed = $detail.Out | ConvertFrom-Json -ErrorAction Stop
     if ($parsed.name -cne $name) { throw 'ruleset name does not match the list' }
     [void]@(Get-StatusCheckRequirements $parsed)
+    $expectedTarget = if ($name -eq 'release-tags') { 'tag' } else { 'branch' }
+    [void](Get-RulesetRefScope $parsed -ExpectedTarget $expectedTarget)
   } catch { Write-Host ("STOP: malformed existing ruleset ${name}: " + $_.Exception.Message); exit 2 }
   $existingRulesets[$name] = $parsed
 }

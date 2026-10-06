@@ -177,8 +177,12 @@ required checks and reports their GitHub App producer bindings. Setup reads
 and validates the paginated existing rulesets before its first settings write.
 Unavailable or malformed configuration stops the run. A ruleset update retains
 existing requirements, complete producer records, strict check freshness,
-additional rule types and existing parameterized protections, then adds any
-missing baseline checks. Repeated setup keeps that merged configuration stable.
+additional rule types, existing parameterized protections and additional
+protected refs, then adds any missing baseline checks and refs. Ref scopes
+must use arrays of matching `refs/heads/` or `refs/tags/` patterns with no
+exclusions. Unsupported conditions, special selectors, exclusions or mismatched
+targets stop before any write and require a scoped reconciliation. Repeated
+setup keeps that merged configuration stable.
 An unbound baseline does not replace a check already bound to an app.
 
 Setup plans whole-repo settings, labels and rulesets; it is for owner-approved
