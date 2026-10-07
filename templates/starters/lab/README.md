@@ -6,6 +6,10 @@
 
 {{description}}
 
+![Project category: Research code](assets/project-label.svg)
+
+<!-- Follow the README writing and labels section in alawein/.github/docs/brand.md. Add only useful labels or verified live badges. -->
+
 ## Question
 
 The one question this lab tries to answer, in a sentence. If you cannot write

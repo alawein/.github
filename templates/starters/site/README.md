@@ -6,6 +6,10 @@
 
 {{description}}
 
+![Project category: Website](assets/project-label.svg)
+
+<!-- Follow the README writing and labels section in alawein/.github/docs/brand.md. Add only useful labels or verified live badges. -->
+
 ## Quick start
 
 ```sh

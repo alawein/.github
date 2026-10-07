@@ -10,7 +10,10 @@ Banner: make banner-name-night.png and banner-name-dawn.png with the brand gener
 (see docs/brand.md) and put them in assets/. The dawn image shows in light
 mode and the night image everywhere else.
 
-Keep it short. No hosted widgets, no badge walls, no stats cards.
+Keep it short. Follow docs/brand.md#readme-writing-and-labels.
+Use two to four meaningful labels or verified badges. No badge walls or stats cards.
+Use a text H1 if the banner does not carry the project name.
+The first screen explains purpose, useful output, and the shortest way to try it.
 -->
 <picture>
   <source media="(prefers-color-scheme: light)" srcset="assets/banner-name-dawn.png">
@@ -18,6 +21,8 @@ Keep it short. No hosted widgets, no badge walls, no stats cards.
 </picture>
 
 {{One paragraph. What this does and why it exists, in two or three plain sentences. Start with what it does. Say who it is for. No adjectives that sell.}}
+
+<!-- Add a compact label row here. Copy real workflow badges only after the repository exists. Do not fabricate passing status. -->
 
 ## Quick start
 
@@ -27,6 +32,10 @@ Keep it short. No hosted widgets, no badge walls, no stats cards.
 ```
 
 {{One line on what the reader should see when it works.}}
+
+## What it does
+
+{{Two or three concrete capabilities, with inputs and outputs. Include a material limitation when it affects use. Omit this section if the introduction and example already explain enough.}}
 
 ## Checks
 

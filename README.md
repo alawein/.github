@@ -10,6 +10,8 @@ files, reusable workflows, rulesets, scripts, and repo starters. This README is
 the entry point for using and maintaining the kit. Shared community files
 become defaults for repositories that do not carry their own copy.
 
+[![Documentation checks](https://github.com/alawein/.github/actions/workflows/ci.yml/badge.svg?branch=main&event=push)](https://github.com/alawein/.github/actions/workflows/ci.yml)
+
 ## Quick start
 
 Install PowerShell, GitHub CLI, and [just](https://github.com/casey/just).
