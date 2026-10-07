@@ -6,6 +6,10 @@
 
 {{description}}
 
+![Format: Markdown](assets/project-label.svg)
+
+<!-- Follow the README writing and labels section in alawein/.github/docs/brand.md. Add only useful labels or verified live badges. -->
+
 ## What it covers
 
 - [Overview](docs/overview.md)

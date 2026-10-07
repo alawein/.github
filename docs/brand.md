@@ -19,8 +19,78 @@ bytes without regeneration.
 
 The README embeds the banner pair in a `picture` element at `width="760"`. The
 starter is [README.template.md](../templates/README.template.md). It has no H1
-because the banner carries the name. It has no hosted widgets and no badge
-wall. All images are committed files.
+because the banner carries the name. Use a text heading when the banner does
+not carry a name. Keep artwork committed locally; the narrow badge exception
+below permits live workflow status. No badge walls or hosted stats widgets.
+
+## README writing and labels
+
+A README should make the project understandable and usable in its first screen.
+Keep the approved Night Market artwork unchanged. Color belongs in a small row
+of useful labels or badges, not decorative headings or a wall of technology logos.
+
+### Structure
+
+1. **Identity:** project name, one plain sentence about what it does and who benefits.
+2. **At a glance:** two to four relevant labels or badges. Omit anything unverified.
+3. **Try it:** the shortest working example, prerequisites, and expected result.
+4. **Understand it:** a few capabilities and the limitations that affect real use.
+5. **Go deeper:** links to setup, checks, architecture, contribution, and license details.
+
+Adapt the structure to the repository. A profile introduces the person and
+selected work, with a clear contact path. A lab states its question and how to
+reproduce the result. A docs repository gives readers a short route to its guides.
+A private operating workspace links to its actual owners and useful entry points.
+Do not add empty sections just to match a template.
+
+### Writing
+
+Use short, connected sentences and active verbs. Lead with the useful outcome,
+then explain how it works. Give concrete inputs, outputs, and examples. Prefer
+three strong points to an exhaustive feature list. Put implementation detail in
+the linked documentation when it interrupts the reader's first use.
+
+Avoid sales adjectives, repeated claims, noun piles, publication lists in personal
+introductions, and unsupported authority signals. In the personal profile, lead
+with AI systems, scientific computing, mathematical modeling, simulation, and
+research software. Research background supports that identity. Keep named papers
+and accurate author order in the bibliography, not the profile pitch. Citation
+counts and paper counts are not branding badges. Concrete applications are useful.
+
+### Labels, badges, topics, and tags
+
+| Surface | Purpose | Guidance |
+| --- | --- | --- |
+| README label | Identify a domain, language, or project stage | Use readable text on a restrained solid color; link to relevant evidence or documentation |
+| Status badge | Report changing state | Use the actual workflow and default branch; link to the run list, never a hand-painted passing claim |
+| Repository topic | Help people discover the project | Choose a small, accurate set for purpose, domain, and language; avoid broad keyword stuffing |
+| Issue/PR label | Organize work | Use the existing [canonical labels](../templates/labels.yml); keep useful supplemental labels |
+| Git tag | Identify a release | Use version tags for actual releases; never use them as topic keywords |
+
+Use two or three restrained category colors, with white or dark text that stays
+legible in both themes. Text must carry the meaning without relying on color.
+Give each image concise alt text. Small committed SVG labels are appropriate;
+they do not change the frozen banner artwork. Avoid animated cards, visit
+counters, citation counters, skill-rating bars, and repeated decorative icons.
+
+A live GitHub Actions badge is an explicit exception to the hosted-widget ban.
+Copy the URL from the real workflow, select the default branch, and link the
+badge to its run list. A badge reports that workflow's state, not all quality
+checks or a security guarantee. Private workflow badges are not public proof.
+See [GitHub's badge documentation](https://docs.github.com/en/actions/how-tos/monitor-workflows/add-a-status-badge).
+
+Repository topics are configured on GitHub, not by writing hashtags in a README.
+Topic names are public even on private repositories, so keep them free of private
+project or client identifiers. See [GitHub's topic documentation](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/classifying-your-repository-with-topics).
+A template or local edit does not establish that hosted metadata has changed.
+
+### Starter adoption
+
+The [README template](../templates/README.template.md) and every actual
+[starter README](../templates/starters) carry this pattern. Starter category labels
+describe the supplied project type, never readiness or test success. Add live
+status only after the destination repository and workflow exist. Replace the
+starter description with a precise purpose and show the expected first-use result.
 
 ## Kit public reuse exception
 
