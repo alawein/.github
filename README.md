@@ -1,7 +1,4 @@
-<picture>
-  <source media="(prefers-color-scheme: light)" srcset="assets/banner-dawn.png">
-  <img src="assets/banner-night.png" alt="Pixel-art market street with lit shop windows and paper lanterns" width="760">
-</picture>
+<img src="assets/banner-night.png" alt="Pixel-art market street with lit shop windows and paper lanterns" width="760">
 
 # .github
 

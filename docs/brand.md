@@ -13,12 +13,12 @@ bytes without regeneration.
 | File | Size | Use |
 | --- | --- | --- |
 | `assets/banner-name-night.png` | 1520x600 | README banner, default and dark mode |
-| `assets/banner-name-dawn.png` | 1520x600 | README banner, light mode |
+| `assets/banner-name-dawn.png` | 1520x600 | Optional, explicitly requested light presentation |
 | `assets/social-preview.png` | 1280x640, under 1 MB | Link preview card |
 | `assets/logo-512.png` | 512x512 | Square mark, favicon or avatar source |
 
-The README embeds the banner pair in a `picture` element at `width="760"`. The
-starter is [README.template.md](../templates/README.template.md). It has no H1
+The README embeds the night banner at `width="760"` in both GitHub themes. Keep
+the dawn asset available for an explicitly requested light presentation. The starter is [README.template.md](../templates/README.template.md). It has no H1
 because the banner carries the name. Use a text heading when the banner does
 not carry a name. Keep artwork committed locally; the narrow badge exception
 below permits live workflow status. No badge walls or hosted stats widgets.
@@ -84,6 +84,29 @@ Topic names are public even on private repositories, so keep them free of privat
 project or client identifiers. See [GitHub's topic documentation](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/classifying-your-repository-with-topics).
 A template or local edit does not establish that hosted metadata has changed.
 
+### Dark appearance and compact profiles
+
+Use dark appearance by default for websites and repository artwork. A saved
+visitor choice takes precedence. Keep a visible, accessible light option on
+websites, persist explicit choices when storage is available, and apply the
+choice before first paint. Missing, invalid, or blocked storage falls back to
+dark. If System is offered, store it explicitly so it survives a reload.
+GitHub controls its own page theme; README artwork cannot set a visitor's UI.
+The site starter implements dark and light choices with a dark no-JavaScript fallback.
+
+Personal profiles can use one short positioning line, a compact row of domain
+labels, a separate row of supported stack labels, selected project links, and
+one contact path. Omit repeated names, resume sections, and long collaboration
+pitches. Keep research depth in a short phrase and link to the fuller website.
+Stack labels name technologies actually used and approved for public display;
+private or unverified skills do not become public evidence through a badge.
+
+The owner-authorized personal profile uses a small original pixel mark instead
+of a banner. Custom marks, emoji assets, or restrained animations may be designed
+when requested; this exception does not authorize replacing other frozen art.
+Prefer static marks for the default profile. Any optional motion needs a static
+fallback, readable contrast, and no flashing or distracting indefinite loops.
+
 ### Starter adoption
 
 The [README template](../templates/README.template.md) and every actual
@@ -102,10 +125,10 @@ roofline and monogram selections.
 | Placement | Files | Geometry |
 | --- | --- | --- |
 | Kit README | `assets/banner-night.png`, `assets/banner-dawn.png` | 760x300, displayed at width 760 |
-| Profile README | Existing named night/dawn pair | 1520x600, displayed at width 760 |
+| Profile README | Owner-approved pixel mark | 48x32, displayed at native size |
 | Profile social preview and mark | Existing card and square mark | Preserve their identities and bytes |
 
-The kit uses dawn for light mode and night as fallback, paired with the
+The kit uses night artwork in both themes, paired with the
 `.github` text heading because the shared scenes carry no repository name.
 Keep the scene alt text plain and identical across themes. Do not relabel an
 unlettered scene as a named banner, stretch, smooth, redraw, add glow or neon.

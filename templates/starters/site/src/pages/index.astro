@@ -2,15 +2,69 @@
 const title = "{{display_name}}";
 ---
 
-<html lang="en">
+<html lang="en" data-theme="dark">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{title}</title>
+    <script is:inline>
+      try {
+        if (localStorage.getItem("theme") === "light") {
+          document.documentElement.dataset.theme = "light";
+        }
+      } catch {
+        // Dark remains usable when storage is blocked.
+      }
+    </script>
   </head>
   <body>
     <main>
       <h1>{title}</h1>
+      <button type="button" id="light-theme" aria-pressed="false" hidden>Light mode</button>
     </main>
+    <script>
+      const button = document.querySelector<HTMLButtonElement>("#light-theme")!;
+      const root = document.documentElement;
+      button.hidden = false;
+      button.setAttribute("aria-pressed", String(root.dataset.theme === "light"));
+      button.addEventListener("click", () => {
+        const theme = root.dataset.theme === "light" ? "dark" : "light";
+        root.dataset.theme = theme;
+        button.setAttribute("aria-pressed", String(theme === "light"));
+        try {
+          localStorage.setItem("theme", theme);
+        } catch {
+          // The choice still works for this page view.
+        }
+      });
+    </script>
   </body>
 </html>
+
+<style is:global>
+  :root {
+    color-scheme: dark;
+    background: #111318;
+    color: #e8eaf0;
+  }
+  :root[data-theme="light"] {
+    color-scheme: light;
+    background: #fafafa;
+    color: #20232b;
+  }
+  body {
+    margin: 0;
+    font-family: system-ui, sans-serif;
+    line-height: 1.6;
+  }
+  main {
+    max-width: 64rem;
+    margin-inline: auto;
+    padding: 2rem;
+  }
+  button {
+    font: inherit;
+    padding: 0.5rem 0.75rem;
+    cursor: pointer;
+  }
+</style>
