@@ -1,8 +1,5 @@
 <!-- Add assets/banner-name-night.png and assets/banner-name-dawn.png (see the brand doc in alawein/.github), then delete the banner line in .lycheeignore. -->
-<picture>
-  <source media="(prefers-color-scheme: light)" srcset="assets/banner-name-dawn.png">
-  <img src="assets/banner-name-night.png" alt="{{display_name}}, on a red ribbon over a pixel-art street at night with lit shop windows" width="760">
-</picture>
+<img src="assets/banner-name-night.png" alt="{{display_name}}, on a red ribbon over a pixel-art street at night with lit shop windows" width="760">
 
 {{description}}
 

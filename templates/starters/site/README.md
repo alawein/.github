@@ -1,8 +1,5 @@
 <!-- Add assets/banner-name-night.png and assets/banner-name-dawn.png (see the brand doc in alawein/.github), then delete the banner line in .lycheeignore. -->
-<picture>
-  <source media="(prefers-color-scheme: light)" srcset="assets/banner-name-dawn.png">
-  <img src="assets/banner-name-night.png" alt="{{display_name}}, on a red ribbon over a pixel-art street at night with lit shop windows" width="760">
-</picture>
+<img src="assets/banner-name-night.png" alt="{{display_name}}, on a red ribbon over a pixel-art street at night with lit shop windows" width="760">
 
 {{description}}
 
@@ -19,7 +16,8 @@ npm run dev
 
 `npm install` also writes `package-lock.json`. Commit it: CI installs from it.
 When it works, the dev server prints a local address and the page shows the
-site name.
+site name. Dark is the default; the Light mode button toggles a saved preference.
+With JavaScript disabled, the page stays dark and hides the inactive control.
 
 ## Checks
 

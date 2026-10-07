@@ -7,18 +7,15 @@ heading would repeat it. The alt text of the banner carries the name for
 screen readers and search. Start the first section at H2.
 
 Banner: make banner-name-night.png and banner-name-dawn.png with the brand generator
-(see docs/brand.md) and put them in assets/. The dawn image shows in light
-mode and the night image everywhere else.
+(see docs/brand.md) and put them in assets/. Display night in both themes;
+keep dawn available for an explicitly requested light presentation.
 
 Keep it short. Follow docs/brand.md#readme-writing-and-labels.
 Use two to four meaningful labels or verified badges. No badge walls or stats cards.
 Use a text H1 if the banner does not carry the project name.
 The first screen explains purpose, useful output, and the shortest way to try it.
 -->
-<picture>
-  <source media="(prefers-color-scheme: light)" srcset="assets/banner-name-dawn.png">
-  <img src="assets/banner-name-night.png" alt="{{Repo display name}}, on a red ribbon over a pixel-art street at night with lit shop windows" width="760">
-</picture>
+<img src="assets/banner-name-night.png" alt="{{Repo display name}}, on a red ribbon over a pixel-art street at night with lit shop windows" width="760">
 
 {{One paragraph. What this does and why it exists, in two or three plain sentences. Start with what it does. Say who it is for. No adjectives that sell.}}
 
