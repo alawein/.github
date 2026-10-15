@@ -9,8 +9,8 @@ import tempfile
 import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
-AUDIT_SOURCE_SHA = "97e301fb627c83eb8455ceca442ef752a88a4ac2"
-AUDIT_SOURCE_HASH = "3652aef50697c82d1b95ea4fc6939dd8b31fff83d3455e8a1c84e003c385271f"
+AUDIT_SOURCE_SHA = "78d40f36fd91de86f719202eed8237407acb6f13"
+AUDIT_SOURCE_HASH = "21e8f4a3b22af15a4b2468c99d27f8aad3062f9eca2b4918a3f5098000f18592"
 RELEASE_SHA = "b5f8bc3a916b41e22e5e09ec72f34c01428c2933"
 BASH = (str(Path(os.environ.get("ProgramFiles", "C:/Program Files")) / "Git/bin/bash.exe")
         if os.name == "nt" else shutil.which("bash"))

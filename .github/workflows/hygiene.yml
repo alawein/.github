@@ -41,7 +41,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: alawein/.github
-          ref: 97e301fb627c83eb8455ceca442ef752a88a4ac2
+          ref: 78d40f36fd91de86f719202eed8237407acb6f13
           path: _kit
           persist-credentials: false
       - name: Set up Python
