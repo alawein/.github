@@ -124,9 +124,12 @@ data is `UNKNOWN` and exits nonzero. An empty observed response is distinct from
 unavailable data. `hygiene-weekly.yml` is the kit's weekly/manual caller; a
 schedule declaration does not prove a successful scheduled run.
 
-The existing hosted token may lack [Administration read](https://docs.github.com/en/rest/branches/branch-protection#get-branch-protection)
-for the classic endpoint. Preserve UNKNOWN instead of expanding permissions
-to obtain a complete report. Configured protection is separate from eligible
+The hosted token lacks [Administration read](https://docs.github.com/en/rest/branches/branch-protection#get-branch-protection),
+so it cannot read merge settings, classic branch protection or ruleset bypass
+actors. The workflow passes `--token-limited`: those fields are listed as
+unverifiable and the status is `LIMITED` (exit 0) unless another read is
+UNKNOWN. Permissions stay unexpanded; to verify those fields, run the script
+locally with an admin `GH_TOKEN` and without the flag. Configured protection is separate from eligible
 PR execution, check conclusions, signing, artifact behavior and production.
 The PR-title gate permits a skipped producer only on an actual main-push event.
 
