@@ -3,7 +3,9 @@ import copy
 from datetime import datetime, timezone
 import importlib.util
 from pathlib import Path
+import subprocess
 import unittest
+from unittest import mock
 
 SCRIPT = Path(__file__).resolve().parents[1] / "audit-hygiene.py"
 REPO = "owner/repo"
@@ -11,11 +13,15 @@ ROOT = "repos/" + REPO
 CHECKS = ["markdown-lint", "link-check", "actionlint", "pr-title"]
 
 
-def load():
+def load_module():
     spec = importlib.util.spec_from_file_location("hygiene", SCRIPT)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
-    return module.audit
+    return module
+
+
+def load():
+    return load_module().audit
 
 
 def fixture():
@@ -44,7 +50,8 @@ def classic_fixture(protected=True):
 
 class HygieneTests(unittest.TestCase):
     def setUp(self):
-        self.audit = load()
+        self.module = load_module()
+        self.audit = self.module.audit
         self.data = fixture()
         self.calls = []
 
@@ -221,6 +228,86 @@ class HygieneTests(unittest.TestCase):
                 result = self.audit(self.fetch, REPO)
                 self.assertEqual(result["status"], "UNKNOWN")
                 self.assertIsNone(result["observed"]["squash_only"])
+
+    def test_gh_get_keeps_only_status_and_message(self):
+        failed = subprocess.CompletedProcess([], 1, stdout='{"message": "Branch not protected"}',
+                                             stderr="gh: Branch not protected (HTTP 404)")
+        with mock.patch.object(self.module.subprocess, "run", return_value=failed):
+            with self.assertRaises(self.module.HttpError) as caught:
+                self.module.gh_get(ROOT + "/branches/main/protection")
+        self.assertEqual((caught.exception.status, caught.exception.message), (404, "Branch not protected"))
+        failed = subprocess.CompletedProcess([], 1, stdout="", stderr="connection reset")
+        with mock.patch.object(self.module.subprocess, "run", return_value=failed):
+            with self.assertRaises(OSError) as caught:
+                self.module.gh_get(ROOT)
+        self.assertNotIsInstance(caught.exception, self.module.HttpError)
+
+    def test_branch_not_protected_is_an_observed_absence(self):
+        self.data[ROOT + "/branches/main/protection"] = self.module.HttpError(404, "Branch not protected")
+        result = self.audit(self.fetch, REPO)
+        self.assertEqual(result["status"], "PASS")
+        self.assertEqual(result["coverage"]["classic"]["status"], "OBSERVED")
+        self.assertEqual(result["observed"]["classic_rules"], [])
+        self.assertIn("required_signatures", result["observed"]["effective_rules"])
+
+    def test_other_not_found_classic_stays_unknown(self):
+        self.data[ROOT + "/branches/main/protection"] = self.module.HttpError(404, "Not Found")
+        self.assertEqual(self.audit(self.fetch, REPO)["status"], "UNKNOWN")
+
+    def limit_token(self):
+        for key in ("allow_squash_merge", "allow_merge_commit", "allow_rebase_merge"):
+            del self.data[ROOT][key]
+        del self.data[ROOT + "/rulesets/1?includes_parents=true"]["bypass_actors"]
+        self.data[ROOT + "/branches/main/protection"] = self.module.HttpError(
+            403, "Resource not accessible by integration")
+
+    def test_token_limited_admin_fields_are_unverifiable_not_unknown(self):
+        self.limit_token()
+        result = self.audit(self.fetch, REPO, token_limited=True)
+        self.assertEqual(result["status"], "LIMITED")
+        self.assertEqual(result["unknown"], [])
+        self.assertEqual(len(result["unverifiable"]), 3)
+        self.assertIsNone(result["observed"]["squash_only"])
+        self.assertIsNone(result["observed"]["bypass_actors"])
+        self.assertEqual(result["coverage"]["classic"]["status"], "UNVERIFIABLE")
+
+    def test_admin_field_gaps_stay_unknown_without_the_flag(self):
+        self.limit_token()
+        result = self.audit(self.fetch, REPO)
+        self.assertEqual(result["status"], "UNKNOWN")
+        self.assertEqual(result["unverifiable"], [])
+
+    def test_token_limited_never_hides_malformed_or_failed_reads(self):
+        protection = ROOT + "/branches/main/protection"
+        cases = (lambda: self.data[ROOT].update(allow_squash_merge="true"),
+                 lambda: self.data[ROOT + "/rulesets/1?includes_parents=true"].update(bypass_actors="none"),
+                 lambda: self.data.__setitem__(protection, self.module.HttpError(502, "Bad Gateway")),
+                 lambda: self.data.__setitem__(protection, OSError("timeout")))
+        for index, damage in enumerate(cases):
+            with self.subTest(case=index):
+                self.data = fixture()
+                damage()
+                self.assertEqual(self.audit(self.fetch, REPO, token_limited=True)["status"], "UNKNOWN")
+
+    def test_ruleset_gap_with_unverifiable_classic_is_not_a_pass(self):
+        self.limit_token()
+        rules = self.data[ROOT + "/rules/branches/main?per_page=100&page=1"]
+        rules[:] = [rule for rule in rules if rule["type"] != "required_signatures"]
+        result = self.audit(self.fetch, REPO, token_limited=True)
+        self.assertEqual(result["status"], "LIMITED")
+        self.assertTrue(any("required_signatures" in item for item in result["unverifiable"]))
+        self.assertFalse(any("Missing effective" in finding for finding in result["findings"]))
+
+    def test_token_limited_accepts_only_permission_denials(self):
+        protection = ROOT + "/branches/main/protection"
+        for error, expected in ((self.module.HttpError(404, "Not Found"), "LIMITED"),
+                                (self.module.HttpError(403, "API rate limit exceeded for installation."), "UNKNOWN"),
+                                (self.module.HttpError(404, "Branch not found"), "UNKNOWN")):
+            with self.subTest(message=error.message):
+                self.data = fixture()
+                self.limit_token()
+                self.data[protection] = error
+                self.assertEqual(self.audit(self.fetch, REPO, token_limited=True)["status"], expected)
 
 
 if __name__ == "__main__":

@@ -9,8 +9,8 @@ import tempfile
 import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
-AUDIT_SOURCE_SHA = "63f7c5cd0a24a99018fc8e0997579449813e6030"
-AUDIT_SOURCE_HASH = "23fc6af7bddb825ad5afb5148139c62d3ebe3805cc4a7d10c09b30a5b971e733"
+AUDIT_SOURCE_SHA = "78d40f36fd91de86f719202eed8237407acb6f13"
+AUDIT_SOURCE_HASH = "21e8f4a3b22af15a4b2468c99d27f8aad3062f9eca2b4918a3f5098000f18592"
 RELEASE_SHA = "b5f8bc3a916b41e22e5e09ec72f34c01428c2933"
 BASH = (str(Path(os.environ.get("ProgramFiles", "C:/Program Files")) / "Git/bin/bash.exe")
         if os.name == "nt" else shutil.which("bash"))
@@ -67,6 +67,10 @@ class MetadataWorkflowTests(unittest.TestCase):
         source = (ROOT / "scripts/audit-hygiene.py").read_text(encoding="utf-8").encode("utf-8")
         self.assertEqual(hashlib.sha256(source).hexdigest(), AUDIT_SOURCE_HASH,
                          "audit changes require reviewing and updating the source pin and hash together")
+
+    def test_hygiene_workflow_declares_its_token_limit(self):
+        workflow = (ROOT / ".github/workflows/hygiene.yml").read_text(encoding="utf-8")
+        self.assertIn("--token-limited", workflow, "the workflow token cannot read admin-only fields")
 
     def test_policy_gate_rejects_unsuccessful_producer_or_tests(self):
         script = self.shell_step("ci.yml", "Require policy and metadata tests")

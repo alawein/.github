@@ -97,8 +97,9 @@ rules only after observing an eligible successful PR run at its current SHA.
 to the original four contexts; it has no `kit-ref` input. Callers pin the reviewed
 workflow release SHA on `uses:`. Released v1.3.0 separately pins audit source to
 implementation commit `ce04a21e332e42c3137b26f3becb0de77086b6cb`.
-The current source workflow pins `63f7c5cd0a24a99018fc8e0997579449813e6030`;
-the kit's local weekly caller uses it after merge. Unchanged v1.3.0 callers
+The current source workflow pins `78d40f36fd91de86f719202eed8237407acb6f13`,
+which runs the audit with `--token-limited`; the kit's local weekly caller
+uses it after merge. Unchanged v1.3.0 callers
 retain the released implementation. Caller input cannot select executable code.
 Audit source changes require review and a coordinated implementation pin and
 source-digest fixture update. Read-only repository permissions alone do not
@@ -124,9 +125,14 @@ data is `UNKNOWN` and exits nonzero. An empty observed response is distinct from
 unavailable data. `hygiene-weekly.yml` is the kit's weekly/manual caller; a
 schedule declaration does not prove a successful scheduled run.
 
-The existing hosted token may lack [Administration read](https://docs.github.com/en/rest/branches/branch-protection#get-branch-protection)
-for the classic endpoint. Preserve UNKNOWN instead of expanding permissions
-to obtain a complete report. Configured protection is separate from eligible
+The hosted token lacks [Administration read](https://docs.github.com/en/rest/branches/branch-protection#get-branch-protection).
+A hosted run on 2026-10-14 could not read merge settings or ruleset bypass
+actors; its access to classic branch protection stays `UNVERIFIED` until a
+hosted run shows the response. The workflow passes `--token-limited`: those
+fields are listed as unverifiable and the status is `LIMITED` (exit 0) only
+when no read is `UNKNOWN` and nothing is found. Findings produce `WARN`, which
+also exits 0. Permissions stay unexpanded; to verify those fields, run the
+script locally with an admin `GH_TOKEN` and without the flag. Configured protection is separate from eligible
 PR execution, check conclusions, signing, artifact behavior and production.
 The PR-title gate permits a skipped producer only on an actual main-push event.
 
