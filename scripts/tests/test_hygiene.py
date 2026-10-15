@@ -298,6 +298,17 @@ class HygieneTests(unittest.TestCase):
         self.assertTrue(any("required_signatures" in item for item in result["unverifiable"]))
         self.assertFalse(any("Missing effective" in finding for finding in result["findings"]))
 
+    def test_token_limited_accepts_only_permission_denials(self):
+        protection = ROOT + "/branches/main/protection"
+        for error, expected in ((self.module.HttpError(404, "Not Found"), "LIMITED"),
+                                (self.module.HttpError(403, "API rate limit exceeded for installation."), "UNKNOWN"),
+                                (self.module.HttpError(404, "Branch not found"), "UNKNOWN")):
+            with self.subTest(message=error.message):
+                self.data = fixture()
+                self.limit_token()
+                self.data[protection] = error
+                self.assertEqual(self.audit(self.fetch, REPO, token_limited=True)["status"], expected)
+
 
 if __name__ == "__main__":
     unittest.main()

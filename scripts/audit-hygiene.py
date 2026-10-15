@@ -13,6 +13,8 @@ import subprocess
 
 REPOSITORY = re.compile(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+\Z")
 REQUIRED_CHECKS = ("markdown-lint", "link-check", "actionlint", "pr-title")
+# Only these replies mean the token lacks admin read; rate limits and races stay UNKNOWN.
+PERMISSION_DENIALS = {(403, "Resource not accessible by integration"), (404, "Not Found")}
 REQUIRED_RULES = {"deletion", "non_fast_forward", "required_signatures", "required_linear_history", "pull_request", "required_status_checks"}
 
 
@@ -130,7 +132,7 @@ def audit(fetch, repository: str, *, required_checks=REQUIRED_CHECKS, now=None, 
         if error.status == 404 and error.message == "Branch not protected":
             observed["classic_rules"], observed["classic_required_checks"] = [], []
             result["coverage"]["classic"]["status"] = "OBSERVED"
-        elif token_limited and error.status in (403, 404):
+        elif token_limited and (error.status, error.message) in PERMISSION_DENIALS:
             unverifiable.append("Classic main protection needs an admin token.")
             result["coverage"]["classic"]["status"] = "UNVERIFIABLE"
         else:
