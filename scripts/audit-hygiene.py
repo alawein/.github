@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
-"""Report repository hygiene using GET requests only; unavailable data is UNKNOWN."""
+"""Report repository hygiene using GET requests only; unavailable data is UNKNOWN.
+
+With --token-limited, fields GitHub returns only to admin tokens are reported as
+unverifiable (status LIMITED, exit 0) instead of UNKNOWN."""
 import argparse
 from datetime import datetime, timezone
 import json
@@ -13,12 +16,21 @@ REQUIRED_CHECKS = ("markdown-lint", "link-check", "actionlint", "pr-title")
 REQUIRED_RULES = {"deletion", "non_fast_forward", "required_signatures", "required_linear_history", "pull_request", "required_status_checks"}
 
 
-def audit(fetch, repository: str, *, required_checks=REQUIRED_CHECKS, now=None) -> dict:
+class HttpError(OSError):
+    """A failed GET with its HTTP status and GitHub message; no token or body is kept."""
+
+    def __init__(self, status: int, message: str = ""):
+        super().__init__(f"HTTP {status}")
+        self.status, self.message = status, message
+
+
+def audit(fetch, repository: str, *, required_checks=REQUIRED_CHECKS, now=None, token_limited=False) -> dict:
     """Collect bounded observations using a fixtureable callback returning GET JSON."""
     now = now or datetime.now(timezone.utc)
     result = {"repository": repository, "captured_at": now.isoformat(), "status": "UNKNOWN",
-              "findings": [], "unknown": [], "observed": {}}
+              "findings": [], "unknown": [], "unverifiable": [], "observed": {}}
     observed, unknown, findings = result["observed"], result["unknown"], result["findings"]
+    unverifiable = result["unverifiable"]
     if (not isinstance(repository, str) or not REPOSITORY.fullmatch(repository)
             or any(part in (".", "..") for part in repository.split("/"))):
         unknown.append("Invalid repository; expected OWNER/REPO.")
@@ -55,7 +67,9 @@ def audit(fetch, repository: str, *, required_checks=REQUIRED_CHECKS, now=None) 
     observed["squash_only"] = None
     if metadata is not None:
         flags = ("allow_squash_merge", "allow_merge_commit", "allow_rebase_merge")
-        if all(type(metadata.get(key)) is bool for key in flags):
+        if token_limited and not any(key in metadata for key in flags):
+            unverifiable.append("Repository merge flags need an admin token.")
+        elif all(type(metadata.get(key)) is bool for key in flags):
             observed["squash_only"] = metadata[flags[0]] and not any(metadata[key] for key in flags[1:])
             if not observed["squash_only"]:
                 findings.append("Merge settings are not squash only.")
@@ -106,7 +120,24 @@ def audit(fetch, repository: str, *, required_checks=REQUIRED_CHECKS, now=None) 
         except (KeyError, TypeError, ValueError):
             unknown.append("Ruleset branch rules missing or malformed.")
 
-    classic = get(root + "/branches/main/protection", dict)
+    classic_path = root + "/branches/main/protection"
+    try:
+        classic = fetch(classic_path)
+        if not isinstance(classic, dict):
+            raise ValueError("invalid response shape")
+    except HttpError as error:
+        classic = None
+        if error.status == 404 and error.message == "Branch not protected":
+            observed["classic_rules"], observed["classic_required_checks"] = [], []
+            result["coverage"]["classic"]["status"] = "OBSERVED"
+        elif token_limited and error.status in (403, 404):
+            unverifiable.append("Classic main protection needs an admin token.")
+            result["coverage"]["classic"]["status"] = "UNVERIFIABLE"
+        else:
+            unknown.append(f"{classic_path}: HttpError")
+    except (OSError, ValueError, KeyError, TypeError, subprocess.SubprocessError) as error:
+        classic = None
+        unknown.append(f"{classic_path}: {error.__class__.__name__}")
     if classic is not None:
         try:
             types = set()
@@ -157,6 +188,12 @@ def audit(fetch, repository: str, *, required_checks=REQUIRED_CHECKS, now=None) 
             findings.append("Missing effective main rules: " + ", ".join(sorted(missing_rules)))
         if missing_checks:
             findings.append("Missing required checks: " + ", ".join(sorted(missing_checks)))
+    elif observed["ruleset_rules"] is not None and result["coverage"]["classic"]["status"] == "UNVERIFIABLE":
+        # Rulesets alone can prove a control present, never absent.
+        gaps = (sorted(REQUIRED_RULES - set(observed["ruleset_rules"]))
+                + sorted(set(required_checks) - set(observed["ruleset_required_checks"])))
+        if gaps:
+            unverifiable.append("Not in rulesets; classic protection unverifiable: " + ", ".join(gaps))
 
     rulesets = pages(root + "/rulesets?includes_parents=true")
     observed["bypass_actors"] = None
@@ -171,6 +208,10 @@ def audit(fetch, repository: str, *, required_checks=REQUIRED_CHECKS, now=None) 
                 continue
             detail = get(root + f"/rulesets/{ruleset['id']}?includes_parents=true", dict)
             if detail is None:
+                complete = False
+            elif token_limited and detail.get("enforcement") == "active" and "bypass_actors" not in detail:
+                if "Ruleset bypass actors need an admin token." not in unverifiable:
+                    unverifiable.append("Ruleset bypass actors need an admin token.")
                 complete = False
             elif detail.get("enforcement") != "active" or not isinstance(detail.get("bypass_actors"), list):
                 unknown.append("Active ruleset bypass details missing or changed during collection.")
@@ -239,7 +280,8 @@ def audit(fetch, repository: str, *, required_checks=REQUIRED_CHECKS, now=None) 
             observed["orphan_branches"] = orphans
         if orphans:
             findings.append("Branches without an open PR have last commits at least 30 days old; no cleanup performed.")
-    result["status"] = "UNKNOWN" if unknown else "WARN" if findings else "PASS"
+    result["status"] = ("UNKNOWN" if unknown else "WARN" if findings
+                        else "LIMITED" if unverifiable else "PASS")
     return result
 
 
@@ -250,6 +292,13 @@ def gh_get(path):
                                "-H", "X-GitHub-Api-Version: 2022-11-28"],
                               capture_output=True, text=True, encoding="utf-8", timeout=60)
     if response.returncode:
+        match = re.search(r"\(HTTP (\d{3})\)", response.stderr or "")
+        try:
+            message = json.loads(response.stdout).get("message", "")
+        except (ValueError, AttributeError):
+            message = ""
+        if match:
+            raise HttpError(int(match[1]), message if isinstance(message, str) else "")
         raise OSError("GET unavailable")
     return json.loads(response.stdout)
 
@@ -259,12 +308,14 @@ def main():
     parser.add_argument("--repository", required=True)
     parser.add_argument("--output", required=True, type=Path)
     parser.add_argument("--required-checks", default=",".join(REQUIRED_CHECKS))
+    parser.add_argument("--token-limited", action="store_true",
+                        help="Report admin-only fields as unverifiable instead of UNKNOWN.")
     args = parser.parse_args()
     checks = [context.strip() for context in args.required_checks.split(",") if context.strip()]
     if not checks:
         parser.error("--required-checks must contain at least one check")
     fetch = gh_get if os.environ.get("GH_TOKEN") else lambda path: (_ for _ in ()).throw(OSError("GH_TOKEN missing"))
-    report = audit(fetch, args.repository, required_checks=checks)
+    report = audit(fetch, args.repository, required_checks=checks, token_limited=args.token_limited)
     encoded = json.dumps(report, indent=2, ensure_ascii=True) + "\n"
     args.output.write_text(encoded, encoding="utf-8")
     print(encoded, end="")
@@ -272,7 +323,8 @@ def main():
     if summary:
         with open(summary, "a", encoding="utf-8") as stream:
             stream.write(f"## Hygiene: {report['status']}\n\n")
-            stream.write(f"Findings: {len(report['findings'])}; UNKNOWN entries: {len(report['unknown'])}.\n\n")
+            stream.write(f"Findings: {len(report['findings'])}; UNKNOWN entries: {len(report['unknown'])}; "
+                         f"unverifiable with this token: {len(report['unverifiable'])}.\n\n")
             stream.write("Report details are in the job log and local JSON output. No changes were made.\n")
     return 2 if report["unknown"] else 0
 
