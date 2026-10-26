@@ -97,9 +97,9 @@ rules only after observing an eligible successful PR run at its current SHA.
 to the original four contexts; it has no `kit-ref` input. Callers pin the reviewed
 workflow release SHA on `uses:`. Released v1.3.0 separately pins audit source to
 implementation commit `ce04a21e332e42c3137b26f3becb0de77086b6cb`.
-The current source workflow pins `78d40f36fd91de86f719202eed8237407acb6f13`,
-which runs the audit with `--token-limited`; the kit's local weekly caller
-uses it after merge. Unchanged v1.3.0 callers
+The current source workflow pins main commit `98c7496007ae504a3509be1c29d02afa87640aca`.
+Its audit script bytes match the reviewed PR head, and it runs with
+`--token-limited`; the kit's local weekly caller uses it after merge. Unchanged v1.3.0 callers
 retain the released implementation. Caller input cannot select executable code.
 Audit source changes require review and a coordinated implementation pin and
 source-digest fixture update. Read-only repository permissions alone do not

@@ -309,6 +309,35 @@ class HygieneTests(unittest.TestCase):
                 self.data[protection] = error
                 self.assertEqual(self.audit(self.fetch, REPO, token_limited=True)["status"], expected)
 
+    def test_token_limited_partial_merge_flags_stay_unknown(self):
+        self.limit_token()
+        self.data[ROOT]["allow_squash_merge"] = True
+        result = self.audit(self.fetch, REPO, token_limited=True)
+        self.assertEqual(result["status"], "UNKNOWN")
+        self.assertIsNone(result["observed"]["squash_only"])
+        self.assertIn("Repository merge flags missing or malformed.", result["unknown"])
+
+    def test_missing_ruleset_check_with_unverifiable_classic_is_named(self):
+        self.limit_token()
+        rules = self.data[ROOT + "/rules/branches/main?per_page=100&page=1"]
+        status_rule = next(rule for rule in rules if rule["type"] == "required_status_checks")
+        checks = status_rule["parameters"]["required_status_checks"]
+        checks[:] = [check for check in checks if check["context"] != "pr-title"]
+        result = self.audit(self.fetch, REPO, token_limited=True)
+        self.assertEqual(result["status"], "LIMITED")
+        self.assertEqual(result["unknown"], [])
+        self.assertTrue(any("pr-title" in item for item in result["unverifiable"]))
+        self.assertNotIn("pr-title", result["observed"]["ruleset_required_checks"])
+        self.assertIsNone(result["observed"]["required_checks"])
+
+    def test_gh_get_non_json_permission_error_keeps_status_only(self):
+        failed = subprocess.CompletedProcess([], 1, stdout="not JSON",
+                                             stderr="gh: Forbidden (HTTP 403)")
+        with mock.patch.object(self.module.subprocess, "run", return_value=failed):
+            with self.assertRaises(self.module.HttpError) as caught:
+                self.module.gh_get(ROOT)
+        self.assertEqual((caught.exception.status, caught.exception.message), (403, ""))
+
 
 if __name__ == "__main__":
     unittest.main()
