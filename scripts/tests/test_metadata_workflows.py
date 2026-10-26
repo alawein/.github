@@ -9,7 +9,7 @@ import tempfile
 import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
-AUDIT_SOURCE_SHA = "78d40f36fd91de86f719202eed8237407acb6f13"
+AUDIT_SOURCE_SHA = "98c7496007ae504a3509be1c29d02afa87640aca"
 AUDIT_SOURCE_HASH = "21e8f4a3b22af15a4b2468c99d27f8aad3062f9eca2b4918a3f5098000f18592"
 RELEASE_SHA = "b5f8bc3a916b41e22e5e09ec72f34c01428c2933"
 BASH = (str(Path(os.environ.get("ProgramFiles", "C:/Program Files")) / "Git/bin/bash.exe")

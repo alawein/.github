@@ -40,7 +40,8 @@ pin signed annotated `v1.3.0` at
 2026-10-01. The policy `kit-ref` matches this workflow pin. Hygiene has no
 source-ref input; its released workflow checks out reviewed audit source
 `ce04a21e332e42c3137b26f3becb0de77086b6cb`. The current source workflow instead
-pins `78d40f36fd91de86f719202eed8237407acb6f13` and runs it with `--token-limited`; unchanged
+pins main commit `98c7496007ae504a3509be1c29d02afa87640aca`, whose audit script
+bytes match the reviewed PR head, and runs it with `--token-limited`; unchanged
 v1.3.0 callers do not adopt that audit correction. This adoption leaves all legacy
 distributed pins and starter defaults intact. Full workflow/action SHAs bind
 source revisions; legacy runtime defaults and hosted OS image contents still
