@@ -18,6 +18,7 @@ VARIANTS = (
     ("guard-node", "tool", "typescript"),
     ("guard-python", "tool", "python"),
     ("guard-site", "site", "typescript"),
+    ("referrals", "site", "typescript"),
     ("guard-lab", "lab", "typescript"),
 )
 

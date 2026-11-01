@@ -451,10 +451,13 @@ here uses it.
   `package.json`.
 - Check the preview before merge when a change touches what a visitor sees. Put
   the preview URL, and a screenshot if useful, in the PR.
-- The site's current starter `ignoreCommand` skips every `dependabot/*` branch,
-  including application dependency updates. Those PRs get no Vercel preview;
-  CI still applies. Report this exception when preview evidence is absent.
-  Changing the skip policy needs a separate proposal.
+- The optional Vercel template in [vercel.md](../vercel.md) skips every
+  `dependabot/*` branch, including application dependency updates, when an
+  owner copies it into a site. The site starter does not include `vercel.json`
+  or a host URL, so a local build needs no hosting account. When that template
+  is in use, those PRs get no Vercel preview; CI still applies. Report this
+  exception when preview evidence is absent. Changing the skip policy needs a
+  separate proposal.
 - A redirect starts temporary (307). Change it to 308 only after 7 clean days,
   because browsers cache a 308 and it cannot be recalled.
 - Never move or remove a domain without the saved baselines and the steps in

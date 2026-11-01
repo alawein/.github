@@ -1,4 +1,5 @@
-# Class: site (Astro or other npm-built websites deployed on Vercel).
+# Class: site (Astro or another npm-built website).
+# Hosting is a later choice. This workflow does not deploy.
 # Copy to .github/workflows/ci.yml in the repo.
 #
 # The pin after "@" must be a full 40-character commit SHA of alawein/.github.
@@ -39,7 +40,7 @@ jobs:
       pull-requests: read
     uses: alawein/.github/.github/workflows/pr-title.yml@6f6dbe7f3a23ab830a32007bb52b83fd1bb40563 # v1.2.0
 
-  # Vercel (or another host) deploys the site. This job only proves that lint, tests and the build pass.
+  # This job proves lint, tests, and the build. It does not contact a host.
   run-node-ci:
     uses: alawein/.github/.github/workflows/node-ci.yml@6f6dbe7f3a23ab830a32007bb52b83fd1bb40563 # v1.2.0
     with:

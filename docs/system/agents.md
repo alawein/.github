@@ -332,6 +332,7 @@ weeks in a row. Do not add a number unless you will act on it.
 | [codex-notes.template.md](../../templates/agent/codex-notes.template.md) | Optional Codex-only notes |
 | [lessons.template.md](../../templates/agent/lessons.template.md) | The lessons log |
 | [session-start-prompt.md](../../templates/agent/session-start-prompt.md) | A prompt to start any session |
+| [orchestrated-improvement-prompt.md](../../templates/agent/orchestrated-improvement-prompt.md) | Master prompt for multi-step, evidence-driven software improvement sweeps |
 | [review-checklist.md](../../templates/agent/review-checklist.md) | What a reviewing agent checks |
 | [evidence.template.md](../../templates/agent/evidence.template.md) | Content-bound check and review provenance |
 | [reviewers.md](reviewers.md) | Advisory reviewer routing and controls |
