@@ -24,3 +24,4 @@ One line per session, newest at the bottom. Format:
 - 2026-10-06 | Merge eligibility | Successful CLI check selection hid failed required wrappers in a cancelled same-head suite | Verify the live merge gate for the exact head and base; reconcile duplicate suites before retrying a refused merge.
 - 2026-10-07 | dark defaults | System fallback and automatic dawn artwork conflicted with the desired default | Ship dark first, preserve explicit visitor choices, and keep copied starter instructions consistent.
 - 2026-10-11 | site starter | A required -site suffix and a host URL blocked a product-named Astro site, and astro check could not import its peers | Let a site omit -site, keep the other suffix checks, ship no host file, and declare the check peers.
+- 2026-10-14 | hygiene | A read-only workflow token hid admin-only settings, so an audit with no findings exited UNKNOWN | Mark token-limited fields unverifiable and verify them with an admin token locally.

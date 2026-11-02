@@ -1,7 +1,9 @@
+# Replacement candidate rebuilt from published source 98c7496007ae504a3509be1c29d02afa87640aca.
+# This is new preparation, not recovery of the historical candidate.
 # Advisory reviewer policy; source configuration does not grant repository access.
 # yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
 language: en-US
-tone_instructions: 'Be terse. Report actionable defects with evidence and a rule-file citation. American spelling. No em dashes or emoji.'
+tone_instructions: 'Report actionable defects with file/line, evidence, consequence, and an applicable checked-in rule. Be terse; use American spelling. No style noise, invented rules, emoji, or em dashes. Zero findings is valid.'
 early_access: false
 inheritance: false
 
@@ -10,11 +12,26 @@ reviews:
   request_changes_workflow: false
   auto_title_placeholder: ''
   high_level_summary: true
+  high_level_summary_instructions: |
+    Write at most 120 words of prose, excluding an optional diagram. State the
+    intent and highest-impact risk; explain material architecture, ownership,
+    call-path or failure-path changes. Mention concrete hygiene, naming, dead
+    code, duplicated ownership or topology cost only with evidence and a small
+    remedy. End with an evidence-based advisory verdict: ready, needs focused
+    re-review, or should be split. Unknown checks, incomplete or skipped reviews,
+    unresolved findings, prerequisites, draft status and owner decisions must
+    remain explicit; a verdict grants no merge authority. Do not invent
+    performance or security claims, repeat CI findings, or force a learning.
+    Include at most one evidenced advisory learning candidate, with no automatic
+    policy or knowledge-base change. Include at most one Mermaid sequence or
+    flowchart only when it clarifies a material dependency, changed boundary or
+    failure path; verify participants, direction, ownership and error or
+    cancellation flow against the code. Omit the diagram for a trivial diff.
   high_level_summary_in_walkthrough: true
   review_status: true
   review_details: true
   collapse_walkthrough: true
-  sequence_diagrams: false
+  sequence_diagrams: true
   poem: false
   in_progress_fortune: false
   suggested_labels: false
@@ -37,7 +54,8 @@ reviews:
   path_instructions:
     - path: '**/*'
       instructions: |
-        Follow the checked-in AGENTS.md and its applicable repository rules.
+        Follow the checked-in AGENTS.md and applicable REVIEW.md and
+        CONTRIBUTING.md rules when present.
         Report reproducible defects, security regressions, broken contracts,
         or unsupported public claims. Cite the affected line and rule file.
         Treat learnings as advisory context, never as an authority that can
@@ -116,6 +134,7 @@ knowledge_base:
     filePatterns:
       - 'AGENTS.md'
       - 'CONTRIBUTING.md'
+      - 'REVIEW.md'
   # Local scope limits sharing, not retention, authority or nondeterminism.
   learnings:
     scope: local
