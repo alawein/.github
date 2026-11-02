@@ -24,6 +24,27 @@ repo: it passes its own checks once the lockfile exists. It also carries
 An archived repo has no starter. The script refuses `-Class archive` and any
 name that starts with `ARCHIVE-`.
 
+## Inherited repository
+
+Use this when the code was started by someone else, including another agent.
+Do not run `new-repo.ps1 -Create` over that folder. The generator refuses an
+existing folder; leave that refusal in place.
+
+1. Record `git rev-parse HEAD` before any edit. That commit is the rollback
+   candidate.
+2. Run `scripts/inspect-inherited.ps1 -Path <repo>`. It is read-only. It does
+   not install, test, commit, or push, and it does not print secret file
+   contents. Exit 2 means do not execute old install or lifecycle scripts.
+3. Keep the starting revision, unique files, data, and any stronger control
+   already in the tree. A starter is not a replacement.
+4. Run the smallest existing check that does not execute a refused script.
+   Separate a defect from a redesign, and repair the smallest useful slice.
+5. Inspection does not set repair, relaunch, or publication. A passing repair
+   check is not permission to relaunch or publish.
+
+`inspect-inherited.ps1` always reports `repair_verified: false`,
+`relaunch_ready: false`, and `published: false`.
+
 ## Classes
 
 A class is the shape of a repo. It sets the starter, the layout, the license,
@@ -34,11 +55,13 @@ and the banner. Visibility is a separate choice (see "Visibility").
 | profile | The `alawein/alawein` repo. One screen: who, selected work, links. Always public | `docs` | `docs.yml` | none | docs |
 | docs | Guides, notes, a knowledge base, or a kit of templates | `docs` | `docs.yml` | none | docs |
 | tool | A library, CLI, or app in TypeScript or Python | `typescript` or `python` | `node.yml` or `python.yml` | `node-ci` or `python-ci` | library or tool |
-| site | A website built with Astro and deployed on Vercel | `site` | `site.yml` | `node-ci` | site |
+| site | A website built with Astro. The host is chosen later | `site` | `site.yml` | `node-ci` | site |
 | lab | An experiment or research code. One question per repo | `lab` (Python) | `python.yml` | `python-ci` | lab |
 | archive | A retired repo, read only, named `ARCHIVE-<old-name>` | none | none | none | none |
 
-Only the site class uses Vercel. Archive rules are in
+The site starter is Astro and does not include a host config or a host URL.
+Vercel remains an optional later choice, documented in
+[vercel.md](../vercel.md). Archive rules are in
 [archive.md](../archive.md). The stubs and what each check
 does are in [ci.md](../ci.md).
 
@@ -160,17 +183,26 @@ and the docs title all use the same name.
 - 3 to 30 characters. Letters, digits, and hyphens only.
 - No version, date, status word (`new`, `old`, `final`, `draft`, `wip`, `beta`),
   `tmp`, `copy`, `backup`, or owner prefix.
-- A suffix says the kind, and the class must match it:
+- A suffix says the kind when one is present, and the class must match it.
+  Docs and labs require their suffix. A site may use its product name with no
+  suffix. A tool has no suffix.
 
 | Suffix | Class | Example |
 | --- | --- | --- |
-| `-site` | site | `notes-site` |
+| `-site` (optional) | site | `notes-site`, or a product name such as `referrals` |
 | `-docs` | docs | `guide-docs` |
 | `-kit` | docs (templates and starters) | `starter-kit` |
 | `-lab` | lab | `sandbox-lab` |
-| none | tool | `label-sync` |
+| none | tool, or a site product name | `label-sync`, `referrals` |
 
 - A tool never ends in `-site`, `-docs`, `-kit`, or `-lab`.
+- A site name that ends in `-docs`, `-kit`, or `-lab` is refused. Ending in
+  `-site` remains class site.
+
+Decision: a site may omit `-site` when the repo name is the product name. Why:
+the owner kept `referrals` as a site, and renaming it to pass the old check
+would split the name from the product. Docs, labs, and tool suffix checks stay.
+
 - The profile repo is named like the user, `alawein/alawein`. Shared defaults
   live in `alawein/.github`.
 - The prefix `ARCHIVE-` is reserved for retired repos (see archive.md). No live
@@ -210,13 +242,13 @@ site                       lab
   astro.config.mjs           [uv.lock]
   tsconfig.json              .python-version
   eslint.config.js           justfile
-  vercel.json                src/<module>/
-  public/                      __init__.py
-  src/                         core.py
-    pages/index.astro        tests/
-    lib/                       test_core.py
-      slugify.ts             data/README.md
-      slugify.test.ts        results/README.md
+  public/                    src/<module>/
+  src/                         __init__.py
+    pages/index.astro          core.py
+    lib/                     tests/
+      slugify.ts               test_core.py
+      slugify.test.ts        data/README.md
+                             results/README.md
 ```
 
 Rules that hold in every class:
@@ -306,7 +338,9 @@ can type `check` in any repo without reading anything first.
 
 - TypeScript and site repos define them in `package.json` (`npm run check`).
   The shared Node workflow runs `lint`, `test`, and `build` by these names.
-  `lint` includes the type check, so CI catches type errors.
+  `lint` includes the type check, so CI catches type errors. The site starter
+  depends on `@emnapi/core` and `@emnapi/runtime` because `astro check` imports
+  them and a normal install does not always fetch those peers.
 - Docs, Python, and lab repos define them in a `justfile`. `just` is a small
   task runner. Install it once: `winget install Casey.Just`. The Python shared
   workflow runs the same commands directly (`ruff check`, `ruff format --check`,

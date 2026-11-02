@@ -12,10 +12,11 @@
   must not exist yet, so it cannot overwrite anything.
 
 .PARAMETER Name
-  Repo name: lowercase words joined by hyphens, 3 to 30 characters. The suffix
-  must match the class (-site, -docs or -kit, -lab). A tool has no suffix. The
-  profile repo is named like the owner and uses class profile. A name that
-  starts with ARCHIVE- is refused.
+  Repo name: lowercase words joined by hyphens, 3 to 30 characters. A suffix
+  must match the class (-site, -docs, -kit, -lab). Docs end in -docs or -kit.
+  Labs end in -lab. A site may use its product name with no suffix. A tool has
+  no suffix. The profile repo is named like the owner and uses class profile.
+  A name that starts with ARCHIVE- is refused.
 
 .PARAMETER Class
   profile, docs, tool, site, or lab. See docs\system\repos.md. Class archive
@@ -119,7 +120,6 @@ if (-not $isProfile) {
       $problems += "A name ending in $s is class $($suffixClass[$s]), not $Class."
     }
   }
-  if ($Class -eq 'site' -and -not $Name.EndsWith('-site')) { $problems += 'A site name ends in -site.' }
   if ($Class -eq 'lab' -and -not $Name.EndsWith('-lab')) { $problems += 'A lab name ends in -lab.' }
   if ($Class -eq 'docs' -and -not ($Name.EndsWith('-docs') -or $Name.EndsWith('-kit'))) {
     $problems += 'A docs name ends in -docs or -kit (the profile repo is named like the owner).'

@@ -1,9 +1,10 @@
 # Vercel domain moves
 
 The runbook for moving a production domain between Vercel projects, and the
-`vercel.json` template. The rules for Vercel in general (one scope, protection,
-environment variables, rollback) are in
-[delivery.md](system/delivery.md), "Vercel". Only the site class uses Vercel.
+optional `vercel.json` template. The rules for Vercel in general (one scope,
+protection, environment variables, rollback) are in
+[delivery.md](system/delivery.md), "Vercel". Copy this template only after the
+owner chooses Vercel. The site starter builds locally without it.
 
 ## vercel.json template
 

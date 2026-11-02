@@ -35,18 +35,14 @@ Every pull request also runs four shared checks: `markdown-lint`,
 
 ## Environment
 
-None yet. List each variable name here, never its value. Values live in Vercel.
+None yet. List each variable name here, never its value. Do not commit a value.
 
 ## Deploy
 
-After the owner connects and configures a Vercel project, verify `main` as its
-production branch and enable preview protection. The starter does not provision
-hosting or prove those settings. Eligible branches and PRs can get previews.
-
-The existing `vercel.json` skips all `dependabot/*` builds, including application
-dependency updates, so those PRs have no Vercel preview. CI checks still apply;
-record the preview exception in review evidence. See the
-[Vercel guidance](https://github.com/alawein/.github/blob/main/docs/vercel.md).
+`npm run build` writes `dist/` on this machine and needs no host account.
+Choosing a host is a separate decision. The shared
+[Vercel guidance](https://github.com/alawein/.github/blob/main/docs/vercel.md)
+holds an optional template for after that choice. This starter does not copy it.
 
 ## Contributing
 

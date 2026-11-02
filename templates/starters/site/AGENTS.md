@@ -50,7 +50,7 @@ Shell: PowerShell on Windows, bash in CI.
 
 ## Do not touch without asking
 
-- `vercel.json` and the Vercel project settings. A bad redirect or header reaches production.
+- A host config file, such as `vercel.json`, until the owner chooses a provider.
 - `package-lock.json` by hand. Change it only with `npm install`.
 - Rulesets, branch protection, and CI permissions.
 - Secrets, `.env` files, and anything that holds credentials. Never open
@@ -78,7 +78,7 @@ None yet. A repo skill lives at `.claude/skills/NAME/SKILL.md` and is listed her
 
 ## Known traps
 
-- A redirect starts temporary (307). Never switch it to 308 before 7 clean days.
+- If a host redirect is added later, start it temporary (307). Do not switch it to 308 before 7 clean days.
 - `npm run lint` includes `astro check`, so a type error in a page fails lint.
 
 ## Close out
