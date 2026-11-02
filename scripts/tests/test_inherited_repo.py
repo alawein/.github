@@ -1,5 +1,6 @@
 """One inherited-repo inspection and the smallest safe repair."""
 
+import json
 import shutil
 import subprocess
 import tempfile
@@ -26,6 +27,78 @@ def inspect(repo: Path) -> subprocess.CompletedProcess[str]:
 
 @unittest.skipUnless(SHELL and GIT, "pwsh and git are required")
 class InheritedRepoTests(unittest.TestCase):
+    def make_repo(self, parent: Path) -> Path:
+        repo = parent / "inherited-sample"
+        repo.mkdir()
+        (repo / "LICENSE").write_text("Synthetic fixture\n", encoding="utf-8")
+        git(repo, "init")
+        git(repo, "config", "user.email", "fixture@example.invalid")
+        git(repo, "config", "user.name", "Fixture")
+        git(repo, "add", "LICENSE")
+        git(repo, "commit", "-m", "synthetic starting revision")
+        return repo
+
+    def test_inspection_refuses_implicit_and_paired_lifecycle_hooks(self):
+        hook_command = "node -e \"require('node:fs').writeFileSync('ran-hook','synthetic')\""
+        cases = (
+            ("pretest", {}),
+            ("posttest", {}),
+            ("prebuild", {"build": "echo synthetic build"}),
+            ("postbuild", {"build": "echo synthetic build"}),
+            ("precompress", {"compress": "echo synthetic compress"}),
+            ("postcompress", {"compress": "echo synthetic compress"}),
+            ("prepack", {}),
+            ("postpack", {}),
+            ("postprepare", {}),
+            ("postpublish", {}),
+            ("dependencies", {}),
+            ("version", {}),
+        )
+        for hook, scripts in cases:
+            with self.subTest(hook=hook), tempfile.TemporaryDirectory() as temporary:
+                repo = self.make_repo(Path(temporary))
+                (repo / "package.json").write_text(
+                    json.dumps({"name": "synthetic-fixture", "scripts": {**scripts, hook: hook_command}}),
+                    encoding="utf-8",
+                )
+                result = inspect(repo)
+                output = result.stdout + result.stderr
+                self.assertEqual(result.returncode, 2, output)
+                self.assertIn(f"lifecycle_scripts: {hook}\n", output)
+                self.assertIn("execute: refused", output)
+                self.assertFalse((repo / "ran-hook").exists())
+
+    def test_inspection_refuses_credential_filenames_without_reading_contents(self):
+        for name in (".npmrc", ".pypirc", "private.key", "nested/.npmrc", "nested/private.key"):
+            with self.subTest(name=name), tempfile.TemporaryDirectory() as temporary:
+                repo = self.make_repo(Path(temporary))
+                path = repo / name
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(SECRET, encoding="utf-8")
+                result = inspect(repo)
+                output = result.stdout + result.stderr
+                self.assertEqual(result.returncode, 2, output)
+                self.assertIn(f"secret_paths: {name}\n", output)
+                self.assertIn("execute: refused", output)
+                self.assertNotIn(SECRET, output)
+
+    def test_inspection_keeps_ordinary_script_names_and_near_miss_files_allowed(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            repo = self.make_repo(Path(temporary))
+            (repo / "package.json").write_text(
+                json.dumps({"scripts": {name: "echo synthetic" for name in
+                                       ("test", "build", "lint", "preview", "prettier")}}),
+                encoding="utf-8",
+            )
+            for name in (".npmrc-notes", ".pypirc-notes", "private.key.example", "hockey.txt"):
+                (repo / name).write_text("synthetic", encoding="utf-8")
+            result = inspect(repo)
+            output = result.stdout + result.stderr
+            self.assertEqual(result.returncode, 0, output)
+            self.assertIn("lifecycle_scripts: none", output)
+            self.assertIn("secret_paths: none", output)
+            self.assertIn("execute: allowed", output)
+
     def test_inspection_refuses_execution_and_repair_stays_local(self):
         with tempfile.TemporaryDirectory() as temporary:
             repo = Path(temporary) / "inherited-sample"

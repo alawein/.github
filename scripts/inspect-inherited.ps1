@@ -58,7 +58,9 @@ try {
   $depText = if ($deps.Count -eq 0) { 'none' } else { ($deps -join ',') }
 
   $scriptNames = New-Object System.Collections.Generic.List[string]
-  $lifecycleNames = @('preinstall', 'install', 'postinstall', 'prepare', 'prepublish', 'prepublishOnly')
+  $lifecycleNames = @('preinstall', 'install', 'postinstall', 'prepare', 'prepublish', 'prepublishOnly',
+    'publish', 'version', 'dependencies')
+  $lifecycleEvents = @('install', 'prepare', 'pack', 'publish', 'test', 'start', 'stop', 'restart', 'version')
   $packagePath = Join-Path $root 'package.json'
   if (Test-Path -LiteralPath $packagePath) {
     $package = Get-Content -Raw -LiteralPath $packagePath | ConvertFrom-Json
@@ -67,14 +69,20 @@ try {
     }
   }
   $scriptText = if ($scriptNames.Count -eq 0) { 'none' } else { ($scriptNames -join ',') }
-  $lifecycle = @($scriptNames | Where-Object { $lifecycleNames -contains $_ })
+  # Built-in events can have hooks without an explicit event script. Other
+  # pre/post names are hooks only when their matching package script exists.
+  $lifecycle = @($scriptNames | Where-Object {
+    ($lifecycleNames -contains $_) -or
+      (($_ -cmatch '^(pre|post)(.+)$') -and
+        (($lifecycleEvents -ccontains $Matches[2]) -or ($scriptNames -ccontains $Matches[2])))
+  })
   $lifecycleText = if ($lifecycle.Count -eq 0) { 'none' } else { ($lifecycle -join ',') }
 
   $secretMatchers = @(
-    '(?i)^\.(env|pem|key)$',
+    '(?i)^\.(env|npmrc|pypirc|pem|key)$',
     '(?i)^\.(env|npmrc|pypirc)\.',
     '(?i)(^|/)(credentials|id_rsa|id_ed25519)(\.|$)',
-    '(?i)\.(pem|p12|pfx)$'
+    '(?i)\.(pem|key|p12|pfx)$'
   )
   $secrets = New-Object System.Collections.Generic.List[string]
   $deployMatchers = @('vercel.json', 'netlify.toml', 'fly.toml', 'wrangler.toml', 'Dockerfile')
