@@ -28,7 +28,7 @@ The first screen explains purpose, useful output, and the shortest way to try it
 {{run command}}
 ```
 
-{{One line on what the reader should see when it works.}}
+{{State the expected useful result and how to supply the reader's own input. Label synthetic or bundled examples. If work is saved, show how to reopen it; name any setup or service the example requires.}}
 
 ## What it does
 

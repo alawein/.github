@@ -25,8 +25,11 @@ just check
 ```
 
 `uv sync` also writes `uv.lock`. Commit it: CI installs from it. When it works,
-`just check` ends with no errors. Then list here, in order, the commands that
-rebuild each result in `results/`. Data sources are in
+`just check` ends with no errors. This checks the code; it does not reproduce
+a scientific result. Then list here, in order, the commands that rebuild each
+result in `results/`, its expected output, and the input data and seed where
+relevant. Label synthetic fixtures and saved-result replays separately from
+executing an experiment or solver. Data sources are in
 [data/README.md](data/README.md). Install `just` once with
 `winget install Casey.Just`.
 
