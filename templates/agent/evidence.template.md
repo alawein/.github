@@ -8,7 +8,7 @@ UNVERIFIED, never PASS. Follow [agent policy](../../docs/system/agents.md) and
 ## Identity and scope
 
 - Task: {{REAL_TASK_ID_OR_DESCRIPTION; do not invent an ID}}
-- Goal and authorized local scope: {{GOAL_AND_SCOPE}}
+- Goal and authorized local scope: {{GOAL_AND_SCOPE; name the user input, useful result, and preservation or recovery path where relevant}}
 - Repository, target and working branch: {{REPO_TARGET_AND_BRANCH}}
 - Selected task mode and owner instruction: {{A_B_OR_C_AND_NAMED_SCOPE}}
 - Merge permission: {{EXPLICIT_APPROVAL_OR_SCOPED_MODE_C_OR_PENDING}}

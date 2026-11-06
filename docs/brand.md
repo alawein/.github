@@ -43,6 +43,13 @@ reproduce the result. A docs repository gives readers a short route to its guide
 A private operating workspace links to its actual owners and useful entry points.
 Do not add empty sections just to match a template.
 
+Make the example lead to the reader's own task: show the accepted input and
+the useful result, then how to save or reopen work when relevant. Label a
+bundled demonstration, synthetic fixture, or saved-result replay accurately.
+A passing code check alone does not demonstrate a scientific result or a live
+integration. Put a required service, unsupported runtime, or unavailable
+capability beside the workflow it affects.
+
 ### Writing
 
 Use short, connected sentences and active verbs. Lead with the useful outcome,
