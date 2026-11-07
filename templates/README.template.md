@@ -30,6 +30,8 @@ The first screen explains purpose, useful output, and the shortest way to try it
 
 {{State the expected useful result and how to supply the reader's own input. Label synthetic or bundled examples. If work is saved, show how to reopen it; name any setup or service the example requires.}}
 
+<!-- If live use sends data or triggers an external action, explain which step crosses that boundary. Say what the local example actually produces and how to recognize a disabled integration. Keep real addresses, keys and customer records out of the example. -->
+
 ## What it does
 
 {{Two or three concrete capabilities, with inputs and outputs. Include a material limitation when it affects use. Omit this section if the introduction and example already explain enough.}}
