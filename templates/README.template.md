@@ -30,6 +30,8 @@ The first screen explains purpose, useful output, and the shortest way to try it
 
 {{State the expected useful result and how to supply the reader's own input. Label synthetic or bundled examples. If work is saved, show how to reopen it; name any setup or service the example requires.}}
 
+<!-- For saved offline artifacts, say what reopening or verification checks, what a mismatch does, and how to retry without losing prior input or output. Describe only behavior the product actually supports. -->
+
 <!-- If live use sends data or triggers an external action, explain which step crosses that boundary. Say what the local example actually produces and how to recognize a disabled integration. Keep real addresses, keys and customer records out of the example. -->
 
 ## What it does
