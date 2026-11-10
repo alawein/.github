@@ -20,23 +20,23 @@ concurrency:
 
 jobs:
   run-markdown-lint:
-    uses: ./.github/workflows/lint-markdown.yml
+    uses: $/.github/workflows/lint-markdown.yml
 
   run-link-check:
-    uses: ./.github/workflows/check-links.yml
+    uses: $/.github/workflows/check-links.yml
     with:
       offline: true
 
   run-actionlint:
-    uses: ./.github/workflows/lint-actions.yml
+    uses: $/.github/workflows/lint-actions.yml
 
   run-pr-title:
     permissions:
       pull-requests: read
-    uses: ./.github/workflows/pr-title.yml
+    uses: $/.github/workflows/pr-title.yml
 
   run-pr-policy:
-    uses: ./.github/workflows/pr-policy.yml
+    uses: $/.github/workflows/pr-policy.yml
 
   metadata-tests:
     runs-on: ubuntu-24.04

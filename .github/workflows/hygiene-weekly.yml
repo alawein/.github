@@ -13,6 +13,6 @@ jobs:
     permissions:
       contents: read
       pull-requests: read
-    uses: ./.github/workflows/hygiene.yml
+    uses: $/.github/workflows/hygiene.yml
     with:
       expected-required-checks: markdown-lint,link-check,actionlint,pr-title,pr-policy
