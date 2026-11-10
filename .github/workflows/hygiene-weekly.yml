@@ -1,4 +1,4 @@
-﻿name: Weekly hygiene
+name: Weekly hygiene
 
 on:
   schedule:
@@ -16,4 +16,3 @@ jobs:
     uses: $/.github/workflows/hygiene.yml
     with:
       expected-required-checks: markdown-lint,link-check,actionlint,pr-title,pr-policy
-

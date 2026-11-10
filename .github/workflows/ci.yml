@@ -1,4 +1,4 @@
-﻿name: CI
+name: CI
 
 # This repo tests its own reusable workflows by calling them from the same commit.
 # A called job reports as "<caller job> / <called job>", so four small gate jobs below
@@ -118,4 +118,3 @@ jobs:
           [ "$RESULT" = "success" ] || {
             [ "$RESULT" = "skipped" ] && [ "$EVENT" = "push" ] && [ "$REF" = "refs/heads/main" ]
           }
-

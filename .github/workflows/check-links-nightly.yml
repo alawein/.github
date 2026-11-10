@@ -1,4 +1,4 @@
-﻿name: External link check
+name: External link check
 
 on:
   schedule:
@@ -17,4 +17,3 @@ jobs:
     uses: $/.github/workflows/check-links.yml
     with:
       offline: false
-
