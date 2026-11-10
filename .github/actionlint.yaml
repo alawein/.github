@@ -1,0 +1,16 @@
+﻿# actionlint rules for this repository. See https://github.com/rhysd/actionlint/blob/main/docs/config.md
+paths:
+  .github/workflows/**/*.yml:
+    ignore:
+      # GitHub's self-repository uses: $/... syntax (July 2026) is what zizmor's self-repository
+      # audit asks for in place of ./..., and what our in-repo reusable-workflow calls use.
+      # actionlint 1.7.12 predates the syntax (rhysd/actionlint#760); drop this ignore once a
+      # release knows it. Each ignore names the exact called workflow, so a new $/ call is a
+      # deliberate edit here rather than a silent pass.
+      - 'reusable workflow call .*hygiene\.yml.* is not following the format'
+      - 'reusable workflow call .*check-links\.yml.* is not following the format'
+      - 'reusable workflow call .*lint-markdown\.yml.* is not following the format'
+      - 'reusable workflow call .*lint-actions\.yml.* is not following the format'
+      - 'reusable workflow call .*pr-title\.yml.* is not following the format'
+      - 'reusable workflow call .*pr-policy\.yml.* is not following the format'
+

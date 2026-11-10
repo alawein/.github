@@ -1,4 +1,4 @@
-name: External link check
+﻿name: External link check
 
 on:
   schedule:
@@ -14,6 +14,7 @@ concurrency:
 
 jobs:
   run-link-check:
-    uses: ./.github/workflows/check-links.yml
+    uses: $/.github/workflows/check-links.yml
     with:
       offline: false
+
