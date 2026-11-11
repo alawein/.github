@@ -92,7 +92,8 @@ class CiGateListTests(unittest.TestCase):
         listed = text.split("The ruleset requires:\n#", 1)[1].splitlines()[0]
         self.assertEqual(sorted(name.strip() for name in listed.split(",")), gates)
 
-    def test_metadata_job_runs_both_suites_with_hashed_dependencies(self):
+    def test_metadata_job_runs_scripts_suite_with_hashed_dependencies(self):
+        # The root suite's own step is guarded from scripts/tests (test_ci_still_runs_the_root_suite).
         runs = [step.get("run", "") for step in workflow("ci.yml")["jobs"]["metadata-tests"]["steps"]]
         self.assertTrue(any("discover -s scripts/tests" in run for run in runs))
         self.assertTrue(any("--require-hashes" in run and "tests/requirements.txt" in run for run in runs))
