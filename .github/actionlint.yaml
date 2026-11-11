@@ -11,5 +11,6 @@ paths:
       - '^reusable workflow call "\$/\.github/workflows/check-links\.yml" at "uses" is not following the format'
       - '^reusable workflow call "\$/\.github/workflows/lint-markdown\.yml" at "uses" is not following the format'
       - '^reusable workflow call "\$/\.github/workflows/lint-actions\.yml" at "uses" is not following the format'
+      - '^reusable workflow call "\$/\.github/workflows/lint-zizmor\.yml" at "uses" is not following the format'
       - '^reusable workflow call "\$/\.github/workflows/pr-title\.yml" at "uses" is not following the format'
       - '^reusable workflow call "\$/\.github/workflows/pr-policy\.yml" at "uses" is not following the format'

@@ -82,6 +82,36 @@ class LinkGateTests(unittest.TestCase):
         self.assertFalse(call["with"]["offline"])
 
 
+class ZizmorGateTests(unittest.TestCase):
+    def test_gate_requires_successful_audit(self):
+        jobs = workflow("ci.yml")["jobs"]
+        self.assertEqual(jobs["run-zizmor"]["uses"], "$/.github/workflows/lint-zizmor.yml")
+        gate = jobs["zizmor"]
+        self.assertEqual(gate["needs"], ["run-zizmor"])
+        self.assertEqual(gate["if"], "${{ always() }}")
+        self.assertEqual(gate["permissions"], {})
+        require_success = gate["steps"][0]
+        self.assertEqual(require_success["env"]["RESULT"], "${{ needs.run-zizmor.result }}")
+        for result in ("success", "failure", "cancelled", "skipped", ""):
+            with self.subTest(result=result):
+                code = subprocess.run([str(BASH), "-c", require_success["run"]],
+                                      env={**os.environ, "RESULT": result}).returncode
+                self.assertEqual(code, 0 if result == "success" else 1)
+
+    def test_reusable_audit_refuses_archive_repositories(self):
+        audit = workflow("lint-zizmor.yml")
+        self.assertIn("workflow_call", audit[True])
+        self.assertEqual(audit["permissions"], {"contents": "read"})
+        self.assertEqual(audit["jobs"]["lint"]["needs"], ["archive-guard"])
+        guard = audit["jobs"]["archive-guard"]
+        self.assertEqual(guard["permissions"], {})
+        for repository, expected in (("alawein/.github", 0), ("alawein/ARCHIVE-kit", 1)):
+            with self.subTest(repository=repository):
+                result = subprocess.run([str(BASH), "-c", guard["steps"][0]["run"]],
+                                        env={**os.environ, "REPO": repository}, capture_output=True, text=True)
+                self.assertEqual(result.returncode, expected, result.stdout + result.stderr)
+
+
 class DistributedGateTests(unittest.TestCase):
     def assert_paired_workflows(self, directory, code=False):
         ci = yaml.safe_load((directory / "ci.yml").read_text(encoding="utf-8"))

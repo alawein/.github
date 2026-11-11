@@ -1,8 +1,8 @@
 name: CI
 
 # This repo tests its own reusable workflows by calling them from the same commit.
-# A called job reports as "<caller job> / <called job>", so four small gate jobs below
-# carry the exact check names the ruleset requires:
+# A called job reports as "<caller job> / <called job>", so small gate jobs below
+# carry stable check names. The ruleset requires:
 #   markdown-lint, link-check, actionlint, pr-title
 
 on:
@@ -29,6 +29,9 @@ jobs:
 
   run-actionlint:
     uses: $/.github/workflows/lint-actions.yml
+
+  run-zizmor:
+    uses: $/.github/workflows/lint-zizmor.yml
 
   run-pr-title:
     permissions:
@@ -99,6 +102,18 @@ jobs:
       - name: Require success
         env:
           RESULT: ${{ needs.run-actionlint.result }}
+        run: test "$RESULT" = "success"
+
+  zizmor:
+    needs: [run-zizmor]
+    if: ${{ always() }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 1
+    permissions: {}
+    steps:
+      - name: Require success
+        env:
+          RESULT: ${{ needs.run-zizmor.result }}
         run: test "$RESULT" = "success"
 
   pr-title:
