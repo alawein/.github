@@ -20,8 +20,9 @@ class RootSuiteGuardTests(unittest.TestCase):
     def test_ci_still_runs_the_root_suite(self):
         # Lives outside tests/: a root-suite check cannot notice that the root suite stopped running.
         text = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
-        # An active run line, so commenting the step out fails too.
-        self.assertRegex(text, r"(?m)^ +run: python -m unittest discover -s tests -p 'test_\*\.py'")
+        # The whole step, so commenting it out, `|| true`, `if:` or `continue-on-error` also fail.
+        self.assertRegex(text, r"(?m)^      - name: Test reusable workflow behavior\n"
+                               r"        run: python -m unittest discover -s tests -p 'test_\*\.py' -v\n(?!        )")
 
 
 class MetadataWorkflowTests(unittest.TestCase):
