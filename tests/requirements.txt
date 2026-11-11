@@ -1,4 +1,4 @@
-# Root tests only (ci.yml metadata-tests). CPython 3.12 wheels, hashes from PyPI for PyYAML 6.0.3.
+# Root tests only (ci.yml metadata-tests). Wheel hashes from PyPI; Dependabot rewrites them with the version.
 # Install: python -m pip install --require-hashes --only-binary=:all: --no-deps -r tests/requirements.txt
 pyyaml==6.0.3 \
     --hash=sha256:7f047e29dcae44602496db43be01ad42fc6f1cc0d8cd6c83d342306c32270196 \

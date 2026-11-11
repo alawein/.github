@@ -82,6 +82,23 @@ class LinkGateTests(unittest.TestCase):
         self.assertFalse(call["with"]["offline"])
 
 
+class CiGateListTests(unittest.TestCase):
+    def test_header_names_every_always_report_gate(self):
+        # Live ruleset 24266592 required six contexts on 2026-11-11 while this comment listed four.
+        gates = sorted(name for name, job in workflow("ci.yml")["jobs"].items()
+                       if job.get("if") == "${{ always() }}" and job.get("permissions") == {})
+        self.assertEqual(gates, ["actionlint", "link-check", "markdown-lint", "pr-policy", "pr-title", "zizmor"])
+        text = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+        listed = text.split("The ruleset requires:\n#", 1)[1].splitlines()[0]
+        self.assertEqual(sorted(name.strip() for name in listed.split(",")), gates)
+
+    def test_metadata_job_runs_both_suites_with_hashed_dependencies(self):
+        runs = [step.get("run", "") for step in workflow("ci.yml")["jobs"]["metadata-tests"]["steps"]]
+        self.assertTrue(any("discover -s scripts/tests" in run for run in runs))
+        self.assertTrue(any("discover -s tests " in run for run in runs))
+        self.assertTrue(any("--require-hashes" in run and "tests/requirements.txt" in run for run in runs))
+
+
 class ZizmorGateTests(unittest.TestCase):
     def test_gate_requires_successful_audit(self):
         jobs = workflow("ci.yml")["jobs"]

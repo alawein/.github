@@ -16,25 +16,6 @@ BASH = (str(Path(os.environ.get("ProgramFiles", "C:/Program Files")) / "Git/bin/
         if os.name == "nt" else shutil.which("bash"))
 
 
-class CiGateTests(unittest.TestCase):
-    """ci.yml's own gates: the header names every always-report gate, and both suites run."""
-
-    TEXT = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
-
-    def test_header_names_every_always_report_gate(self):
-        # Live ruleset 24266592 required six contexts on 2026-11-11 while this comment listed four.
-        gates = re.findall(r"^  ([a-z-]+):\n(?:    .*\n)*?    if: \$\{\{ always\(\) \}\}\n", self.TEXT, re.M)
-        self.assertEqual(sorted(gates), ["actionlint", "link-check", "markdown-lint", "pr-policy", "pr-title", "zizmor"])
-        listed = re.search(r"The ruleset requires:\n#\s+(.+)", self.TEXT)[1]
-        self.assertEqual(sorted(name.strip() for name in listed.split(",")), sorted(gates))
-
-    def test_metadata_job_runs_both_suites(self):
-        job = re.search(r"^  metadata-tests:\n(.*?)(?=^  [a-z-]+:\n)", self.TEXT, re.M | re.S)[1]
-        self.assertIn("discover -s scripts/tests", job)
-        self.assertIn("discover -s tests", job)
-        self.assertIn("--require-hashes", job)
-
-
 class MetadataWorkflowTests(unittest.TestCase):
     def shell_step(self, workflow, name):
         path = ROOT / ".github/workflows" / workflow
