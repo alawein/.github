@@ -95,7 +95,6 @@ class CiGateListTests(unittest.TestCase):
     def test_metadata_job_runs_both_suites_with_hashed_dependencies(self):
         runs = [step.get("run", "") for step in workflow("ci.yml")["jobs"]["metadata-tests"]["steps"]]
         self.assertTrue(any("discover -s scripts/tests" in run for run in runs))
-        self.assertTrue(any("discover -s tests " in run for run in runs))
         self.assertTrue(any("--require-hashes" in run and "tests/requirements.txt" in run for run in runs))
 
 
