@@ -83,6 +83,9 @@ PR linkage. The existing title producer retains its behavior.
 
 The kit runs metadata fixtures and an always-report `pr-policy` gate that
 requires successful policy and test producers, including on push to main.
+The `metadata-tests` producer runs `scripts/tests`, then the root `tests` suite
+after installing PyYAML from the hash-pinned wheels in `tests/requirements.txt`;
+Dependabot updates that file's version and hashes together.
 Cancellation, failure or skipped producers cannot pass this gate. The metadata
 suite also generates docs, profile, TypeScript, Python, site and lab outputs
 with `new-repo.ps1`, then executes their actual PR-title guards with the generated

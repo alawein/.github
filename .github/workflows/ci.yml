@@ -3,7 +3,7 @@ name: CI
 # This repo tests its own reusable workflows by calling them from the same commit.
 # A called job reports as "<caller job> / <called job>", so small gate jobs below
 # carry stable check names. The ruleset requires:
-#   markdown-lint, link-check, actionlint, pr-title
+#   markdown-lint, link-check, actionlint, pr-title, pr-policy, zizmor
 
 on:
   pull_request:
@@ -51,8 +51,16 @@ jobs:
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.12.10"
+          cache: pip
+          cache-dependency-path: tests/requirements.txt
       - name: Test metadata and workflow guards
         run: python -m unittest discover -s scripts/tests -p 'test_*.py' -v
+      # The root suite parses workflow YAML; PyYAML installs only from the hash-pinned wheels.
+      - name: Install root test dependencies
+        run: |
+          python -m pip install --require-hashes --only-binary=:all: --no-deps -r tests/requirements.txt
+      - name: Test reusable workflow behavior
+        run: python -m unittest discover -s tests -p 'test_*.py' -v
 
   pr-policy:
     needs: [run-pr-policy, metadata-tests]
