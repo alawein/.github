@@ -25,7 +25,9 @@ the checksum from the release's `actionlint_<version>_checksums.txt` (or the ass
 
 | Item | Version | Full SHA or value | Verified | Source repo |
 | --- | --- | --- | --- | --- |
-| actionlint linux_amd64 archive (in lint-actions.yml) | v1.7.12 | sha256 `8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8` | 2026-09-30 | rhysd/actionlint |
+| actionlint linux_amd64 archive (in lint-actions.yml and ci.yml metadata-tests) | v1.7.12 | sha256 `8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8` | 2026-09-30 | rhysd/actionlint |
+| just x86_64 linux musl archive (in ci.yml metadata-tests) | 1.59.0 | sha256 `409044617b6f06517c1035e55ca38c8c856ff8b650e41bc2aa1ef82d5903a23e` (release asset digest) | 2026-11-11 | casey/just |
+| PyYAML wheels (tests/requirements.txt; Dependabot pip) | 6.0.3 | sha256 per wheel, in the file | 2026-11-11 | yaml/pyyaml |
 | uv (default of the `uv-version` input in python-ci.yml) | 0.12.21 | version string | 2026-09-30 | astral-sh/uv |
 
 ## Pins to this repo
