@@ -16,6 +16,13 @@ BASH = (str(Path(os.environ.get("ProgramFiles", "C:/Program Files")) / "Git/bin/
         if os.name == "nt" else shutil.which("bash"))
 
 
+class RootSuiteGuardTests(unittest.TestCase):
+    def test_ci_still_runs_the_root_suite(self):
+        # Lives outside tests/: a root-suite check cannot notice that the root suite stopped running.
+        text = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
+        self.assertIn("python -m unittest discover -s tests -p 'test_*.py'", text)
+
+
 class MetadataWorkflowTests(unittest.TestCase):
     def shell_step(self, workflow, name):
         path = ROOT / ".github/workflows" / workflow
