@@ -1,0 +1,10 @@
+version: 2
+updates:
+  # Keeps the hash-pinned root test dependency (tests/requirements.txt) current; version and hashes move together.
+  - package-ecosystem: pip
+    directory: /tests
+    schedule:
+      interval: monthly
+    cooldown:
+      default-days: 7
+    open-pull-requests-limit: 1

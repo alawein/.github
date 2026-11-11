@@ -3,7 +3,7 @@ name: CI
 # This repo tests its own reusable workflows by calling them from the same commit.
 # A called job reports as "<caller job> / <called job>", so small gate jobs below
 # carry stable check names. The ruleset requires:
-#   markdown-lint, link-check, actionlint, pr-title
+#   markdown-lint, link-check, actionlint, pr-title, pr-policy, zizmor
 
 on:
   pull_request:
@@ -53,6 +53,34 @@ jobs:
           python-version: "3.12.10"
       - name: Test metadata and workflow guards
         run: python -m unittest discover -s scripts/tests -p 'test_*.py' -v
+      # The root suite runs generated consumers through actionlint and just. Release archives are
+      # pinned by version and sha256 like lint-actions.yml; change version and checksum together.
+      - name: Install actionlint v1.7.12 and just 1.59.0
+        shell: bash
+        env:
+          ACTIONLINT_VERSION: "1.7.12"
+          ACTIONLINT_SHA256: "8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8"
+          JUST_VERSION: "1.59.0"
+          JUST_SHA256: "409044617b6f06517c1035e55ca38c8c856ff8b650e41bc2aa1ef82d5903a23e"
+        run: |
+          set -euo pipefail
+          bin="$RUNNER_TEMP/bin"
+          mkdir -p "$bin"
+          archive="actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz"
+          curl -fsSL --retry 3 -o "$RUNNER_TEMP/$archive" "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/${archive}"
+          echo "${ACTIONLINT_SHA256}  $RUNNER_TEMP/$archive" | sha256sum --check -
+          tar -xzf "$RUNNER_TEMP/$archive" -C "$bin" actionlint
+          archive="just-${JUST_VERSION}-x86_64-unknown-linux-musl.tar.gz"
+          curl -fsSL --retry 3 -o "$RUNNER_TEMP/$archive" "https://github.com/casey/just/releases/download/${JUST_VERSION}/${archive}"
+          echo "${JUST_SHA256}  $RUNNER_TEMP/$archive" | sha256sum --check -
+          tar -xzf "$RUNNER_TEMP/$archive" -C "$bin" just
+          echo "$bin" >> "$GITHUB_PATH"
+      # The root suite parses workflow YAML; PyYAML installs only from the hash-pinned wheels.
+      - name: Install root test dependencies
+        run: |
+          python -m pip install --require-hashes --only-binary=:all: --no-deps -r tests/requirements.txt
+      - name: Test reusable workflow behavior
+        run: python -m unittest discover -s tests -p 'test_*.py' -v
 
   pr-policy:
     needs: [run-pr-policy, metadata-tests]
