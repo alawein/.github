@@ -18,8 +18,9 @@ and starters for alawein repositories. This is the root agent instruction file;
 - `just test`: lychee checks local Markdown links offline.
 - `just build`: no build output in this docs repo.
 - `just check`: lint, test, build; `just fix` applies Markdown fixes.
-- CI also runs `markdown-lint`, `link-check`, `actionlint`, `pr-title`,
-  `pr-policy` and `zizmor`, plus the `scripts/tests` and root `tests` suites.
+- `ci.yml` runs `markdown-lint`, `link-check`, `actionlint`, `zizmor` and
+  `metadata-tests` (the `scripts/tests` and root `tests` suites); `policy.yml`
+  runs `pr-title` and `pr-policy`, the only gates that rerun on PR edits.
   See [CI](docs/ci.md) for the exact workflow behavior and pins.
 
 Install `just` with `winget install Casey.Just`; use Node.js/npm for the pinned

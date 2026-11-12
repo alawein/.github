@@ -12,6 +12,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 LYCHEE = os.environ.get("LYCHEE_BIN")
+if os.environ.get("CI") == "true" and not LYCHEE:
+    raise RuntimeError("CI must set LYCHEE_BIN; lychee tests may skip only locally")
 NODE_DIR = os.environ.get("NODE22_DIR")
 
 

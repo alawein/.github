@@ -44,6 +44,7 @@ CI run.
 | `lint-actions.yml` | `actionlint` | Every class |
 | `pr-title.yml` | `pr-title` | Every class |
 | `pr-policy.yml` | `pr-policy` (opt-in) | Branch and ready-PR linkage metadata |
+| `lint-zizmor.yml` | `zizmor` (kit only) | Offline zizmor audit of `.github/workflows` |
 | `hygiene.yml` | Advisory scheduled report | Read-only repository observations |
 | `node-ci.yml` | `node-ci` | `npm ci`, lint, test, build |
 | `python-ci.yml` | `python-ci` | uv or pip, ruff, pytest |
@@ -81,12 +82,16 @@ linkage when ready. Callers must include `ready_for_review` and
 Missing or malformed PR metadata fails. Explicit push events succeed without
 PR linkage. The existing title producer retains its behavior.
 
-The kit runs metadata fixtures and an always-report `pr-policy` gate that
-requires successful policy and test producers, including on push to main.
-The `metadata-tests` producer runs `scripts/tests`, then the root `tests` suite
-after installing PyYAML from the hash-pinned wheels in `tests/requirements.txt`;
-Dependabot updates that file's version and hashes together.
-Cancellation, failure or skipped producers cannot pass this gate. The metadata
+The kit's own `pr-title` and `pr-policy` gates live in `policy.yml`, the only
+kit workflow that reruns on `edited`; `ci.yml` omits it so a PR body edit never
+cancels a CI run on the same SHA. The always-report `pr-policy` gate requires a
+successful policy producer, including on push to main; cancellation, failure or
+a skipped producer cannot pass it. `ci.yml`'s `metadata-tests` job is its own
+required context. It runs `scripts/tests`, then the root `tests` suite after
+installing PyYAML from the hash-pinned wheels in `tests/requirements.txt`
+(Dependabot updates that file's version and hashes together) and the pinned
+actionlint, just and lychee archives. It exports `LYCHEE_BIN`; with `CI=true`
+the lychee tests fail instead of skipping when it is unset. The metadata
 suite also generates docs, profile, TypeScript, Python, site and lab outputs
 with `new-repo.ps1`, then executes their actual PR-title guards with the generated
 environment bindings across 180 event/ref/result cases. Only an actual push to
@@ -258,7 +263,8 @@ This release preserves `require-test` and paired local/external link inputs, and
 - No secrets in these workflows. The automatic `secrets.GITHUB_TOKEN` is the
   only credential.
 - Every job has `timeout-minutes`.
-- Active kit jobs use `ubuntu-24.04`; hosted image software still changes.
+- Kit jobs and distributed templates use `ubuntu-24.04`, never `ubuntu-latest`
+  (a root test enforces it); hosted image software still changes.
 - Concurrency cancels older runs on the same PR. Runs on `main` are never
   canceled.
 - Each reusable workflow uses its own concurrency prefix, so it never clashes
@@ -350,9 +356,12 @@ any workflow in this repo or in a caller repo.
 Runner time is rounded up per job, and every run of every PR uses it. These
 rules apply to any caller of the kit.
 
-- Rerun on `edited` only what reads the PR title or body. Kit callers keep
-  `edited` because the title and policy gates live in the same workflow. A repo
-  with no such gates should leave it out.
+- Rerun on `edited` only what reads the PR title or body. Distributed callers
+  keep `edited` because the title and policy gates live in the same workflow.
+  The kit itself splits them into `policy.yml`: with per-PR cancellation, an
+  edit-triggered run cancels the push run on the same SHA, and that run's
+  always-report gates then fail their required contexts. A repo with no such
+  gates should leave `edited` out.
 - Trigger on `push` for `main` only, plus `pull_request` for `main`, so a branch
   with an open PR does not run twice.
 - Cancel superseded runs with a `concurrency` group per PR and

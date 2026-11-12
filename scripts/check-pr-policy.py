@@ -6,7 +6,8 @@ import os
 from pathlib import Path
 import re
 
-BRANCH = re.compile(r"(?:feat|fix|docs|chore|refactor|test)/[a-z0-9]+(?:-[a-z0-9]+)*\Z")
+# pr-title's default conventional types, plus exp for experiments.
+BRANCH = re.compile(r"(?:feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert|exp)/[a-z0-9]+(?:-[a-z0-9]+)*\Z")
 DATE = re.compile(r"(?:\d{4}-\d{2}-\d{2}|\d{2}-\d{2}-\d{4}|(?:19|20)\d{6})")
 ISSUE = re.compile(r"(?<![\w/])(?:[\w.-]+/[\w.-]+)?#[1-9]\d*(?![\w])|"
                    r"https://github\.com/[\w.-]+/[\w.-]+/issues/[1-9]\d*(?![\w/])")
@@ -120,7 +121,7 @@ def main():
     except (OSError, ValueError) as error:
         errors = [f"Cannot read event: {error.__class__.__name__}."]
     for error in errors:
-        print(error)
+        print(f"::error::{error}")
     if not errors:
         print("PR policy compliant (or explicit non-PR push).")
     return int(bool(errors))

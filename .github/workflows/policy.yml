@@ -1,0 +1,59 @@
+name: Policy
+
+# PR-metadata gates for this repo. They read the PR title and body, so they rerun on
+# `edited`; ci.yml does not, so editing a PR body never cancels a CI run on the same SHA.
+# A called job reports as "<caller job> / <called job>", so the gate jobs below carry
+# stable check names. The ruleset requires from this file: pr-title, pr-policy
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened, ready_for_review, converted_to_draft]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: policy-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  run-pr-title:
+    permissions:
+      pull-requests: read
+    uses: $/.github/workflows/pr-title.yml
+
+  run-pr-policy:
+    uses: $/.github/workflows/pr-policy.yml
+
+  pr-policy:
+    needs: [run-pr-policy]
+    if: ${{ always() }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 1
+    permissions: {}
+    steps:
+      - name: Require policy success
+        env:
+          RESULT: ${{ needs.run-pr-policy.result }}
+        run: |
+          test "$RESULT" = "success"
+
+  pr-title:
+    needs: [run-pr-title]
+    if: ${{ always() }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 1
+    permissions: {}
+    steps:
+      # Only the actual main-push event may omit PR-title evaluation.
+      - name: Require success or eligible main-push skip
+        env:
+          RESULT: ${{ needs.run-pr-title.result }}
+          EVENT: ${{ github.event_name }}
+          REF: ${{ github.ref }}
+        run: |
+          [ "$RESULT" = "success" ] || {
+            [ "$RESULT" = "skipped" ] && [ "$EVENT" = "push" ] && [ "$REF" = "refs/heads/main" ]
+          }
