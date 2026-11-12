@@ -46,8 +46,9 @@ class PolicyTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "event.json"
             path.write_text(json.dumps(event("codex/task", "")), encoding="utf-8")
-            result = subprocess.run([sys.executable, str(SCRIPT), "--event", str(path)],
-                                    capture_output=True, text=True)
+            # The script reads GITHUB_EVENT_NAME; pin it so a main-push runner does not turn this PR event into a push.
+            result = subprocess.run([sys.executable, str(SCRIPT), "--event", str(path)], capture_output=True, text=True,
+                                    env={**os.environ, "GITHUB_EVENT_NAME": "pull_request"})
         self.assertEqual(result.returncode, 1)
         lines = result.stdout.splitlines()
         self.assertEqual(len(lines), 2, result.stdout)
