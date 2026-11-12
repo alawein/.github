@@ -101,6 +101,12 @@ The original four required contexts and distributed v1.2.0 pins remain unchanged
 consumers opt in after a reviewed signed release. Require `pr-policy` in live
 rules only after observing an eligible successful PR run at its current SHA.
 
+`rulesets/checks.json` is the canonical required-check list: `fleet_base` for
+consumers, the per-language extra, the `pr-policy` opt-in, and `kit_self` for this
+repo's own ruleset. `tests/test_check_list.py` fails when any copy (ruleset
+templates, setup and verify scripts, the hygiene defaults, this repo's gate jobs)
+disagrees with it, so change the list there first.
+
 `hygiene.yml` accepts `expected-required-checks`, a comma-separated list defaulting
 to the original four contexts; it has no `kit-ref` input. Callers pin the reviewed
 workflow release SHA on `uses:`. Released v1.3.0 separately pins audit source to
