@@ -101,8 +101,9 @@ class CiGateListTests(unittest.TestCase):
         self.assertIn("ready_for_review", ci[True]["pull_request"]["types"])
         self.assertIn("edited", policy[True]["pull_request"]["types"])
         self.assertNotEqual(ci["concurrency"]["group"], policy["concurrency"]["group"])
+        # A superseded (cancelled) policy run posts skipped gates, never failures beside the newer run.
         gates = sorted(name for name, job in policy["jobs"].items()
-                       if job.get("if") == "${{ always() }}" and job.get("permissions") == {})
+                       if job.get("if") == "${{ !cancelled() }}" and job.get("permissions") == {})
         self.assertEqual(gates, ["pr-policy", "pr-title"])
         self.assertEqual(policy["jobs"]["pr-policy"]["needs"], ["run-pr-policy"])
         self.assertEqual(policy["jobs"]["run-pr-title"]["permissions"], {"pull-requests": "read"})
