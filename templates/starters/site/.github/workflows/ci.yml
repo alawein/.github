@@ -25,24 +25,24 @@ concurrency:
 
 jobs:
   run-markdown-lint:
-    uses: alawein/.github/.github/workflows/lint-markdown.yml@6f6dbe7f3a23ab830a32007bb52b83fd1bb40563 # v1.2.0
+    uses: alawein/.github/.github/workflows/lint-markdown.yml@f5dbd4d7656e286e20d2aa24463253c32a56521b # v1.4.0
 
   run-link-check:
-    uses: alawein/.github/.github/workflows/check-links.yml@6f6dbe7f3a23ab830a32007bb52b83fd1bb40563 # v1.2.0
+    uses: alawein/.github/.github/workflows/check-links.yml@f5dbd4d7656e286e20d2aa24463253c32a56521b # v1.4.0
     with:
       offline: true
 
   run-actionlint:
-    uses: alawein/.github/.github/workflows/lint-actions.yml@6f6dbe7f3a23ab830a32007bb52b83fd1bb40563 # v1.2.0
+    uses: alawein/.github/.github/workflows/lint-actions.yml@f5dbd4d7656e286e20d2aa24463253c32a56521b # v1.4.0
 
   run-pr-title:
     permissions:
       pull-requests: read
-    uses: alawein/.github/.github/workflows/pr-title.yml@6f6dbe7f3a23ab830a32007bb52b83fd1bb40563 # v1.2.0
+    uses: alawein/.github/.github/workflows/pr-title.yml@f5dbd4d7656e286e20d2aa24463253c32a56521b # v1.4.0
 
   # This job proves lint, tests, and the build. It does not contact a host.
   run-node-ci:
-    uses: alawein/.github/.github/workflows/node-ci.yml@6f6dbe7f3a23ab830a32007bb52b83fd1bb40563 # v1.2.0
+    uses: alawein/.github/.github/workflows/node-ci.yml@f5dbd4d7656e286e20d2aa24463253c32a56521b # v1.4.0
     with:
       node-version: lts/*
       run-lint: true
