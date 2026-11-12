@@ -13,6 +13,8 @@ import yaml
 ROOT = Path(__file__).resolve().parents[1]
 BASH = Path(r"C:\Program Files\Git\bin\bash.exe") if platform.system() == "Windows" else Path("/bin/bash")
 LYCHEE = os.environ.get("LYCHEE_BIN")
+if os.environ.get("CI") == "true" and not LYCHEE:
+    raise RuntimeError("CI must set LYCHEE_BIN; lychee tests may skip only locally")
 
 # The pinned action evaluates the assembled argument string with globstar off.
 ACTION_EVAL = """

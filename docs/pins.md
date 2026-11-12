@@ -28,6 +28,8 @@ the checksum from the release's `actionlint_<version>_checksums.txt` (or the ass
 | --- | --- | --- | --- | --- |
 | actionlint linux_amd64 archive (in lint-actions.yml and ci.yml metadata-tests) | v1.7.12 | sha256 `8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8` | 2026-09-30 | rhysd/actionlint |
 | just x86_64 linux musl archive (in ci.yml metadata-tests) | 1.59.0 | sha256 `409044617b6f06517c1035e55ca38c8c856ff8b650e41bc2aa1ef82d5903a23e` (release asset digest) | 2026-11-11 | casey/just |
+| lychee x86_64 linux musl archive (in ci.yml metadata-tests; matches lychee-action v2.9.0's default) | 0.24.2 | sha256 `73657a111819a30c47c08352896796f23d64e4eb2b3ed39b6d32149241566fc5` (release asset digest, tag `lychee-v0.24.2`) | 2026-11-11 | lycheeverse/lychee |
+| zizmor x86_64 linux gnu archive (in lint-zizmor.yml) | v1.32.0 | sha256 `bb110cc765eca9cd7efb2e284a956be5974c60027b0970f16397d86208a9957b` (release asset digest) | 2026-11-11 | zizmorcore/zizmor |
 | PyYAML wheels (tests/requirements.txt; Dependabot pip) | 6.0.3 | sha256 per wheel, in the file | 2026-11-11 | yaml/pyyaml |
 | uv (default of the `uv-version` input in python-ci.yml) | 0.12.21 | version string | 2026-09-30 | astral-sh/uv |
 

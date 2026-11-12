@@ -36,6 +36,25 @@ class PolicyTests(unittest.TestCase):
             with self.subTest(kind=kind):
                 self.assertEqual(self.check(event(kind + "/policy-hygiene")), [])
 
+    def test_title_check_default_types_and_exp_pass(self):
+        # Run 42973143206 rejected ci/add-zizmor-audit although pr-title accepts `ci`.
+        for kind in ("style", "perf", "build", "ci", "revert", "exp"):
+            with self.subTest(kind=kind):
+                self.assertEqual(self.check(event(kind + "/add-zizmor-audit")), [])
+
+    def test_cli_prints_each_violation_as_an_error_annotation(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "event.json"
+            path.write_text(json.dumps(event("codex/task", "")), encoding="utf-8")
+            result = subprocess.run([sys.executable, str(SCRIPT), "--event", str(path)],
+                                    capture_output=True, text=True)
+        self.assertEqual(result.returncode, 1)
+        lines = result.stdout.splitlines()
+        self.assertEqual(len(lines), 2, result.stdout)
+        for line in lines:
+            self.assertRegex(line, r"^::error::\S")
+        self.assertIn("::error::Branch must use a house type", result.stdout)
+
     def test_documented_release_branch_passes_ready_pr_policy(self):
         delivery = (SCRIPT.parents[1] / "docs/system/delivery.md").read_text(encoding="utf-8")
         branches = re.findall(r"`(chore/release-[^`]+)`", delivery)

@@ -81,17 +81,16 @@ class MetadataWorkflowTests(unittest.TestCase):
         workflow = (ROOT / ".github/workflows/hygiene.yml").read_text(encoding="utf-8")
         self.assertIn("--token-limited", workflow, "the workflow token cannot read admin-only fields")
 
-    def test_policy_gate_rejects_unsuccessful_producer_or_tests(self):
-        script = self.shell_step("ci.yml", "Require policy and metadata tests")
-        for result, tests, expected in (("success", "success", 0), ("cancelled", "success", 1),
-                                       ("failure", "success", 1), ("skipped", "success", 1),
-                                       ("success", "failure", 1), ("success", "cancelled", 1),
-                                       ("success", "skipped", 1), ("success", "", 1), ("", "success", 1)):
-            code = subprocess.run([BASH, "-c", script], env={**os.environ, "RESULT": result, "TESTS": tests}).returncode
-            self.assertEqual(code, expected)
+    def test_policy_gate_rejects_unsuccessful_producer(self):
+        # metadata-tests is its own required context in ci.yml, so this gate waits only on policy.
+        script = self.shell_step("policy.yml", "Require policy success")
+        for result in ("success", "failure", "cancelled", "skipped", ""):
+            with self.subTest(result=result):
+                code = subprocess.run([BASH, "-c", script], env={**os.environ, "RESULT": result}).returncode
+                self.assertEqual(code, 0 if result == "success" else 1)
 
     def test_title_gate_only_accepts_skipped_on_actual_main_push(self):
-        paths = [ROOT / ".github/workflows/ci.yml"] + sorted((ROOT / "templates/workflows").glob("*.yml"))
+        paths = [ROOT / ".github/workflows/policy.yml"] + sorted((ROOT / "templates/workflows").glob("*.yml"))
         for path in paths:
             text = path.read_text(encoding="utf-8")
             if "\n  pr-title:\n" not in text:

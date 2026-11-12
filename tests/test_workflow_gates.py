@@ -87,16 +87,48 @@ class CiGateListTests(unittest.TestCase):
         # Live ruleset 24266592 required six contexts on 2026-11-11 while this comment listed four.
         gates = sorted(name for name, job in workflow("ci.yml")["jobs"].items()
                        if job.get("if") == "${{ always() }}" and job.get("permissions") == {})
-        self.assertEqual(gates, ["actionlint", "link-check", "markdown-lint", "pr-policy", "pr-title", "zizmor"])
+        self.assertEqual(gates, ["actionlint", "link-check", "markdown-lint", "zizmor"])
         text = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
         listed = text.split("The ruleset requires:\n#", 1)[1].splitlines()[0]
-        self.assertEqual(sorted(name.strip() for name in listed.split(",")), gates)
+        # metadata-tests is a plain job, so it reports its own check under that name.
+        self.assertEqual(sorted(name.strip() for name in listed.split(",")), sorted(gates + ["metadata-tests"]))
+        self.assertNotIn("needs", workflow("ci.yml")["jobs"]["metadata-tests"])
+
+    def test_only_policy_workflow_reruns_on_edited(self):
+        # Run 43116245493 (body edit, same SHA) cancelled push run 43116219207, whose gates then failed.
+        ci, policy = workflow("ci.yml"), workflow("policy.yml")
+        self.assertNotIn("edited", ci[True]["pull_request"]["types"])
+        self.assertIn("ready_for_review", ci[True]["pull_request"]["types"])
+        self.assertIn("edited", policy[True]["pull_request"]["types"])
+        self.assertNotEqual(ci["concurrency"]["group"], policy["concurrency"]["group"])
+        # A superseded (cancelled) policy run posts skipped gates, never failures beside the newer run.
+        gates = sorted(name for name, job in policy["jobs"].items()
+                       if job.get("if") == "${{ !cancelled() }}" and job.get("permissions") == {})
+        self.assertEqual(gates, ["pr-policy", "pr-title"])
+        self.assertEqual(policy["jobs"]["pr-policy"]["needs"], ["run-pr-policy"])
+        self.assertEqual(policy["jobs"]["run-pr-title"]["permissions"], {"pull-requests": "read"})
+        self.assertEqual(policy["permissions"], {"contents": "read"})
+        for job in ("run-pr-title", "run-pr-policy", "pr-title", "pr-policy"):
+            self.assertNotIn(job, ci["jobs"])
+
+    def test_no_workflow_runs_on_ubuntu_latest(self):
+        # ubuntu-latest moved callers to a new image without review; pin the image instead.
+        paths = sorted((ROOT / ".github" / "workflows").glob("*.yml")) + sorted((ROOT / "templates").rglob("*.yml"))
+        offenders = []
+        for path in paths:
+            doc = yaml.safe_load(path.read_text(encoding="utf-8"))
+            # A jobs fragment such as pr-policy.jobs.yml holds jobs at the top level.
+            jobs = doc.get("jobs", doc) if isinstance(doc, dict) else {}
+            offenders += [f"{path.relative_to(ROOT)}:{name}" for name, job in jobs.items()
+                          if isinstance(job, dict) and "ubuntu-latest" in str(job.get("runs-on", ""))]
+        self.assertEqual(offenders, [])
 
     def test_metadata_job_runs_scripts_suite_with_hashed_dependencies(self):
         # The root suite's own step is guarded from scripts/tests (test_ci_still_runs_the_root_suite).
         runs = [step.get("run", "") for step in workflow("ci.yml")["jobs"]["metadata-tests"]["steps"]]
         self.assertTrue(any("discover -s scripts/tests" in run for run in runs))
         self.assertTrue(any("--require-hashes" in run and "tests/requirements.txt" in run for run in runs))
+        self.assertTrue(any('LYCHEE_BIN=$bin/lychee" >> "$GITHUB_ENV"' in run for run in runs))
 
 
 class ZizmorGateTests(unittest.TestCase):
@@ -114,6 +146,13 @@ class ZizmorGateTests(unittest.TestCase):
                 code = subprocess.run([str(BASH), "-c", require_success["run"]],
                                       env={**os.environ, "RESULT": result}).returncode
                 self.assertEqual(code, 0 if result == "success" else 1)
+
+    def test_audit_installs_a_checksum_verified_release(self):
+        steps = workflow("lint-zizmor.yml")["jobs"]["lint"]["steps"]
+        install = next(s for s in steps if s.get("name") == "Install zizmor v1.32.0")
+        self.assertRegex(install["env"]["ZIZMOR_SHA256"], r"^[0-9a-f]{64}$")
+        self.assertIn("sha256sum --check -", install["run"])
+        self.assertNotIn("pipx", "".join(s.get("run", "") for s in steps))
 
     def test_reusable_audit_refuses_archive_repositories(self):
         audit = workflow("lint-zizmor.yml")

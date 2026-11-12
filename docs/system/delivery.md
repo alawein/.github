@@ -109,7 +109,9 @@ detail.
 - `main` is the only long-lived branch. It is always releasable.
 - Work branches are `type/short-topic`, lowercase with hyphens, no dates:
   `feat/build`, `fix/label-join`, `docs/readme-links`.
-- Types: feat, fix, docs, chore, refactor, test.
+- Types: feat, fix, docs, chore, refactor, test. The opt-in metadata check
+  also accepts the title check's other default types (style, perf, build, ci,
+  revert) and `exp` for experiments.
 - Topics have no empty hyphen segments or calendar dates. Agent-prefixed
   branches such as `codex/task` fail the opt-in metadata check. No author is
   exempt from branch naming and linkage.

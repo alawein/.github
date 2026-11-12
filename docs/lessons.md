@@ -29,3 +29,4 @@ One line per session, newest at the bottom. Format:
 - 2026-11-06 | first useful result | A passing code check or saved-result replay can hide a broken own-input workflow | State the accepted input, expected useful output and preservation path; distinguish fixtures and replays from experiments and live integrations.
 - 2026-11-07 | first use | A local delivery preview or saved prompt fixture can look like a provider response | Name the step that sends data and show the result of running the example with the integration disabled.
 - 2026-11-07 | saved artifacts | A successful save alone does not explain recovery | State what reopening checks, how mismatch behaves, and how retry preserves prior input or output.
+- 2026-11-11 | required checks | A body-edit run with per-PR cancellation cancels the same-SHA push run, and its always-run gates then fail required contexts | Keep `edited` only in a separate workflow that holds the title and body gates.

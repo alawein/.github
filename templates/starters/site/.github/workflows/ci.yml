@@ -55,7 +55,7 @@ jobs:
   markdown-lint:
     needs: [run-markdown-lint]
     if: ${{ always() }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 1
     permissions: {}
     steps:
@@ -67,7 +67,7 @@ jobs:
   link-check:
     needs: [run-link-check]
     if: ${{ always() }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 1
     permissions: {}
     steps:
@@ -79,7 +79,7 @@ jobs:
   actionlint:
     needs: [run-actionlint]
     if: ${{ always() }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 1
     permissions: {}
     steps:
@@ -91,7 +91,7 @@ jobs:
   pr-title:
     needs: [run-pr-title]
     if: ${{ always() }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 1
     permissions: {}
     steps:
@@ -109,7 +109,7 @@ jobs:
   node-ci:
     needs: [run-node-ci]
     if: ${{ always() }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 1
     permissions: {}
     steps:

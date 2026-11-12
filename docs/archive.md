@@ -108,7 +108,7 @@ Historical references require a reviewed exception in the script with the repo o
   ```yaml
   jobs:
     archive-guard:
-      runs-on: ubuntu-latest
+      runs-on: ubuntu-24.04
       timeout-minutes: 1
       permissions: {}
       steps:
