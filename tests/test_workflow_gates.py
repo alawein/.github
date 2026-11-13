@@ -68,6 +68,32 @@ class NodeGateTests(unittest.TestCase):
         self.assertEqual(result.returncode, 7, f"stdout={result.stdout!r} stderr={result.stderr!r}")
 
 
+class NodeLintGateTests(unittest.TestCase):
+    def run_lint(self, scripts, run_lint="true", name="Require a runnable lint script"):
+        guard = step(name)
+        self.assertIsNotNone(guard, f"missing {name}")
+        with tempfile.TemporaryDirectory() as directory:
+            Path(directory, "package.json").write_text(json.dumps({"scripts": scripts}))
+            return subprocess.run([str(BASH), "-c", guard["run"]], cwd=directory,
+                                  env={**os.environ, "RUN_LINT": run_lint},
+                                  capture_output=True, text=True)
+
+    def test_required_lint_rejects_missing_and_empty_scripts(self):
+        for scripts in ({}, {"lint": ""}, {"lint": "  "}):
+            with self.subTest(scripts=scripts):
+                result = self.run_lint(scripts)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("::error::", result.stderr)
+
+    def test_required_lint_rejects_disabled_execution(self):
+        self.assertNotEqual(self.run_lint({"lint": "node -e 'process.exit(0)'"}, "false").returncode, 0)
+
+    def test_required_lint_runs_and_propagates_failure(self):
+        self.assertEqual(self.run_lint({"lint": "node -e 'process.exit(0)'"}).returncode, 0)
+        result = self.run_lint({"lint": 'node -e "process.exit(7)"'}, name="Lint (required)")
+        self.assertEqual(result.returncode, 7, result.stdout + result.stderr)
+
+
 class LinkGateTests(unittest.TestCase):
     def test_reusable_links_preserve_external_checks_by_default(self):
         links = workflow("check-links.yml")

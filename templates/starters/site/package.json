@@ -10,7 +10,7 @@
   },
   "scripts": {
     "dev": "astro dev",
-    "lint": "eslint . && prettier --check . && astro check",
+    "lint": "eslint . --max-warnings=0 && prettier --check . && astro check",
     "test": "vitest run",
     "build": "astro build",
     "check": "npm run lint && npm test && npm run build",

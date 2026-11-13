@@ -78,7 +78,8 @@ None yet. A repo skill lives at `.claude/skills/NAME/SKILL.md` and is listed her
 
 ## Known traps
 
-- Seed anything random. A flaky test is fixed or deleted the same day.
+- Seed anything random. Repair flaky tests; quarantine only noncritical coverage
+  with an owner, a repair task, and an expiry. Preserve required coverage.
 - A lab with no commit for 90 days is promoted to a tool repo or archived. Do not let it sit.
 
 ## Close out

@@ -28,6 +28,8 @@ jobs:
 
   run-pr-policy:
     uses: $/.github/workflows/pr-policy.yml
+    with:
+      require-sections: true
 
   pr-policy:
     needs: [run-pr-policy]

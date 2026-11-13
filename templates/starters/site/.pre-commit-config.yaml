@@ -1,0 +1,8 @@
+repos:
+  - repo: local
+    hooks:
+      - id: repository-lint
+        name: Check formatting, lint, and declared types
+        language: system
+        entry: npm run lint
+        pass_filenames: false

@@ -27,6 +27,33 @@ def event(branch="feat/policy-hygiene", body="Closes #12", draft=False):
                              "head": {"ref": branch}}}
 
 
+def complete_body():
+    return "\n\n".join([
+        "## Context\nCloses #12\nPrevent incomplete release evidence.",
+        "## Changes\nValidate the supplied manifest.",
+        "## Testing Evidence\npytest: exit 0, all tests passed.",
+        "## Screenshots/Logs\nNot applicable: this change has no visual output.",
+        "## Rollback Plan\nRevert the change.",
+    ])
+
+
+class RequiredSectionTests(unittest.TestCase):
+    def test_ready_pr_requires_meaningful_evidence_in_each_section(self):
+        check = load()
+        self.assertEqual(check(event(body=complete_body()), require_sections=True), [])
+        for replacement in ("", "<!-- Fill this in -->", "TBD", "- [ ]"):
+            with self.subTest(replacement=replacement):
+                body = complete_body().replace("pytest: exit 0, all tests passed.", replacement)
+                self.assertTrue(check(event(body=body), require_sections=True))
+
+    def test_example_headings_do_not_satisfy_required_sections(self):
+        body = "Closes #12\n```markdown\n" + complete_body() + "\n```"
+        self.assertTrue(load()(event(body=body), require_sections=True))
+
+    def test_drafts_can_defer_sections(self):
+        self.assertEqual(load()(event(body="", draft=True), require_sections=True), [])
+
+
 class PolicyTests(unittest.TestCase):
     def setUp(self):
         self.check = load()

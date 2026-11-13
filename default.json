@@ -1,0 +1,36 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "branchPrefix": "chore/deps-",
+  "branchTopic": "{{{replace '[^a-z0-9]+' '-' (lowercase depNameSanitized)}}}-{{newMajor}}",
+  "semanticCommits": "enabled",
+  "semanticCommitType": "chore",
+  "semanticCommitScope": "deps",
+  "labels": ["chore"],
+  "prConcurrentLimit": 1,
+  "prHourlyLimit": 1,
+  "minimumReleaseAge": "7 days",
+  "dependencyDashboard": { "enabled": false },
+  "automerge": false,
+  "automergeType": "pr",
+  "automergeStrategy": "squash",
+  "ignoreTests": false,
+  "platformAutomerge": false,
+  "prBodyTemplate": "## Context\n\nNo-issue: scheduled dependency maintenance for this repository.\n\n## Changes\n\n{{{table}}}\n\n{{{warnings}}}\n\n## Testing Evidence\n\nSee the checks on this PR for commands and results on the current revision. Required checks and reviews must pass before merge.\n\n## Screenshots/Logs\n\nCI logs are linked from this PR's checks. Inspect visual output when a dependency changes rendering.\n\n{{{notes}}}\n\n## Rollback Plan\n\nRevert the dependency and lockfile commit, then run the repository check command.\n\n{{{changelogs}}}",
+  "packageRules": [
+    {
+      "description": "Only semver patch updates may merge automatically after checks and review.",
+      "matchUpdateTypes": ["patch"],
+      "automerge": true
+    },
+    {
+      "description": "Workflow and container updates need manual review.",
+      "matchManagers": ["github-actions", "dockerfile", "docker-compose", "renovate-config"],
+      "automerge": false,
+      "pinDigests": true
+    },
+    {
+      "matchPackageNames": ["ajv", "jsonschema", "cryptography", "hatchling", "esbuild", "vite", "astro", "@playwright/test", "pypi-attestations", "renovate"],
+      "automerge": false
+    }
+  ]
+}

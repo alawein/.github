@@ -12,6 +12,7 @@ DATE = re.compile(r"(?:\d{4}-\d{2}-\d{2}|\d{2}-\d{2}-\d{4}|(?:19|20)\d{6})")
 ISSUE = re.compile(r"(?<![\w/])(?:[\w.-]+/[\w.-]+)?#[1-9]\d*(?![\w])|"
                    r"https://github\.com/[\w.-]+/[\w.-]+/issues/[1-9]\d*(?![\w/])")
 PLACEHOLDERS = {"n/a", "na", "none", "todo", "tbd", "reason", "specific reason", "no issue"}
+REQUIRED_SECTIONS = ("Context", "Changes", "Testing Evidence", "Screenshots/Logs", "Rollback Plan")
 
 
 def prose(body):
@@ -75,7 +76,26 @@ def linked(body):
     return False
 
 
-def check(event: dict) -> list[str]:
+def section_errors(body: str) -> list[str]:
+    sections = {}
+    heading = None
+    for line in prose(body).splitlines():
+        match = re.fullmatch(r"\s*##\s+(.+?)\s*#*\s*", line)
+        if match:
+            heading = match[1].casefold()
+            sections.setdefault(heading, [])
+        elif heading is not None:
+            sections[heading].append(line)
+    errors = []
+    for name in REQUIRED_SECTIONS:
+        content = "\n".join(sections.get(name.casefold(), []))
+        content = re.sub(r"(?m)^\s*[-*]\s*\[[ xX]\]\s*", "", content).strip()
+        if not re.search(r"[A-Za-z0-9]", content) or content.casefold().rstrip(".") in PLACEHOLDERS:
+            errors.append(f"Ready PR needs meaningful content in {name}.")
+    return errors
+
+
+def check(event: dict, *, require_sections: bool = False) -> list[str]:
     """Return violations; only a validated PR or explicit push can succeed."""
     if not isinstance(event, dict):
         return ["Event must be an object."]
@@ -106,18 +126,22 @@ def check(event: dict) -> list[str]:
         errors.append("Branch must use a house type and a lowercase hyphenated topic without dates.")
     if not pr["draft"] and not linked(pr["body"] or ""):
         errors.append("Ready PR needs an issue reference or No-issue: followed by a specific reason.")
+    if require_sections and not pr["draft"]:
+        errors.extend(section_errors(pr["body"] or ""))
     return errors
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--event", required=True, type=Path)
+    parser.add_argument("--require-sections", action="store_true",
+                        default=os.environ.get("REQUIRE_SECTIONS") == "true")
     args = parser.parse_args()
     try:
         event = json.loads(args.event.read_text(encoding="utf-8"))
         if isinstance(event, dict) and os.environ.get("GITHUB_EVENT_NAME"):
             event["_event_name"] = os.environ["GITHUB_EVENT_NAME"]
-        errors = check(event)
+        errors = check(event, require_sections=args.require_sections)
     except (OSError, ValueError) as error:
         errors = [f"Cannot read event: {error.__class__.__name__}."]
     for error in errors:

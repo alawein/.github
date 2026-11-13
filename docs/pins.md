@@ -19,8 +19,9 @@ workflow changes, regenerate it from those files.
 
 ## Pins that are not `uses:` lines
 
-No bot bumps these, except the PyYAML wheels, which Dependabot pip updates with their hashes.
-Otherwise change the version and the checksum together. For actionlint, read
+Renovate may propose changes to recognized package and action manifests. Update
+standalone binary versions and checksums together through reviewed changes.
+For actionlint, read
 the checksum from the release's `actionlint_<version>_checksums.txt` (or the asset digest in
 `GET repos/rhysd/actionlint/releases/tags/v<version>`).
 
@@ -30,8 +31,10 @@ the checksum from the release's `actionlint_<version>_checksums.txt` (or the ass
 | just x86_64 linux musl archive (in ci.yml metadata-tests) | 1.59.0 | sha256 `409044617b6f06517c1035e55ca38c8c856ff8b650e41bc2aa1ef82d5903a23e` (release asset digest) | 2026-11-11 | casey/just |
 | lychee x86_64 linux musl archive (in ci.yml metadata-tests; matches lychee-action v2.9.0's default) | 0.24.2 | sha256 `73657a111819a30c47c08352896796f23d64e4eb2b3ed39b6d32149241566fc5` (release asset digest, tag `lychee-v0.24.2`) | 2026-11-11 | lycheeverse/lychee |
 | zizmor x86_64 linux gnu archive (in lint-zizmor.yml) | v1.32.0 | sha256 `bb110cc765eca9cd7efb2e284a956be5974c60027b0970f16397d86208a9957b` (release asset digest) | 2026-11-11 | zizmorcore/zizmor |
-| PyYAML wheels (tests/requirements.txt; Dependabot pip) | 6.0.3 | sha256 per wheel, in the file | 2026-11-11 | yaml/pyyaml |
+| PyYAML wheels (tests/requirements.txt) | 6.0.3 | sha256 per wheel, in the file | 2026-11-11 | yaml/pyyaml |
 | uv (default of the `uv-version` input in python-ci.yml) | 0.12.21 | version string | 2026-09-30 | astral-sh/uv |
+| Renovate validator and offline rule tests (ci.yml metadata-tests) | 44.238.1 | exact npm version | 2026-11-13 | renovatebot/renovate |
+| Node for the Renovate validator (ci.yml metadata-tests) | 26.13.0 | exact runtime version | 2026-11-13 | nodejs/node |
 
 ## Pins to this repo
 

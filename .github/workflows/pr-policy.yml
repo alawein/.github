@@ -7,6 +7,10 @@ on:
         description: Full kit commit SHA; only kit self-tests may omit it.
         type: string
         default: ""
+      require-sections:
+        description: Require complete review evidence for ready PRs.
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -65,4 +69,6 @@ jobs:
         with:
           python-version: "3.12.10"
       - name: Validate caller event
+        env:
+          REQUIRE_SECTIONS: ${{ inputs.require-sections }}
         run: python _kit/scripts/check-pr-policy.py --event "$GITHUB_EVENT_PATH"

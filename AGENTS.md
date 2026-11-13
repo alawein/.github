@@ -22,6 +22,8 @@ and starters for alawein repositories. This is the root agent instruction file;
   `metadata-tests` (the `scripts/tests` and root `tests` suites); `policy.yml`
   runs `pr-title` and `pr-policy`, the only gates that rerun on PR edits.
   See [CI](docs/ci.md) for the exact workflow behavior and pins.
+- Dependency-policy changes also run the pinned Renovate validator and offline
+  matcher/template cases listed in `ci.yml`; these perform no repository writes.
 
 Install `just` with `winget install Casey.Just`; use Node.js/npm for the pinned
 Markdown runner and install lychee separately. Do not add a package manifest
