@@ -1,7 +1,7 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "branchPrefix": "chore/deps-",
-  "branchTopic": "{{{replace '[^a-z0-9]+' '-' (lowercase depNameSanitized)}}}-{{newMajor}}",
+  "branchTopic": "{{{replace '[^a-z0-9]+' '-' (lowercase depNameSanitized)}}}{{#if newMajor}}-{{newMajor}}{{/if}}",
   "semanticCommits": "enabled",
   "semanticCommitType": "chore",
   "semanticCommitScope": "deps",

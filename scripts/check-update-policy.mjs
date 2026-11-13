@@ -51,21 +51,27 @@ const branch = compile(preset.branchPrefix + preset.branchTopic, {
   depNameSanitized: 'Scope.Nested/Package', newMajor: 3,
 });
 assert.equal(branch, 'chore/deps-scope-nested-package-3');
+const unversionedBranch = compile(preset.branchPrefix + preset.branchTopic, {
+  depNameSanitized: 'Scope.Nested/Package',
+});
+assert.equal(unversionedBranch, 'chore/deps-scope-nested-package', 'Non-semver updates need a valid branch too');
 const body = compile(preset.prBodyTemplate, {
   table: '| Package | Change |\n| --- | --- |\n| Example | 1.0.0 to 1.0.1 |',
 }, false); // Match Renovate's PR-body renderer; these are body-section variables.
 const scratch = fs.mkdtempSync(path.join(os.tmpdir(), 'update-policy-'));
 try {
   const event = path.join(scratch, 'event.json');
-  fs.writeFileSync(event, JSON.stringify({
-    _event_name: 'pull_request', action: 'opened', number: 1,
-    pull_request: { number: 1, draft: false, body, head: { ref: branch },
-      user: { login: 'renovate[bot]', type: 'Bot' } },
-  }));
-  const result = spawnSync(process.env.PYTHON || 'python', [
-    path.join(root, 'scripts/check-pr-policy.py'), '--event', event, '--require-sections',
-  ], { encoding: 'utf8' });
-  assert.equal(result.status, 0, result.stdout + result.stderr);
+  for (const ref of [branch, unversionedBranch]) {
+    fs.writeFileSync(event, JSON.stringify({
+      _event_name: 'pull_request', action: 'opened', number: 1,
+      pull_request: { number: 1, draft: false, body, head: { ref },
+        user: { login: 'renovate[bot]', type: 'Bot' } },
+    }));
+    const result = spawnSync(process.env.PYTHON || 'python', [
+      path.join(root, 'scripts/check-pr-policy.py'), '--event', event, '--require-sections',
+    ], { encoding: 'utf8' });
+    assert.equal(result.status, 0, result.stdout + result.stderr);
+  }
 } finally {
   const resolved = fs.realpathSync(scratch);
   assert.equal(path.dirname(resolved), fs.realpathSync(os.tmpdir()));
