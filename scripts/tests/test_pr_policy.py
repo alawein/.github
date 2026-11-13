@@ -47,11 +47,25 @@ class RequiredSectionTests(unittest.TestCase):
                 self.assertTrue(check(event(body=body), require_sections=True))
 
     def test_example_headings_do_not_satisfy_required_sections(self):
-        body = "Closes #12\n```markdown\n" + complete_body() + "\n```"
-        self.assertTrue(load()(event(body=body), require_sections=True))
+        for opening, closing in (("```markdown", "```"), ("<pre>", "</pre>"), ("<code>", "</code>")):
+            with self.subTest(opening=opening):
+                body = "Closes #12\n" + opening + "\n" + complete_body() + "\n" + closing
+                self.assertTrue(load()(event(body=body), require_sections=True))
 
     def test_drafts_can_defer_sections(self):
         self.assertEqual(load()(event(body="", draft=True), require_sections=True), [])
+
+    def test_fenced_and_inline_command_results_count_as_evidence(self):
+        for evidence in ("```text\npytest tests/test_cli.py\n42 passed\n```", "`pytest`: 42 passed"):
+            with self.subTest(evidence=evidence):
+                body = complete_body().replace("pytest: exit 0, all tests passed.", evidence)
+                self.assertEqual(load()(event(body=body), require_sections=True), [])
+
+    def test_undone_tasks_markup_and_multiline_placeholders_do_not_count(self):
+        for evidence in ("- [ ] Run the checks", "TBD\nTODO", "<br>", "**TODO**"):
+            with self.subTest(evidence=evidence):
+                body = complete_body().replace("pytest: exit 0, all tests passed.", evidence)
+                self.assertTrue(load()(event(body=body), require_sections=True))
 
 
 class PolicyTests(unittest.TestCase):

@@ -503,6 +503,11 @@ reviews still apply. Workflow, container, schema, signing, and selected build-to
 updates remain manual. Major, minor, unknown, failed, and skipped results never
 become passing patch updates. Local configuration does not prove hosted activation.
 
+The prepared consumers override patch auto-merge to `false` until effective
+required independent-review enforcement is observed for each repository. Zero
+required approvals or a green basic-check list does not establish that review.
+Activating update PRs and enabling eligible merges remain separate outcomes.
+
 - Review release notes and the lockfile diff, including changed install scripts
   and new transitive dependencies; run affected consumer checks before promoting
   an update. Do not add dependencies, scopes or test skips to make an update pass.

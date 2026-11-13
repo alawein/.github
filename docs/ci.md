@@ -15,8 +15,11 @@ steps to add one by hand.
    `check-links-nightly.yml` from the same folder beside it.
 3. Set the pin after each `@` to a full commit SHA of `alawein/.github` (see
    "After the first commit" and "Bump a pin").
-4. Run `scripts/setup-repo.ps1`. It requires the check names that `ci.yml`
-   defines.
+4. Run `scripts/setup-repo.ps1`. It requires the class check names in `ci.yml`.
+   Metadata gates may remain there or move together to `policy.yml` with complete
+   PR event coverage, immutable producers, matching implementation refs, required
+   evidence sections, and always-report wrappers. Split metadata events and their
+   reusable producers complete independently instead of cancelling earlier events.
 
 For the approved private TypeScript hub `alawein/career-engine`, the local
 `-CheckProfile hub-check` option reads `.github/workflows/check.yml` and expects
@@ -71,6 +74,9 @@ manual-review exceptions. Generated update PRs must pass the ordinary evidence
 gate. npm's download cache is keyed by the preset; the 15-minute timeout includes
 cold validator installation and generated-starter tests. These tests do not
 prove app installation, repository permissions, hosted reviews, or actual merges.
+Consumer merge holds are also exercised through Renovate's actual merged rules.
+Metadata events use distinct run groups and always-report wrappers, so cancelling
+a latest producer cannot silently skip its required success check.
 
 `node-ci.yml` defaults `require-test` to `false`, so optional callers retain
 `npm test --if-present`. Callers for code classes can opt in with

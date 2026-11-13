@@ -252,7 +252,7 @@ if ($isPublic -and $Strict) { Write-Host 'Note: -Strict only changes private rep
 #  - no workflow file still carries the all-zero placeholder pin (Placeholders lists the files).
 # A required check that never reports would block every pull request.
 function Get-CiState {
-  $missing = @($RequiredChecks)
+  $workflows = @{}
   $placeholders = @()
   $dir = Invoke-GhRead @('api', "repos/$Repo/contents/.github/workflows", '--jq', '.[] | select(.type == "file") | .name')
   if ($dir.Code -eq 0 -and $dir.Out) {
@@ -261,16 +261,12 @@ function Get-CiState {
       if ($name -notmatch '\.ya?ml$') { continue }
       $c = Invoke-GhRead @('api', ("repos/$Repo/contents/.github/workflows/" + [uri]::EscapeDataString($name)), '-H', 'Accept: application/vnd.github.raw')
       if ($c.Code -ne 0) { continue }
+      $workflows[$name] = $c.Out
       if ($c.Out -match '(?<![0-9a-fA-F])0{40}(?![0-9a-fA-F])') { $placeholders += $name }
-      if ($name -ceq (Split-Path -Leaf $workflowPath)) {
-        $missing = @()
-        foreach ($n in $RequiredChecks) {
-          if ($c.Out -notmatch ('(?m)^\s{2}' + [regex]::Escape($n) + ':\s*$')) { $missing += $n }
-        }
-      }
     }
   }
-  return [pscustomobject]@{ Missing = $missing; Placeholders = $placeholders }
+  $state = Get-CheckWorkflowReadiness $checkPolicy $workflows[(Split-Path -Leaf $workflowPath)] $workflows['policy.yml']
+  return [pscustomobject]@{ Missing = $state.Missing; Placeholders = $placeholders }
 }
 
 # Read and validate the existing rulesets before the first settings write.

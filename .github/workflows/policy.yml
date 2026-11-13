@@ -4,8 +4,8 @@ name: Policy
 # `edited`; ci.yml does not, so editing a PR body never cancels a CI run on the same SHA.
 # A called job reports as "<caller job> / <called job>", so the gate jobs below carry
 # stable check names. The ruleset requires from this file: pr-title, pr-policy
-# The gates use !cancelled(), not always(): an edit cancels the previous run on the same SHA, and
-# that run must post skipped rather than a failure next to the newer result.
+# Each metadata event completes independently. Required wrappers also run after
+# cancellation, so an unvalidated latest event cannot become a skipped success.
 
 on:
   pull_request:
@@ -17,8 +17,8 @@ permissions:
   contents: read
 
 concurrency:
-  group: policy-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  group: policy-${{ github.run_id }}
+  cancel-in-progress: false
 
 jobs:
   run-pr-title:
@@ -33,7 +33,7 @@ jobs:
 
   pr-policy:
     needs: [run-pr-policy]
-    if: ${{ !cancelled() }}
+    if: ${{ always() }}
     runs-on: ubuntu-24.04
     timeout-minutes: 1
     permissions: {}
@@ -46,7 +46,7 @@ jobs:
 
   pr-title:
     needs: [run-pr-title]
-    if: ${{ !cancelled() }}
+    if: ${{ always() }}
     runs-on: ubuntu-24.04
     timeout-minutes: 1
     permissions: {}

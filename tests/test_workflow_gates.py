@@ -14,8 +14,7 @@ import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 NODE_DIR = os.environ.get("NODE22_DIR")
-LEGACY_SHA = "6f6dbe7f3a23ab830a32007bb52b83fd1bb40563"
-RELEASE_SHA = "b5f8bc3a916b41e22e5e09ec72f34c01428c2933"
+KIT_SHA = "98c7c382e96cf44f8b65a1c08f2de079c7819d8a"
 BASH = Path(r"C:\Program Files\Git\bin\bash.exe") if platform.system() == "Windows" else Path("/bin/bash")
 
 
@@ -127,15 +126,24 @@ class CiGateListTests(unittest.TestCase):
         self.assertIn("ready_for_review", ci[True]["pull_request"]["types"])
         self.assertIn("edited", policy[True]["pull_request"]["types"])
         self.assertNotEqual(ci["concurrency"]["group"], policy["concurrency"]["group"])
-        # A superseded (cancelled) policy run posts skipped gates, never failures beside the newer run.
+        # Each metadata event completes independently and always reports its actual result.
+        self.assertIn("github.run_id", policy["concurrency"]["group"])
+        self.assertIs(policy["concurrency"]["cancel-in-progress"], False)
         gates = sorted(name for name, job in policy["jobs"].items()
-                       if job.get("if") == "${{ !cancelled() }}" and job.get("permissions") == {})
+                       if job.get("if") == "${{ always() }}" and job.get("permissions") == {})
         self.assertEqual(gates, ["pr-policy", "pr-title"])
         self.assertEqual(policy["jobs"]["pr-policy"]["needs"], ["run-pr-policy"])
         self.assertEqual(policy["jobs"]["run-pr-title"]["permissions"], {"pull-requests": "read"})
         self.assertEqual(policy["permissions"], {"contents": "read"})
         for job in ("run-pr-title", "run-pr-policy", "pr-title", "pr-policy"):
             self.assertNotIn(job, ci["jobs"])
+
+    def test_metadata_producers_do_not_cancel_other_events(self):
+        for name in ("pr-title.yml", "pr-policy.yml"):
+            with self.subTest(name=name):
+                concurrency = workflow(name)["concurrency"]
+                self.assertIn("github.run_id", concurrency["group"])
+                self.assertIs(concurrency["cancel-in-progress"], False)
 
     def test_no_workflow_runs_on_ubuntu_latest(self):
         # ubuntu-latest moved callers to a new image without review; pin the image instead.
@@ -241,7 +249,7 @@ class DistributedGateTests(unittest.TestCase):
                     self.assertEqual(set(ci["jobs"]), gates | {"run-" + gate for gate in gates})
                     for job in ci["jobs"].values():
                         if "uses" in job:
-                            self.assertTrue(job["uses"].endswith("@" + LEGACY_SHA))
+                            self.assertTrue(job["uses"].endswith("@" + KIT_SHA))
                     self.assertEqual({path.name for path in directory.iterdir()}, {"ci.yml", "check-links-nightly.yml"})
 
     def test_manual_opt_in_assembles_generated_consumers_without_replacing_jobs(self):
@@ -274,7 +282,7 @@ class DistributedGateTests(unittest.TestCase):
                 (directory / "hygiene-weekly.yml").write_text(yaml.safe_dump(hygiene, sort_keys=False), encoding="utf-8")
                 for name, job in original_jobs.items():
                     self.assertEqual(ci["jobs"][name], job)
-                self.assertEqual(ci["jobs"]["run-pr-policy"]["with"]["kit-ref"], RELEASE_SHA)
+                self.assertEqual(ci["jobs"]["run-pr-policy"]["with"]["kit-ref"], KIT_SHA)
                 self.assertEqual(ci["jobs"]["pr-policy"]["permissions"], {})
                 self.assertEqual(ci["permissions"], {"contents": "read"})
                 self.assertEqual(hygiene["jobs"]["hygiene"]["with"], {"expected-required-checks": checks})

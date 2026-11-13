@@ -15,6 +15,7 @@ const { init } = await import(pathToFileURL(path.join(renovateRoot, 'dist/logger
 await init();
 const { applyPackageRules } = await import(pathToFileURL(path.join(renovateRoot, 'dist/util/package-rules/index.js')));
 const { compile } = await import(pathToFileURL(path.join(renovateRoot, 'dist/util/template/index.js')));
+const { mergeChildConfig } = await import(pathToFileURL(path.join(renovateRoot, 'dist/config/utils.js')));
 const preset = JSON.parse(fs.readFileSync(process.argv[2] || path.join(root, 'default.json'), 'utf8'));
 
 for (const [updateType, manager, depName, wanted] of [
@@ -33,6 +34,17 @@ for (const [updateType, manager, depName, wanted] of [
   const result = await applyPackageRules({ ...preset, updateType, manager, depName, packageName: depName });
   assert.equal(result.automerge, wanted, `${manager}/${depName}/${updateType} merge eligibility`);
   assert.equal(result.ignoreTests, false, 'Update automation must respect test results');
+}
+
+const consumerFile = path.join(root, 'renovate.json');
+if (fs.existsSync(consumerFile)) {
+  const consumer = JSON.parse(fs.readFileSync(consumerFile, 'utf8'));
+  for (const manager of ['npm', 'pep621']) {
+    const config = mergeChildConfig(preset, consumer);
+    const result = await applyPackageRules({ ...config, updateType: 'patch', manager,
+      depName: 'example-library', packageName: 'example-library' });
+    assert.equal(result.automerge, false, 'Unverified required independent review must hold consumer auto-merge');
+  }
 }
 
 const branch = compile(preset.branchPrefix + preset.branchTopic, {
@@ -60,4 +72,4 @@ try {
   assert.ok(path.basename(resolved).startsWith('update-policy-'));
   fs.rmSync(scratch, { recursive: true, force: true });
 }
-console.log('11 update-policy cases and generated PR evidence passed. No network or merge performed.');
+console.log('Update-rule cases, consumer review hold, and generated PR evidence passed. No network or merge performed.');

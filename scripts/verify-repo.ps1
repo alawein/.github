@@ -196,9 +196,13 @@ Add-Result 'SHA pinning required (turn on after first green CI run)' ($ap.Json -
 # workflow is a bootstrap state, while a ready workflow needs matching rules.
 $workflow = Get-Api @("repos/$Repo/contents/$workflowPath", '-H', 'Accept: application/vnd.github.raw')
 $ciText = $workflow.Out
-$ciOk = ($workflow.Code -eq 0)
+$readiness = Get-CheckWorkflowReadiness $checkPolicy $ciText ''
+if ($readiness.NeedsMetadata) {
+  $metadata = Get-Api @("repos/$Repo/contents/$($checkPolicy.MetadataWorkflowPath)", '-H', 'Accept: application/vnd.github.raw')
+  $readiness = Get-CheckWorkflowReadiness $checkPolicy $ciText $metadata.Out
+}
+$ciOk = ($workflow.Code -eq 0 -and $readiness.Missing.Count -eq 0)
 if ($RequirePrPolicy -and $ciText -match '(?<![0-9a-fA-F])0{40}(?![0-9a-fA-F])') { $ciOk = $false }
-if ($ciOk) { foreach ($n in $RequiredChecks) { if ($ciText -notmatch ('(?m)^\s{2}' + [regex]::Escape($n) + ':\s*$')) { $ciOk = $false } } }
 
 # ---------- rulesets ----------
 

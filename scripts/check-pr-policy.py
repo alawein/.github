@@ -79,8 +79,28 @@ def linked(body):
 def section_errors(body: str) -> list[str]:
     sections = {}
     heading = None
-    for line in prose(body).splitlines():
-        match = re.fullmatch(r"\s*##\s+(.+?)\s*#*\s*", line)
+    fence = None
+    html_code = None
+    body = re.sub(r"<!--.*?(?:-->|\Z)", "", body, flags=re.S)
+    for line in body.splitlines():
+        marker = re.fullmatch(r" {0,3}(`{3,}|~{3,})(.*)", line)
+        if fence:
+            if marker and marker[1][0] == fence[0] and len(marker[1]) >= len(fence) and not marker[2].strip():
+                fence = None
+            elif heading is not None:
+                sections[heading].append(line)
+            continue
+        if marker:
+            fence = marker[1]
+            continue
+        opening = re.search(r"<(pre|code)\b[^>]*>", line, re.I)
+        if html_code or opening:
+            tag = html_code or opening[1]
+            html_code = None if re.search(rf"</{tag}\s*>", line, re.I) else tag
+            if heading is not None:
+                sections[heading].append(line)
+            continue
+        match = re.fullmatch(r" {0,3}##[ \t]+(.+?)\s*#*\s*", line)
         if match:
             heading = match[1].casefold()
             sections.setdefault(heading, [])
@@ -89,8 +109,10 @@ def section_errors(body: str) -> list[str]:
     errors = []
     for name in REQUIRED_SECTIONS:
         content = "\n".join(sections.get(name.casefold(), []))
-        content = re.sub(r"(?m)^\s*[-*]\s*\[[ xX]\]\s*", "", content).strip()
-        if not re.search(r"[A-Za-z0-9]", content) or content.casefold().rstrip(".") in PLACEHOLDERS:
+        content = re.sub(r"(?m)^\s*[-*]\s*\[ \].*$", "", content)
+        content = re.sub(r"<[^>]*>", "", content)
+        lines = [line.strip(" \t#>*_`-.:\r") for line in content.splitlines()]
+        if not any(re.search(r"[A-Za-z0-9]", line) and line.casefold() not in PLACEHOLDERS for line in lines):
             errors.append(f"Ready PR needs meaningful content in {name}.")
     return errors
 
