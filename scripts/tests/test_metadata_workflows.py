@@ -11,7 +11,7 @@ import unittest
 ROOT = Path(__file__).resolve().parents[2]
 AUDIT_SOURCE_SHA = "98c7496007ae504a3509be1c29d02afa87640aca"
 AUDIT_SOURCE_HASH = "21e8f4a3b22af15a4b2468c99d27f8aad3062f9eca2b4918a3f5098000f18592"
-RELEASE_SHA = "b5f8bc3a916b41e22e5e09ec72f34c01428c2933"
+KIT_SHA = "87a08b3ba106e5f417aa76896f70f221262763e5"
 BASH = (str(Path(os.environ.get("ProgramFiles", "C:/Program Files")) / "Git/bin/bash.exe")
         if os.name == "nt" else shutil.which("bash"))
 
@@ -120,14 +120,14 @@ class MetadataWorkflowTests(unittest.TestCase):
 
     def test_new_callers_bind_workflow_and_source_without_extra_credentials(self):
         policy = (ROOT / "templates/workflows/pr-policy.jobs.yml").read_text(encoding="utf-8")
-        self.assertIn("pr-policy.yml@" + RELEASE_SHA + " # v1.3.0", policy)
-        self.assertRegex(policy, r"(?m)^    kit-ref: " + RELEASE_SHA + "$")
+        self.assertIn("pr-policy.yml@" + KIT_SHA + " # quality gates", policy)
+        self.assertRegex(policy, r"(?m)^    kit-ref: " + KIT_SHA + "$")
         self.assertIn("needs: [run-pr-policy]", policy)
         self.assertIn("if: ${{ always() }}", policy)
         self.assertIn("permissions: {}", policy)
         self.assertNotIn("pull-requests:", policy)
         hygiene = (ROOT / "templates/workflows/hygiene-weekly.yml").read_text(encoding="utf-8")
-        self.assertIn("hygiene.yml@" + RELEASE_SHA + " # v1.3.0", hygiene)
+        self.assertIn("hygiene.yml@" + KIT_SHA + " # quality gates", hygiene)
         self.assertNotIn("kit-ref:", hygiene)
         for caller in (policy, hygiene):
             self.assertNotIn("secrets:", caller)
