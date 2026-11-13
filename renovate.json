@@ -1,7 +1,7 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
-    "github>alawein/.github#87a08b3ba106e5f417aa76896f70f221262763e5"
+    "github>alawein/.github#df657341161483defc4a27fd69e85759b7c10937"
   ],
   "packageRules": [
     {

@@ -39,7 +39,7 @@ the checksum from the release's `actionlint_<version>_checksums.txt` (or the ass
 ## Pins to this repo
 
 Distributed callers and starters pin quality revision
-`87a08b3ba106e5f417aa76896f70f221262763e5`. Their `kit-ref` values match the reusable
+`df657341161483defc4a27fd69e85759b7c10937`. Their `kit-ref` values match the reusable
 workflow SHA. Code starters opt into mandatory lint; the policy fragment opts into
 complete review evidence.
 
