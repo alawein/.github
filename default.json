@@ -23,7 +23,7 @@
       "automerge": true
     },
     {
-      "description": "Workflow and container updates need manual review.",
+      "description": "Build, signing, schema and workflow tooling needs manual review.",
       "matchManagers": ["github-actions", "dockerfile", "docker-compose", "renovate-config"],
       "automerge": false,
       "pinDigests": true
