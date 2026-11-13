@@ -152,9 +152,8 @@ The PR-title gate permits a skipped producer only on an actual main-push event.
 
 ## Opt in to PR policy and hygiene
 
-The new opt-in callers use signed annotated `v1.3.0`, verified on 2026-10-01
-at `b5f8bc3a916b41e22e5e09ec72f34c01428c2933`. Existing stubs and generated
-starters retain their v1.2.0 pins and default checks.
+The opt-in callers, like every stub and starter, pin signed annotated `v1.4.0`
+at `f5dbd4d7656e286e20d2aa24463253c32a56521b` (see [pins](pins.md)).
 
 Adoption has two phases: `v1.3.0` supplies the released reusable workflow
 code; reviewed kit main supplies the follow-on templates and `-RequirePrPolicy`
@@ -253,9 +252,9 @@ failed on purpose, so no caller ran unpinned code. The steps, for the record:
 3. Tag the commit `v1.0.0` so the `# v1.0.0` comment next to each pin is true.
 4. Later bumps follow "Bump a pin".
 
-Current distributed pins use verified `v1.2.0` at
-`6f6dbe7f3a23ab830a32007bb52b83fd1bb40563`; its required checks passed before tagging.
-This release preserves `require-test` and paired local/external link inputs, and fixes recursive link patterns at the Bash action boundary.
+Current distributed pins use signed `v1.4.0` at
+`f5dbd4d7656e286e20d2aa24463253c32a56521b`; CI passed on that commit before tagging.
+v1.4.0 adds the separate policy gates, `::error::` policy annotations, wider branch types, checksum-pinned zizmor and the `ubuntu-24.04` runner pins; it keeps `require-test` and the paired local/external link inputs.
 
 ## Permission rules
 

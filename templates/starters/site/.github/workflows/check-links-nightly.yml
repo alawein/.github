@@ -14,6 +14,6 @@ concurrency:
 
 jobs:
   run-link-check:
-    uses: alawein/.github/.github/workflows/check-links.yml@6f6dbe7f3a23ab830a32007bb52b83fd1bb40563 # v1.2.0
+    uses: alawein/.github/.github/workflows/check-links.yml@f5dbd4d7656e286e20d2aa24463253c32a56521b # v1.4.0
     with:
       offline: false

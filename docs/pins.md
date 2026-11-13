@@ -35,25 +35,12 @@ the checksum from the release's `actionlint_<version>_checksums.txt` (or the ass
 
 ## Pins to this repo
 
-Caller stubs in `templates/workflows/` and the `ci.yml` files in `templates/starters/` pin
-`alawein/.github` itself. They pin verified `6f6dbe7f3a23ab830a32007bb52b83fd1bb40563`
-(tag `v1.2.0`), verified after required checks passed on 2026-09-30. To bump it, see [ci.md](ci.md), "Bump a pin".
-
-The opt-in `pr-policy.jobs.yml` and `hygiene-weekly.yml` templates separately
-pin signed annotated `v1.3.0` at
-`b5f8bc3a916b41e22e5e09ec72f34c01428c2933`, verified and published on
-2026-10-01. The policy `kit-ref` matches this workflow pin. Hygiene has no
-source-ref input; its released workflow checks out reviewed audit source
-`ce04a21e332e42c3137b26f3becb0de77086b6cb`. The current source workflow instead
-pins main commit `98c7496007ae504a3509be1c29d02afa87640aca`, whose audit script
-bytes match the reviewed PR head, and runs it with `--token-limited`; unchanged
-v1.3.0 callers do not adopt that audit correction. This adoption leaves all legacy
-distributed pins and starter defaults intact. Full workflow/action SHAs bind
-source revisions; legacy runtime defaults and hosted OS image contents still
-change. See [the v1.3.0 release](https://github.com/alawein/.github/releases/tag/v1.3.0)
-and [opt-in installation](ci.md#opt-in-to-pr-policy-and-hygiene).
-
-The release SHA binds the reusable workflow code. Follow-on opt-in templates
-and `-RequirePrPolicy` setup/verification support come from reviewed kit main
-after adoption merges. Copy those files from main and keep their workflow
-pins at the released SHA; this two-phase adoption requires no additional tag.
+Every caller stub in `templates/workflows/`, every starter `ci.yml` in `templates/starters/`,
+and the opt-in `pr-policy.jobs.yml` (including its `kit-ref`) and `hygiene-weekly.yml` pin
+`alawein/.github` at signed annotated `v1.4.0`,
+`f5dbd4d7656e286e20d2aa24463253c32a56521b`, tagged on 2026-11-11 after CI passed on that
+commit. `tests/test_workflow_gates.py` fails if templates pin more than one revision, so a
+release bumps them all together. Its hygiene workflow checks out reviewed audit source
+`98c7496007ae504a3509be1c29d02afa87640aca` and runs it with `--token-limited`. Consumers pin
+the full SHA with a `# vX.Y.Z` comment so Dependabot github-actions can propose the next bump.
+To bump, see [ci.md](ci.md), "Bump a pin".

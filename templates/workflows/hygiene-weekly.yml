@@ -16,6 +16,6 @@ jobs:
     permissions:
       contents: read
       pull-requests: read
-    uses: alawein/.github/.github/workflows/hygiene.yml@b5f8bc3a916b41e22e5e09ec72f34c01428c2933 # v1.3.0
+    uses: alawein/.github/.github/workflows/hygiene.yml@f5dbd4d7656e286e20d2aa24463253c32a56521b # v1.4.0
     with:
       expected-required-checks: markdown-lint,link-check,actionlint,pr-title

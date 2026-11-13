@@ -3,6 +3,7 @@
 import json
 import os
 import platform
+import re
 import shutil
 import subprocess
 import tempfile
@@ -14,8 +15,8 @@ import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 NODE_DIR = os.environ.get("NODE22_DIR")
-LEGACY_SHA = "6f6dbe7f3a23ab830a32007bb52b83fd1bb40563"
-RELEASE_SHA = "b5f8bc3a916b41e22e5e09ec72f34c01428c2933"
+LEGACY_SHA = "f5dbd4d7656e286e20d2aa24463253c32a56521b"
+RELEASE_SHA = "f5dbd4d7656e286e20d2aa24463253c32a56521b"
 BASH = Path(r"C:\Program Files\Git\bin\bash.exe") if platform.system() == "Windows" else Path("/bin/bash")
 
 
@@ -122,6 +123,16 @@ class CiGateListTests(unittest.TestCase):
             offenders += [f"{path.relative_to(ROOT)}:{name}" for name, job in jobs.items()
                           if isinstance(job, dict) and "ubuntu-latest" in str(job.get("runs-on", ""))]
         self.assertEqual(offenders, [])
+
+    def test_templates_pin_one_release_of_this_repo(self):
+        # Two releases (v1.2.0 stubs, v1.3.0 opt-ins) drifted apart for six weeks; a release bumps all of them.
+        pins = set()
+        for path in sorted((ROOT / "templates").rglob("*.yml")):
+            source = path.read_text(encoding="utf-8")
+            pins |= set(re.findall(r"alawein/\.github/\.github/workflows/[\w.-]+@([0-9a-f]{40}) # (v\d+\.\d+\.\d+)", source))
+            pins |= {(ref, None) for ref in re.findall(r"(?m)^\s*kit-ref: ([0-9a-f]{40})$", source)}
+        self.assertEqual({sha for sha, _ in pins}, {RELEASE_SHA})
+        self.assertEqual({tag for _, tag in pins if tag}, {"v1.4.0"})
 
     def test_metadata_job_runs_scripts_suite_with_hashed_dependencies(self):
         # The root suite's own step is guarded from scripts/tests (test_ci_still_runs_the_root_suite).
