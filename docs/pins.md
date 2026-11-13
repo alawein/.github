@@ -2,19 +2,22 @@
 
 External actions and reusable workflow calls pin full 40-character commit SHAs,
 with the tag in a comment. Same-repository `./` workflow calls use the current revision.
-Each row was checked on the date shown with read-only GitHub API calls:
-`GET repos/<owner>/<repo>/commits/<tag>` returns the SHA, and `releases/latest` confirmed the tag
-is the newest stable one. The table lists exactly the actions used in `.github/workflows/`. When a
-workflow changes, regenerate it from those files.
+Each row was checked on the date shown with the read-only GitHub API call
+`GET repos/<owner>/<repo>/commits/<tag>`, which returns the tag's commit SHA.
+For rows dated 2026-09-30, `releases/latest` also confirmed the tag was the newest
+stable release at that time. For rows dated 2026-11-13, `releases/latest` was not
+checked, so their newest-release status is unknown. The table lists exactly the action
+pins used in `.github/workflows/`. When a workflow changes, regenerate it from those files.
 
 | Action | Tag | Full SHA | Verified | Source repo |
 | --- | --- | --- | --- | --- |
 | actions/checkout | v7.0.1 | `3d3c42e5aac5ba805825da76410c181273ba90b1` | 2026-09-30 | actions/checkout |
 | actions/setup-node | v7.0.0 | `820762786026740c76f36085b0efc47a31fe5020` | 2026-09-30 | actions/setup-node |
-| actions/setup-python | v7.0.0 | `5fda3b95a4ea91299a34e894583c3862153e4b97` | 2026-09-30 | actions/setup-python |
-| amannn/action-semantic-pull-request | v6.1.1 | `48f256284bd46cdaab1048c3721360e808335d50` | 2026-09-30 | amannn/action-semantic-pull-request |
-| astral-sh/setup-uv | v10.2.0 | `c18668ad3cf93ea998bef934396af7bb5c839dc7` | 2026-09-30 | astral-sh/setup-uv |
-| DavidAnson/markdownlint-cli2-action | v24.2.0 | `21c1be1b93ad9ed58fa840aacc3f279cde2a72ff` | 2026-09-30 | DavidAnson/markdownlint-cli2-action |
+| actions/setup-node | v7.1.0 | `949feb2413d6458794dcd2491c4babbbce0c15c1` | 2026-11-13 | actions/setup-node |
+| actions/setup-python | v7.1.0 | `6d4fd22b20465ccc0f7354476588e8df7c9ca0e0` | 2026-11-13 | actions/setup-python |
+| amannn/action-semantic-pull-request | v6.1.2 | `2252a14e810aa9b85c2d560bd7070c802206ecf6` | 2026-11-13 | amannn/action-semantic-pull-request |
+| astral-sh/setup-uv | v10.3.3 | `68559e99cc807c1eb7e9238fd43a15bba460eec2` | 2026-11-13 | astral-sh/setup-uv |
+| DavidAnson/markdownlint-cli2-action | v25.0.0 | `696eb3f2509270d7b882d2aa68347bc676e7af34` | 2026-11-13 | DavidAnson/markdownlint-cli2-action |
 | lycheeverse/lychee-action | v2.9.0 | `e7477775783ea5526144ba13e8db5eec57747ce8` | 2026-09-30 | lycheeverse/lychee-action |
 
 ## Pins that are not `uses:` lines
