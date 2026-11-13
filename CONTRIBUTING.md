@@ -4,6 +4,10 @@ Issues are welcome. Discuss a change in an issue unless the documented
 `No-issue:` exception applies.
 This is a solo project, so replies are best effort.
 
+The checked-in pre-commit configuration runs the same local lint command.
+It does not install hooks or replace required CI. Dependency update behavior
+and its reviewed shared preset live in [delivery](docs/system/delivery.md#dependencies).
+
 ## The short version
 
 1. Discuss an issue (bug, feature, or task), or explain a specific `No-issue:` exception.
@@ -50,7 +54,7 @@ A repository with code also runs its tests as `node-ci` or `python-ci`.
   refactor, test. 72 characters at most, imperative, no final period. Example:
   `fix(parser): handle empty input`.
 - Use the template. Fill in every section, or write n/a and say why. Link the
-  issue with `Closes #12` under Why, or use `No-issue: <specific reason>` in
+  issue with `Closes #12` under Context, or use `No-issue: <specific reason>` in
   ready human PR prose. The metadata check validates syntax; owner review
   checks that the reason is meaningful. See [delivery](docs/system/delivery.md#pull-requests).
 - One topic per pull request, about 300 changed lines at most. A bigger or

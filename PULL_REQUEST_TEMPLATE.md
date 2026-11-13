@@ -1,38 +1,31 @@
-## Summary
+## Context
 
-<!-- What this PR does, in one or two sentences. -->
-
-## Why
-
-<!-- The problem or goal. -->
-
-<!-- Ready PR: replace with Closes #12 or No-issue: followed by a specific reason.
-     Blank references, placeholders and examples in comments/code do not qualify. -->
-Closes #
+<!-- State the problem and link an issue, or explain No-issue: <specific reason>. -->
 
 ## Changes
 
-<!-- One bullet per change. -->
+<!-- Describe the resulting behavior and important implementation choices. -->
 
-## Test evidence
+## Testing Evidence
 
-<!-- Commands run and results, or screenshots. If none, write n/a and why. -->
-<!-- During an authorized observation: record change time, gate upkeep, waiting,
-     review triage and useful defects caught. Keep eligible changes, reviewer
-     exposure, completed reviews and missing reviews distinct. Record finding
-     dispositions, fixes, latency, cost and escaped defects when observed.
-     Use unknown for unmeasured values. See docs/system/reviewers.md for stop
-     rules; these prompts do not authorize review requests or spending. -->
+<!-- Commands, exact results, and meaningful limits. Explain every unrun check. -->
 
-## Risk and rollback
+## Screenshots/Logs
 
-<!-- What could break, and how to undo it, for example by reverting this PR. -->
+<!-- Include relevant evidence, or explain why this section does not apply. -->
+
+## Rollback Plan
+
+<!-- State risks and how to revert or recover. Link decisions for structural changes. -->
 
 ## Checklist
 
-- [ ] Scope matches the Summary, one topic
-- [ ] Checks pass, or n/a is explained above
-- [ ] Docs updated, or not needed
-- [ ] No secrets, tokens, or personal data added
-- [ ] A fresh agent session reviewed the diff, or n/a because no agent wrote it
-- [ ] Over 300 changed lines, or a risky change? Add the [long checklist](https://github.com/alawein/.github/blob/main/templates/pull-request-checklist.md)
+- [ ] One topic; every changed file belongs to it
+- [ ] Behavior changes have regression tests; required checks passed
+- [ ] Documentation matches the result, or no documentation change is needed
+- [ ] Compatibility is preserved, or breaking behavior and migration are explained
+- [ ] CODEOWNERS still covers changed and moved files
+- [ ] Structural or breaking changes link their ADR or existing decision record
+- [ ] No secrets, personal data, or unrelated changes
+- [ ] A fresh reviewer checked the current diff, or no agent authored it
+- [ ] For a large or risky change, complete the [long checklist](https://github.com/alawein/.github/blob/main/templates/pull-request-checklist.md)

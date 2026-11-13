@@ -7,13 +7,17 @@ on:
         description: Full kit commit SHA; only kit self-tests may omit it.
         type: string
         default: ""
+      require-sections:
+        description: Require complete review evidence for ready PRs.
+        type: boolean
+        default: false
 
 permissions:
   contents: read
 
 concurrency:
-  group: pr-policy-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  group: pr-policy-${{ github.run_id }}
+  cancel-in-progress: false
 
 jobs:
   archive-guard:
@@ -65,4 +69,6 @@ jobs:
         with:
           python-version: "3.12.10"
       - name: Validate caller event
+        env:
+          REQUIRE_SECTIONS: ${{ inputs.require-sections }}
         run: python _kit/scripts/check-pr-policy.py --event "$GITHUB_EVENT_PATH"

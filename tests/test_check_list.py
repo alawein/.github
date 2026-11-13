@@ -54,7 +54,7 @@ class KitSelfCopiesTests(unittest.TestCase):
         ci, policy = workflow(".github/workflows/ci.yml")["jobs"], workflow(".github/workflows/policy.yml")["jobs"]
         gates = [name for name, job in ci.items() if job.get("if") == "${{ always() }}" and job.get("permissions") == {}]
         gates += ["metadata-tests"] if "metadata-tests" in ci else []
-        gates += [name for name, job in policy.items() if job.get("if") == "${{ !cancelled() }}" and job.get("permissions") == {}]
+        gates += [name for name, job in policy.items() if job.get("if") == "${{ always() }}" and job.get("permissions") == {}]
         self.assertEqual(sorted(gates), sorted(CHECKS["kit_self"]))
         weekly = workflow(".github/workflows/hygiene-weekly.yml")["jobs"]["hygiene"]["with"]["expected-required-checks"]
         self.assertEqual(sorted(weekly.split(",")), sorted(CHECKS["kit_self"]))

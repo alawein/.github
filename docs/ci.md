@@ -15,8 +15,11 @@ steps to add one by hand.
    `check-links-nightly.yml` from the same folder beside it.
 3. Set the pin after each `@` to a full commit SHA of `alawein/.github` (see
    "After the first commit" and "Bump a pin").
-4. Run `scripts/setup-repo.ps1`. It requires the check names that `ci.yml`
-   defines.
+4. Run `scripts/setup-repo.ps1`. It requires the class check names in `ci.yml`.
+   Metadata gates may remain there or move together to `policy.yml` with complete
+   PR event coverage, immutable producers, matching implementation refs, required
+   evidence sections, and always-report wrappers. Split metadata events and their
+   reusable producers complete independently instead of cancelling earlier events.
 
 For the approved private TypeScript hub `alawein/career-engine`, the local
 `-CheckProfile hub-check` option reads `.github/workflows/check.yml` and expects
@@ -53,6 +56,27 @@ CodeQL is not a workflow here. Turn it on with GitHub's default setup
 (Settings, Code security) on public repos.
 
 ## Reusable workflow inputs
+
+`node-ci.yml` also supports `require-lint: true`, paired with `run-lint: true`.
+It refuses a missing or blank lint script before installation, runs `npm run lint`
+without optional-script suppression, and propagates its exit code. Code repositories
+use zero-warning lint scripts and include formatting and type checks.
+
+`pr-policy.yml` supports `require-sections: true` for ready PRs. It requires
+Context, Changes, Testing Evidence, Screenshots/Logs, and Rollback Plan with actual
+prose. Drafts may defer these sections. Existing callers retain the earlier
+metadata contract until they opt in at a compatible immutable kit revision.
+
+The metadata job also validates `default.json` with Renovate `44.238.1` on
+Node `26.13.0`, then exercises its actual update-rule and template engines.
+The cases reject minor, major, unknown, pin, and digest auto-merges and verify
+manual-review exceptions. Generated update PRs must pass the ordinary evidence
+gate. npm's download cache is keyed by the preset; the 15-minute timeout includes
+cold validator installation and generated-starter tests. These tests do not
+prove app installation, repository permissions, hosted reviews, or actual merges.
+Consumer merge holds are also exercised through Renovate's actual merged rules.
+Metadata events use distinct run groups and always-report wrappers, so cancelling
+a latest producer cannot silently skip its required success check.
 
 `node-ci.yml` defaults `require-test` to `false`, so optional callers retain
 `npm test --if-present`. Callers for code classes can opt in with
@@ -284,8 +308,10 @@ v1.4.0 adds the separate policy gates, `::error::` policy annotations, wider bra
   unpinned actions (`sha_pinning_required`). `setup-repo.ps1
   -EnableShaPinning` does it.
 - [pins.md](pins.md) lists every pin, the date it was verified, and its source.
-- Dependabot is off. No bot proposes bumps and no repo carries a
-  `dependabot.yml`. Bump pins by hand, in their own PR.
+- The scoped quality rollout uses the shared Renovate preset for update PRs;
+  see [dependency policy](system/delivery.md#dependencies). Action and tool pins
+  still require reviewed updates. Existing Dependabot version-update config is
+  disabled when a repository adopts Renovate, so both bots do not open duplicates.
 - Two pins are not `uses:` lines and need a manual bump: the actionlint version
   and sha256 in `lint-actions.yml`, and the default `uv-version` in
   `python-ci.yml`. The list is in `pins.md`.

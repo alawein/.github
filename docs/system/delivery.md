@@ -492,9 +492,21 @@ here uses it.
 
 ## Dependencies
 
-Dependabot (GitHub's bot that opens PRs for new versions) is off in every repo by
-owner decision 2026-10-06. No bot opens update PRs. Update dependencies by hand, on
-purpose, one topic per PR.
+For the nine repositories in the owner's 2026-11-13 quality rollout, use the
+reviewed [Renovate preset](../../default.json). Other repositories retain their
+existing dependency policy. Publish the preset before its consumers and activate
+the integration only within the named publishing and account-access scope.
+
+Renovate uses normal house branches and the required PR evidence sections.
+Only patch updates may qualify for automatic squash merging; checks and required
+reviews still apply. Workflow, container, schema, signing, and selected build-tool
+updates remain manual. Major, minor, unknown, failed, and skipped results never
+become passing patch updates. Local configuration does not prove hosted activation.
+
+The prepared consumers override patch auto-merge to `false` until effective
+required independent-review enforcement is observed for each repository. Zero
+required approvals or a green basic-check list does not establish that review.
+Activating update PRs and enabling eligible merges remain separate outcomes.
 
 - Review release notes and the lockfile diff, including changed install scripts
   and new transitive dependencies; run affected consumer checks before promoting
@@ -542,7 +554,9 @@ checks, current review and a selected task mode covering its scope.
 
 ### Every repo
 
-- Dependabot fully off: alerts, security update PRs and version updates (owner decision 2026-10-06).
+- Preserve existing alert and security-update settings. Dependency-version PRs
+  follow the scoped [dependency policy](#dependencies); changing hosted security
+  settings still requires its named authorization.
 - Actions token default is read-only (`contents: read`). Raise a permission per
   job, never for the whole file.
 - Workflows never use `pull_request_target`, which runs with secrets, and never
