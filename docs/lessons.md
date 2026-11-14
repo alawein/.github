@@ -31,3 +31,4 @@ One line per session, newest at the bottom. Format:
 - 2026-11-07 | saved artifacts | A successful save alone does not explain recovery | State what reopening checks, how mismatch behaves, and how retry preserves prior input or output.
 - 2026-11-11 | required checks | A body-edit run with per-PR cancellation cancels the same-SHA push run, and its always-run gates then fail required contexts | Keep `edited` only in a separate workflow that holds the title and body gates.
 - 2026-11-14 | PR evidence | A list-nested fenced example supplied false required-section headings | Share container-aware fence parsing and preserve code output as evidence within real sections.
+- 2026-11-14 | synthetic PR fixtures | A main-push event leaked into a PR metadata fixture and failed post-merge CI | Set the child event to pull_request and test valid and invalid PRs under both surrounding event types.
