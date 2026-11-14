@@ -52,6 +52,41 @@ class RequiredSectionTests(unittest.TestCase):
                 body = "Closes #12\n" + opening + "\n" + complete_body() + "\n" + closing
                 self.assertTrue(load()(event(body=body), require_sections=True))
 
+    def test_list_fenced_examples_cannot_satisfy_required_sections(self):
+        for opening, closing, indent in (("- ```markdown", "  ```", 2), ("1. ~~~markdown", "   ~~~", 3)):
+            with self.subTest(opening=opening):
+                example = "\n".join(" " * indent + line for line in complete_body().splitlines())
+                body = f"Closes #12\n{opening}\n{example}\n{closing}"
+                errors = load()(event(body=body), require_sections=True)
+                self.assertEqual(len(errors), 5, errors)
+
+    def test_list_fence_headings_do_not_replace_real_empty_sections(self):
+        empty = "\n".join("## " + name + "\nTBD" for name in (
+            "Context", "Changes", "Testing Evidence", "Screenshots/Logs", "Rollback Plan"))
+        example = "\n".join("  " + line for line in complete_body().splitlines())
+        body = f"Closes #12\n{empty}\n- ```markdown\n{example}\n  ```"
+        errors = load()(event(body=body), require_sections=True)
+        self.assertEqual(len(errors), 4, errors)
+        self.assertTrue(all("Rollback Plan" not in error for error in errors))
+
+    def test_nested_fence_then_real_sections_and_fenced_evidence(self):
+        example = "\n".join("  > " + line for line in complete_body().splitlines())
+        evidence = "- ```text\n  pytest: 42 passed\n  ```"
+        body = (f"- > ```markdown\n{example}\n  > ```\n\n" +
+                complete_body().replace("pytest: exit 0, all tests passed.", evidence))
+        self.assertEqual(load()(event(body=body), require_sections=True), [])
+
+    def test_html_code_with_fence_like_text_does_not_hide_later_sections(self):
+        for tag in ("pre", "code"):
+            for opening in ("- ```", "1. ~~~"):
+                with self.subTest(tag=tag, opening=opening):
+                    body = f"Closes #12\n<{tag}>\n{opening}\n  </{tag}>\n" + complete_body()
+                    self.assertEqual(load()(event(body=body), require_sections=True), [])
+
+    def test_html_code_after_a_list_fence_scope_ends_keeps_real_sections(self):
+        body = "Closes #12\n- ```\n  example\n<pre>\n- ```\n  </pre>\n" + complete_body()
+        self.assertEqual(load()(event(body=body), require_sections=True), [])
+
     def test_drafts_can_defer_sections(self):
         self.assertEqual(load()(event(body="", draft=True), require_sections=True), [])
 

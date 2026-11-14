@@ -15,11 +15,10 @@ PLACEHOLDERS = {"n/a", "na", "none", "todo", "tbd", "reason", "specific reason",
 REQUIRED_SECTIONS = ("Context", "Changes", "Testing Evidence", "Screenshots/Logs", "Rollback Plan")
 
 
-def prose(body):
-    """Remove Markdown examples and comments before examining actual prose."""
-    body = re.sub(r"<!--.*?(?:-->|\Z)", "", body, flags=re.S)
-    body = re.sub(r"<(pre|code)\b[^>]*>.*?(?:</\1\s*>|\Z)", "", body, flags=re.S | re.I)
-    lines, fence = [], None
+def fenced_lines(body, *, respect_html=False):
+    """Classify fenced lines while respecting list and quote containers."""
+    fence = None
+    html_code = None
     for line in body.splitlines():
         content = line.expandtabs(4)
         containers = []
@@ -36,6 +35,13 @@ def prose(body):
                     fence = None
                     content = line.expandtabs(4)
                     break
+        if respect_html and not fence:
+            opening = re.search(r"<(pre|code)\b[^>]*>", line, re.I)
+            if html_code or opening:
+                tag = html_code or opening[1]
+                html_code = None if re.search(rf"</{tag}\s*>", line, re.I) else tag
+                yield line, content, "text"
+                continue
         if not fence:
             while True:
                 quote = re.match(r"^ {0,3}> ?", content)
@@ -55,10 +61,24 @@ def prose(body):
             if (match and match[1][0] == fence[0][0] and len(match[1]) >= len(fence[0])
                     and not match[2].strip()):
                 fence = None
+                yield line, content, "close"
+            else:
+                yield line, content, "inside"
             continue
         if match:
             fence = (match[1], containers)
-        elif not content.startswith(" " * 4):
+            yield line, content, "open"
+        else:
+            yield line, content, "text"
+
+
+def prose(body):
+    """Remove Markdown examples and comments before examining actual prose."""
+    body = re.sub(r"<!--.*?(?:-->|\Z)", "", body, flags=re.S)
+    body = re.sub(r"<(pre|code)\b[^>]*>.*?(?:</\1\s*>|\Z)", "", body, flags=re.S | re.I)
+    lines = []
+    for _, content, kind in fenced_lines(body):
+        if kind == "text" and not content.startswith(" " * 4):
             lines.append(content)
     return re.sub(r"(?<!`)(`+)(?!`).*?(?<!`)\1(?!`)", "", "\n".join(lines), flags=re.S)
 
@@ -79,19 +99,12 @@ def linked(body):
 def section_errors(body: str) -> list[str]:
     sections = {}
     heading = None
-    fence = None
     html_code = None
     body = re.sub(r"<!--.*?(?:-->|\Z)", "", body, flags=re.S)
-    for line in body.splitlines():
-        marker = re.fullmatch(r" {0,3}(`{3,}|~{3,})(.*)", line)
-        if fence:
-            if marker and marker[1][0] == fence[0] and len(marker[1]) >= len(fence) and not marker[2].strip():
-                fence = None
-            elif heading is not None:
+    for line, _, kind in fenced_lines(body, respect_html=True):
+        if kind != "text":
+            if kind == "inside" and heading is not None:
                 sections[heading].append(line)
-            continue
-        if marker:
-            fence = marker[1]
             continue
         opening = re.search(r"<(pre|code)\b[^>]*>", line, re.I)
         if html_code or opening:
