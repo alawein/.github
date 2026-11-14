@@ -12,13 +12,44 @@ DATE = re.compile(r"(?:\d{4}-\d{2}-\d{2}|\d{2}-\d{2}-\d{4}|(?:19|20)\d{6})")
 ISSUE = re.compile(r"(?<![\w/])(?:[\w.-]+/[\w.-]+)?#[1-9]\d*(?![\w])|"
                    r"https://github\.com/[\w.-]+/[\w.-]+/issues/[1-9]\d*(?![\w/])")
 PLACEHOLDERS = {"n/a", "na", "none", "todo", "tbd", "reason", "specific reason", "no issue"}
+REQUIRED_SECTIONS = ("Context", "Changes", "Testing Evidence", "Screenshots/Logs", "Rollback Plan")
 
 
-def prose(body):
-    """Remove Markdown examples and comments before examining actual prose."""
-    body = re.sub(r"<!--.*?(?:-->|\Z)", "", body, flags=re.S)
-    body = re.sub(r"<(pre|code)\b[^>]*>.*?(?:</\1\s*>|\Z)", "", body, flags=re.S | re.I)
-    lines, fence = [], None
+def uncomment_line(line, in_comment):
+    """Remove comment spans, preserving HTML code blocks as literal text."""
+    result = []
+    offset = 0
+    while offset < len(line):
+        if in_comment:
+            end = line.find("-->", offset)
+            if end < 0:
+                return "".join(result), True
+            offset, in_comment = end + 3, False
+            continue
+        start = line.find("<!--", offset)
+        html = re.search(r"<(pre|code)\b[^>]*>", line[offset:], re.I)
+        if html and (start < 0 or offset + html.start() < start):
+            close = re.search(rf"</{html[1]}\s*>", line[offset + html.end():], re.I)
+            if not close:
+                result.append(line[offset:])
+                break
+            end = offset + html.end() + close.end()
+            result.append(line[offset:end])
+            offset = end
+        elif start < 0:
+            result.append(line[offset:])
+            break
+        else:
+            result.append(line[offset:start])
+            offset, in_comment = start + 4, True
+    return "".join(result), in_comment
+
+
+def fenced_lines(body, *, respect_html=False, remove_comments=False):
+    """Classify fenced lines while respecting list and quote containers."""
+    fence = None
+    html_code = None
+    in_comment = False
     for line in body.splitlines():
         content = line.expandtabs(4)
         containers = []
@@ -35,6 +66,28 @@ def prose(body):
                     fence = None
                     content = line.expandtabs(4)
                     break
+        if remove_comments and not fence and not html_code:
+            preview = content
+            while True:
+                quote = re.match(r"^ {0,3}> ?", preview)
+                item = re.match(r"^ {0,3}(?:[-+*]|\d+[.)])( +)", preview)
+                if quote:
+                    preview = preview[quote.end():]
+                elif item:
+                    end = item.start(1) + (1 if len(item[1]) > 4 else len(item[1]))
+                    preview = preview[end:]
+                else:
+                    break
+            if in_comment or not re.match(r"^ {0,3}(`{3,}|~{3,})", preview):
+                line, in_comment = uncomment_line(line, in_comment)
+                content = line.expandtabs(4)
+        if respect_html and not fence:
+            opening = re.search(r"<(pre|code)\b[^>]*>", line, re.I)
+            if html_code or opening:
+                tag = html_code or opening[1]
+                html_code = None if re.search(rf"</{tag}\s*>", line, re.I) else tag
+                yield line, content, "html"
+                continue
         if not fence:
             while True:
                 quote = re.match(r"^ {0,3}> ?", content)
@@ -54,12 +107,31 @@ def prose(body):
             if (match and match[1][0] == fence[0][0] and len(match[1]) >= len(fence[0])
                     and not match[2].strip()):
                 fence = None
+                yield line, content, "close"
+            else:
+                yield line, content, "inside"
             continue
         if match:
             fence = (match[1], containers)
-        elif not content.startswith(" " * 4):
+            yield line, content, "open"
+        else:
+            yield line, content, "text"
+
+
+def strip_comments(body):
+    """Remove comments without treating markers in code examples as comments."""
+    return "\n".join(line for line, _, _ in fenced_lines(body, respect_html=True, remove_comments=True))
+
+
+def prose(body):
+    """Remove Markdown examples and comments before examining actual prose."""
+    lines = []
+    for _, content, kind in fenced_lines(strip_comments(body), respect_html=True):
+        if kind in ("text", "html") and not content.startswith(" " * 4):
             lines.append(content)
-    return re.sub(r"(?<!`)(`+)(?!`).*?(?<!`)\1(?!`)", "", "\n".join(lines), flags=re.S)
+    text = "\n".join(lines)
+    text = re.sub(r"<(pre|code)\b[^>]*>.*?(?:</\1\s*>|\Z)", "", text, flags=re.S | re.I)
+    return re.sub(r"(?<!`)(`+)(?!`).*?(?<!`)\1(?!`)", "", text, flags=re.S)
 
 
 def linked(body):
@@ -75,7 +147,40 @@ def linked(body):
     return False
 
 
-def check(event: dict) -> list[str]:
+def section_errors(body: str) -> list[str]:
+    sections = {}
+    heading = None
+    html_code = None
+    for line, _, kind in fenced_lines(strip_comments(body), respect_html=True):
+        if kind not in ("text", "html"):
+            if kind == "inside" and heading is not None:
+                sections[heading].append(line)
+            continue
+        opening = re.search(r"<(pre|code)\b[^>]*>", line, re.I)
+        if html_code or opening:
+            tag = html_code or opening[1]
+            html_code = None if re.search(rf"</{tag}\s*>", line, re.I) else tag
+            if heading is not None:
+                sections[heading].append(line)
+            continue
+        match = re.fullmatch(r" {0,3}##[ \t]+(.+?)\s*#*\s*", line)
+        if match:
+            heading = match[1].casefold()
+            sections.setdefault(heading, [])
+        elif heading is not None:
+            sections[heading].append(line)
+    errors = []
+    for name in REQUIRED_SECTIONS:
+        content = "\n".join(sections.get(name.casefold(), []))
+        content = re.sub(r"(?m)^\s*[-*]\s*\[ \].*$", "", content)
+        content = re.sub(r"<[^>]*>", "", content)
+        lines = [line.strip(" \t#>*_`-.:\r") for line in content.splitlines()]
+        if not any(re.search(r"[A-Za-z0-9]", line) and line.casefold() not in PLACEHOLDERS for line in lines):
+            errors.append(f"Ready PR needs meaningful content in {name}.")
+    return errors
+
+
+def check(event: dict, *, require_sections: bool = False) -> list[str]:
     """Return violations; only a validated PR or explicit push can succeed."""
     if not isinstance(event, dict):
         return ["Event must be an object."]
@@ -106,18 +211,22 @@ def check(event: dict) -> list[str]:
         errors.append("Branch must use a house type and a lowercase hyphenated topic without dates.")
     if not pr["draft"] and not linked(pr["body"] or ""):
         errors.append("Ready PR needs an issue reference or No-issue: followed by a specific reason.")
+    if require_sections and not pr["draft"]:
+        errors.extend(section_errors(pr["body"] or ""))
     return errors
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--event", required=True, type=Path)
+    parser.add_argument("--require-sections", action="store_true",
+                        default=os.environ.get("REQUIRE_SECTIONS") == "true")
     args = parser.parse_args()
     try:
         event = json.loads(args.event.read_text(encoding="utf-8"))
         if isinstance(event, dict) and os.environ.get("GITHUB_EVENT_NAME"):
             event["_event_name"] = os.environ["GITHUB_EVENT_NAME"]
-        errors = check(event)
+        errors = check(event, require_sections=args.require_sections)
     except (OSError, ValueError) as error:
         errors = [f"Cannot read event: {error.__class__.__name__}."]
     for error in errors:

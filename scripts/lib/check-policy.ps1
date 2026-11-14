@@ -13,8 +13,10 @@ function Get-CheckPolicy {
       throw 'hub-check requires the approved hub TypeScript tool'
     }
     return [pscustomobject]@{
+      Repository = $Repo
       RequiredChecks = @('check')
       WorkflowPath = '.github/workflows/check.yml'
+      MetadataWorkflowPath = ''
       RequireChecks = $true
     }
   }
@@ -26,10 +28,61 @@ function Get-CheckPolicy {
   }
   if ($RequirePrPolicy) { $checks += 'pr-policy' }
   return [pscustomobject]@{
+    Repository = $Repo
     RequiredChecks = $checks
     WorkflowPath = '.github/workflows/ci.yml'
+    MetadataWorkflowPath = '.github/workflows/policy.yml'
     RequireChecks = ([bool]$Strict -or $Class -eq 'site')
   }
+}
+
+function Get-CheckWorkflowReadiness {
+  param($Policy, [string]$PrimaryText, [string]$MetadataText)
+  $missing = @()
+  $metadataChecks = @($Policy.RequiredChecks | Where-Object { $_ -in @('pr-title', 'pr-policy') })
+  $needsMetadata = $false
+  foreach ($name in $metadataChecks) {
+    if ($PrimaryText -notmatch ('(?m)^  ' + [regex]::Escape($name) + ':\s*$')) { $needsMetadata = $true }
+  }
+  $needsMetadata = ($needsMetadata -and [bool]$Policy.MetadataWorkflowPath)
+  foreach ($name in $Policy.RequiredChecks) {
+    $source = if ($needsMetadata -and $name -in $metadataChecks) { $MetadataText } else { $PrimaryText }
+    if ($source -notmatch ('(?m)^  ' + [regex]::Escape($name) + ':\s*$')) { $missing += $name }
+  }
+  if ($needsMetadata -and $MetadataText) {
+    $events = [regex]::Match($MetadataText, '(?ms)^  pull_request:\s*\r?\n(?<body>(?:    [^\r\n]*\r?\n)+)')
+    $types = [regex]::Match($events.Groups['body'].Value, 'types:\s*\[([^\]]+)\]')
+    $declared = @($types.Groups[1].Value -split '[,\s]+' | Where-Object { $_ })
+    foreach ($event in @('opened', 'edited', 'synchronize', 'reopened', 'ready_for_review', 'converted_to_draft')) {
+      if ($event -notin $declared) { $missing += "policy event $event" }
+    }
+    if ($MetadataText -match '(?m)^concurrency:' -and (
+      $MetadataText -notmatch '(?m)^  group: [^\r\n]*github\.run_id' -or
+      $MetadataText -notmatch '(?m)^  cancel-in-progress: false\s*$')) {
+      $missing += 'independent metadata-event completion'
+    }
+    foreach ($name in $metadataChecks) {
+      $job = [regex]::Match($MetadataText, '(?ms)^  ' + [regex]::Escape($name) + ':\s*\r?\n(?<body>.*?)(?=^  [a-z][\w-]*:|\z)')
+      if ($job.Groups['body'].Value -notmatch '(?m)^    if: \$\{\{ always\(\) \}\}\s*$' -or
+          $job.Groups['body'].Value -notmatch ('(?m)^    needs: \[run-' + [regex]::Escape($name) + '\]\s*$')) {
+        $missing += "always-report $name"
+      }
+      $producer = [regex]::Match($MetadataText, '(?ms)^  run-' + [regex]::Escape($name) + ':\s*\r?\n(?<body>.*?)(?=^  [a-z][\w-]*:|\z)')
+      if ($name -eq 'pr-policy' -and $producer.Groups['body'].Value -notmatch '(?m)^      require-sections: true\s*$') {
+        $missing += 'required policy evidence sections'
+      }
+      $use = [regex]::Match($producer.Groups['body'].Value, '(?m)^    uses: alawein/\.github/\.github/workflows/' + [regex]::Escape($name) + '\.yml@([a-f0-9]{40})(?:\s+#.*)?\s*$')
+      $sameRevision = ($Policy.Repository -ceq 'alawein/.github' -and $producer.Groups['body'].Value -match ('(?m)^    uses: (?:\$|\.)/\.github/workflows/' + [regex]::Escape($name) + '\.yml\s*$'))
+      if ($sameRevision) { continue }
+      if (-not $use.Success -or $use.Groups[1].Value -eq ('0' * 40)) {
+        $missing += "immutable $name producer"
+      }
+      elseif ($name -eq 'pr-policy' -and $producer.Groups['body'].Value -notmatch ('(?m)^      kit-ref: ' + $use.Groups[1].Value + '\s*$')) {
+        $missing += 'matching policy implementation ref'
+      }
+    }
+  }
+  return [pscustomobject]@{ Missing = @($missing | Select-Object -Unique); NeedsMetadata = $needsMetadata }
 }
 
 function Get-StatusCheckRequirements {

@@ -9,9 +9,9 @@ gated action.
 
 ## Before you read the diff
 
-- [ ] Read the repo's `AGENTS.md` and the PR Summary.
+- [ ] Read the repo's `AGENTS.md` and the PR Context.
 - [ ] Run the repo's check command yourself. Do not trust the author's
-      Test evidence.
+      Testing Evidence.
 - [ ] Record the base revision and exact reviewed digest, including new files.
       Confirm the diff shows only the intended change.
 - [ ] Record this separate reviewer session and its scope; an author cannot
@@ -19,7 +19,7 @@ gated action.
 
 ## Scope
 
-- [ ] The diff matches the Summary and touches one topic.
+- [ ] The diff matches the Context and Changes and touches one topic.
 - [ ] About 300 changed lines or fewer. A larger PR uses the long checklist.
 - [ ] No unrelated edits, renames, or formatting churn.
 - [ ] No files that should not be there: `.env`, logs, build output, local
@@ -27,7 +27,7 @@ gated action.
 
 ## Correctness
 
-- [ ] The change does what the Summary says, including the edge cases.
+- [ ] The change does what the PR says, including the edge cases.
 - [ ] A behavior change has a test. The test fails without the change.
 - [ ] Error paths and empty input are handled.
 - [ ] No leftover debug code, commented-out code, or TODOs with no owner.

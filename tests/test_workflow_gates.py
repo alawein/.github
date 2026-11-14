@@ -15,8 +15,7 @@ import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 NODE_DIR = os.environ.get("NODE22_DIR")
-LEGACY_SHA = "f5dbd4d7656e286e20d2aa24463253c32a56521b"
-RELEASE_SHA = "f5dbd4d7656e286e20d2aa24463253c32a56521b"
+KIT_SHA = "df657341161483defc4a27fd69e85759b7c10937"
 BASH = Path(r"C:\Program Files\Git\bin\bash.exe") if platform.system() == "Windows" else Path("/bin/bash")
 
 
@@ -69,6 +68,32 @@ class NodeGateTests(unittest.TestCase):
         self.assertEqual(result.returncode, 7, f"stdout={result.stdout!r} stderr={result.stderr!r}")
 
 
+class NodeLintGateTests(unittest.TestCase):
+    def run_lint(self, scripts, run_lint="true", name="Require a runnable lint script"):
+        guard = step(name)
+        self.assertIsNotNone(guard, f"missing {name}")
+        with tempfile.TemporaryDirectory() as directory:
+            Path(directory, "package.json").write_text(json.dumps({"scripts": scripts}))
+            return subprocess.run([str(BASH), "-c", guard["run"]], cwd=directory,
+                                  env={**os.environ, "RUN_LINT": run_lint},
+                                  capture_output=True, text=True)
+
+    def test_required_lint_rejects_missing_and_empty_scripts(self):
+        for scripts in ({}, {"lint": ""}, {"lint": "  "}):
+            with self.subTest(scripts=scripts):
+                result = self.run_lint(scripts)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("::error::", result.stderr)
+
+    def test_required_lint_rejects_disabled_execution(self):
+        self.assertNotEqual(self.run_lint({"lint": "node -e 'process.exit(0)'"}, "false").returncode, 0)
+
+    def test_required_lint_runs_and_propagates_failure(self):
+        self.assertEqual(self.run_lint({"lint": "node -e 'process.exit(0)'"}).returncode, 0)
+        result = self.run_lint({"lint": 'node -e "process.exit(7)"'}, name="Lint (required)")
+        self.assertEqual(result.returncode, 7, result.stdout + result.stderr)
+
+
 class LinkGateTests(unittest.TestCase):
     def test_reusable_links_preserve_external_checks_by_default(self):
         links = workflow("check-links.yml")
@@ -102,15 +127,25 @@ class CiGateListTests(unittest.TestCase):
         self.assertIn("ready_for_review", ci[True]["pull_request"]["types"])
         self.assertIn("edited", policy[True]["pull_request"]["types"])
         self.assertNotEqual(ci["concurrency"]["group"], policy["concurrency"]["group"])
-        # A superseded (cancelled) policy run posts skipped gates, never failures beside the newer run.
+        # Each metadata event completes independently and always reports its actual result.
+        self.assertIn("github.run_id", policy["concurrency"]["group"])
+        self.assertIs(policy["concurrency"]["cancel-in-progress"], False)
         gates = sorted(name for name, job in policy["jobs"].items()
-                       if job.get("if") == "${{ !cancelled() }}" and job.get("permissions") == {})
+                       if job.get("if") == "${{ always() }}" and job.get("permissions") == {})
         self.assertEqual(gates, ["pr-policy", "pr-title"])
         self.assertEqual(policy["jobs"]["pr-policy"]["needs"], ["run-pr-policy"])
+        self.assertIs(policy["jobs"]["run-pr-policy"]["with"]["require-sections"], True)
         self.assertEqual(policy["jobs"]["run-pr-title"]["permissions"], {"pull-requests": "read"})
         self.assertEqual(policy["permissions"], {"contents": "read"})
         for job in ("run-pr-title", "run-pr-policy", "pr-title", "pr-policy"):
             self.assertNotIn(job, ci["jobs"])
+
+    def test_metadata_producers_do_not_cancel_other_events(self):
+        for name in ("pr-title.yml", "pr-policy.yml"):
+            with self.subTest(name=name):
+                concurrency = workflow(name)["concurrency"]
+                self.assertIn("github.run_id", concurrency["group"])
+                self.assertIs(concurrency["cancel-in-progress"], False)
 
     def test_no_workflow_runs_on_ubuntu_latest(self):
         # ubuntu-latest moved callers to a new image without review; pin the image instead.
@@ -125,14 +160,17 @@ class CiGateListTests(unittest.TestCase):
         self.assertEqual(offenders, [])
 
     def test_templates_pin_one_release_of_this_repo(self):
-        # Two releases (v1.2.0 stubs, v1.3.0 opt-ins) drifted apart for six weeks; a release bumps all of them.
+        # Previously distributed releases drifted apart; all templates must move together.
         pins = set()
+        comments = set()
         for path in sorted((ROOT / "templates").rglob("*.yml")):
             source = path.read_text(encoding="utf-8")
-            pins |= set(re.findall(r"alawein/\.github/\.github/workflows/[\w.-]+@([0-9a-f]{40}) # (v\d+\.\d+\.\d+)", source))
-            pins |= {(ref, None) for ref in re.findall(r"(?m)^\s*kit-ref: ([0-9a-f]{40})$", source)}
-        self.assertEqual({sha for sha, _ in pins}, {RELEASE_SHA})
-        self.assertEqual({tag for _, tag in pins if tag}, {"v1.4.0"})
+            calls = re.findall(r"alawein/\.github/\.github/workflows/[\w.-]+@([^\s#]+)(?:[ \t]+#[ \t]*([^\r\n]*))?", source)
+            pins.update(ref for ref, _ in calls)
+            comments.update(comment.strip() for _, comment in calls)
+            pins.update(re.findall(r"(?m)^[ \t]*kit-ref:[ \t]*([^\s#]+)", source))
+        self.assertEqual(pins, {KIT_SHA})
+        self.assertEqual(comments, {"quality gates"})
 
     def test_metadata_job_runs_scripts_suite_with_hashed_dependencies(self):
         # The root suite's own step is guarded from scripts/tests (test_ci_still_runs_the_root_suite).
@@ -226,7 +264,7 @@ class DistributedGateTests(unittest.TestCase):
                     self.assertEqual(set(ci["jobs"]), gates | {"run-" + gate for gate in gates})
                     for job in ci["jobs"].values():
                         if "uses" in job:
-                            self.assertTrue(job["uses"].endswith("@" + LEGACY_SHA))
+                            self.assertTrue(job["uses"].endswith("@" + KIT_SHA))
                     self.assertEqual({path.name for path in directory.iterdir()}, {"ci.yml", "check-links-nightly.yml"})
 
     def test_manual_opt_in_assembles_generated_consumers_without_replacing_jobs(self):
@@ -259,7 +297,7 @@ class DistributedGateTests(unittest.TestCase):
                 (directory / "hygiene-weekly.yml").write_text(yaml.safe_dump(hygiene, sort_keys=False), encoding="utf-8")
                 for name, job in original_jobs.items():
                     self.assertEqual(ci["jobs"][name], job)
-                self.assertEqual(ci["jobs"]["run-pr-policy"]["with"]["kit-ref"], RELEASE_SHA)
+                self.assertEqual(ci["jobs"]["run-pr-policy"]["with"]["kit-ref"], KIT_SHA)
                 self.assertEqual(ci["jobs"]["pr-policy"]["permissions"], {})
                 self.assertEqual(ci["permissions"], {"contents": "read"})
                 self.assertEqual(hygiene["jobs"]["hygiene"]["with"], {"expected-required-checks": checks})

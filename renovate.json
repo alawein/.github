@@ -1,0 +1,15 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "github>alawein/.github#df657341161483defc4a27fd69e85759b7c10937"
+  ],
+  "packageRules": [
+    {
+      "description": "Keep merges manual until effective required independent review is verified.",
+      "matchUpdateTypes": [
+        "patch"
+      ],
+      "automerge": false
+    }
+  ]
+}
