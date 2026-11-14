@@ -62,15 +62,25 @@ const scratch = fs.mkdtempSync(path.join(os.tmpdir(), 'update-policy-'));
 try {
   const event = path.join(scratch, 'event.json');
   for (const ref of [branch, unversionedBranch]) {
-    fs.writeFileSync(event, JSON.stringify({
+    const fixture = {
       _event_name: 'pull_request', action: 'opened', number: 1,
       pull_request: { number: 1, draft: false, body, head: { ref },
         user: { login: 'renovate[bot]', type: 'Bot' } },
-    }));
-    const result = spawnSync(process.env.PYTHON || 'python', [
+    };
+    fs.writeFileSync(event, JSON.stringify(fixture));
+    // The synthetic fixture is a PR even when the surrounding run is a push.
+    const env = { ...process.env, GITHUB_EVENT_NAME: 'pull_request' };
+    const args = [
       path.join(root, 'scripts/check-pr-policy.py'), '--event', event, '--require-sections',
-    ], { encoding: 'utf8' });
+    ];
+    const result = spawnSync(process.env.PYTHON || 'python', args, { encoding: 'utf8', env });
     assert.equal(result.status, 0, result.stdout + result.stderr);
+    fs.writeFileSync(event, JSON.stringify({
+      ...fixture, pull_request: { ...fixture.pull_request, body: '' },
+    }));
+    const rejected = spawnSync(process.env.PYTHON || 'python', args, { encoding: 'utf8', env });
+    assert.equal(rejected.status, 1, rejected.stdout + rejected.stderr);
+    assert.match(rejected.stdout, /Ready PR needs an issue reference/);
   }
 } finally {
   const resolved = fs.realpathSync(scratch);
