@@ -67,23 +67,20 @@ try {
       pull_request: { number: 1, draft: false, body, head: { ref },
         user: { login: 'renovate[bot]', type: 'Bot' } },
     };
-    for (const inheritedEvent of ['pull_request', 'push']) {
-      fs.writeFileSync(event, JSON.stringify(fixture));
-      const env = { ...process.env, GITHUB_EVENT_NAME: inheritedEvent };
-      // The synthetic fixture must remain a PR even when the surrounding run is a push.
-      env.GITHUB_EVENT_NAME = 'pull_request';
-      const args = [
-        path.join(root, 'scripts/check-pr-policy.py'), '--event', event, '--require-sections',
-      ];
-      const result = spawnSync(process.env.PYTHON || 'python', args, { encoding: 'utf8', env });
-      assert.equal(result.status, 0, result.stdout + result.stderr);
-      fs.writeFileSync(event, JSON.stringify({
-        ...fixture, pull_request: { ...fixture.pull_request, body: '' },
-      }));
-      const rejected = spawnSync(process.env.PYTHON || 'python', args, { encoding: 'utf8', env });
-      assert.equal(rejected.status, 1, rejected.stdout + rejected.stderr);
-      assert.match(rejected.stdout, /Ready PR needs an issue reference/);
-    }
+    fs.writeFileSync(event, JSON.stringify(fixture));
+    // The synthetic fixture is a PR even when the surrounding run is a push.
+    const env = { ...process.env, GITHUB_EVENT_NAME: 'pull_request' };
+    const args = [
+      path.join(root, 'scripts/check-pr-policy.py'), '--event', event, '--require-sections',
+    ];
+    const result = spawnSync(process.env.PYTHON || 'python', args, { encoding: 'utf8', env });
+    assert.equal(result.status, 0, result.stdout + result.stderr);
+    fs.writeFileSync(event, JSON.stringify({
+      ...fixture, pull_request: { ...fixture.pull_request, body: '' },
+    }));
+    const rejected = spawnSync(process.env.PYTHON || 'python', args, { encoding: 'utf8', env });
+    assert.equal(rejected.status, 1, rejected.stdout + rejected.stderr);
+    assert.match(rejected.stdout, /Ready PR needs an issue reference/);
   }
 } finally {
   const resolved = fs.realpathSync(scratch);

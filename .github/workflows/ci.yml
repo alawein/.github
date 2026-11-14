@@ -56,7 +56,7 @@ jobs:
       - name: Validate dependency-update policy
         run: |
           npm exec --yes --package=renovate@44.238.1 -- renovate-config-validator --strict default.json
-          npm exec --yes --package=renovate@44.238.1 -- node scripts/check-update-policy.mjs
+          npm exec --yes --package=renovate@44.238.1 -- node scripts/tests/test-update-policy-events.mjs
       # The root suite runs generated consumers through actionlint, just and lychee (the version
       # lychee-action v2.9.0 installs). Release archives are pinned by version and sha256 like
       # lint-actions.yml; change version and checksum together.
