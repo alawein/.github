@@ -87,6 +87,22 @@ class RequiredSectionTests(unittest.TestCase):
         body = "Closes #12\n- ```\n  example\n<pre>\n- ```\n  </pre>\n" + complete_body()
         self.assertEqual(load()(event(body=body), require_sections=True), [])
 
+    def test_unclosed_comment_in_code_does_not_hide_later_sections(self):
+        for block in ("```html\n<!--\n```", "- ```html\n  <!--\n  ```", "<pre>\n<!--\n</pre>"):
+            with self.subTest(block=block):
+                body = "Closes #12\n" + block + "\n" + complete_body()
+                self.assertEqual(load()(event(body=body), require_sections=True), [])
+
+    def test_fence_in_closed_comment_does_not_hide_later_sections(self):
+        body = "<!--\n```\n-->\n" + complete_body()
+        self.assertEqual(load()(event(body=body), require_sections=True), [])
+
+    def test_real_comment_or_fence_cannot_supply_section_headings(self):
+        for block in ("<!--\n" + complete_body() + "\n-->",
+                      "```html\n<!--\n" + complete_body() + "\n```"):
+            with self.subTest(block=block):
+                self.assertEqual(len(load()(event(body="Closes #12\n" + block), require_sections=True)), 5)
+
     def test_drafts_can_defer_sections(self):
         self.assertEqual(load()(event(body="", draft=True), require_sections=True), [])
 
@@ -178,6 +194,30 @@ class PolicyTests(unittest.TestCase):
                      "Closes #12abc", "https://github.com/owner/repo/pull/12"):
             with self.subTest(body=body):
                 self.assertTrue(self.check(event(body=body)))
+
+    def test_unclosed_html_markers_inside_fences_do_not_hide_real_linkage(self):
+        for marker in ("<pre>", "<code>", "<!--"):
+            for opening, content, closing in (("```html", marker, "```"),
+                                               ("- ```html", "  " + marker, "  ```")):
+                with self.subTest(marker=marker, opening=opening):
+                    body = f"{opening}\n{content}\n{closing}\nCloses #12"
+                    self.assertEqual(self.check(event(body=body)), [])
+
+    def test_html_and_fences_cannot_supply_linkage(self):
+        for body in ("```html\n<pre>Closes #12\n```",
+                     "```html\n<!-- Closes #12\n```",
+                     "<pre>\n- ```\nCloses #12\n</pre>",
+                     "<!--\n- ```\nCloses #12\n-->"):
+            with self.subTest(body=body):
+                self.assertTrue(self.check(event(body=body)))
+
+    def test_inline_html_code_does_not_hide_surrounding_linkage(self):
+        self.assertEqual(self.check(event(body="Notes <pre>example</pre> Closes #12")), [])
+
+    def test_fence_or_html_in_closed_comment_does_not_hide_linkage(self):
+        for comment in ("<!--\n```\n-->", "<!-- <pre> -->", "<!--\n<pre>\n-->"):
+            with self.subTest(comment=comment):
+                self.assertEqual(self.check(event(body=comment + "\nCloses #12")), [])
 
     def test_real_linkage_and_specific_exception(self):
         for body in ("Closes #12", "Fixes owner/repo#23", "Refs #123",
