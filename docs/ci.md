@@ -62,6 +62,11 @@ Pass a GitHub-hosted label or a self-hosted label expression (for example
 `[self-hosted, railway, ephemeral]`) when dual-running jobs off hosted runners.
 Keep the default until a self-hosted pool is proven green.
 
+`python-ci.yml` accepts `uv-install-method` (`setup-uv` default, or `pip`). Use
+`pip` when `astral-sh/setup-uv` fails on GitHub Releases CDN timeouts (504s); it
+installs the pinned `uv-version` from PyPI with `--only-binary=:all:` then runs
+`uv sync --locked`.
+
 `node-ci.yml` also supports `require-lint: true`, paired with `run-lint: true`.
 It refuses a missing or blank lint script before installation, runs `npm run lint`
 without optional-script suppression, and propagates its exit code. Code repositories
