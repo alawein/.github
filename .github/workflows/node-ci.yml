@@ -41,7 +41,8 @@ concurrency:
 
 jobs:
   ci:
-    runs-on: ${{ inputs.runner }}
+    # Fork PRs always use GitHub-hosted runners; never run fork code self-hosted.
+    runs-on: ${{ github.event.pull_request.head.repo.fork && 'ubuntu-24.04' || inputs.runner }}
     timeout-minutes: 15
     defaults:
       run:

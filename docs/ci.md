@@ -60,7 +60,9 @@ CodeQL is not a workflow here. Turn it on with GitHub's default setup
 `node-ci.yml` and `python-ci.yml` accept optional `runner` (default `ubuntu-24.04`).
 Pass a GitHub-hosted label or a self-hosted label expression (for example
 `[self-hosted, railway, ephemeral]`) when dual-running jobs off hosted runners.
-Keep the default until a self-hosted pool is proven green.
+Keep the default until a self-hosted pool is proven green. Fork pull requests
+ignore `runner` and always use `ubuntu-24.04`, so fork code never reaches a
+self-hosted pool.
 
 `python-ci.yml` accepts `uv-install-method` (`setup-uv` default, or `pip`). Use
 `pip` when `astral-sh/setup-uv` fails on GitHub Releases CDN timeouts (504s); it
