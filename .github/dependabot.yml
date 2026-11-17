@@ -1,4 +1,7 @@
 version: 2
+# Renovate (default.json) owns version-update PRs: house branches (chore/deps-*) and
+# the five pr-policy evidence sections. Dependabot limits stay 0 so it does not open
+# dependabot/* branches that fail pr-policy. See docs/ci.md "Dependency update bots".
 updates:
   # Keeps the hash-pinned root test dependency (tests/requirements.txt) current; version and hashes move together.
   - package-ecosystem: pip

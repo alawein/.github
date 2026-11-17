@@ -322,6 +322,21 @@ v1.4.0 adds the separate policy gates, `::error::` policy annotations, wider bra
   see [dependency policy](system/delivery.md#dependencies). Action and tool pins
   still require reviewed updates. Existing Dependabot version-update config is
   disabled when a repository adopts Renovate, so both bots do not open duplicates.
+
+### Dependency update bots and `pr-policy`
+
+Ready PRs must use a house branch (`chore/deps-…`) and the five evidence sections
+(Context, Changes, Testing Evidence, Screenshots/Logs, Rollback Plan), or stay
+draft until those are filled. A fixture for a compliant bot PR lives at
+`scripts/tests/fixtures/dependabot-pr-valid.json`.
+
+- Prefer Renovate with `default.json`: `branchPrefix` is `chore/deps-` and
+  `prBodyTemplate` already fills the five sections plus `No-issue:` for scheduled
+  maintenance.
+- Keep Dependabot `open-pull-requests-limit: 0` when Renovate owns version updates.
+  Dependabot's default `dependabot/…` branches fail `pr-policy` (observed Policy
+  failures such as run `43650759868`). Do not re-enable Dependabot version PRs
+  without a branch and body contract that matches house rules.
 - Two pins are not `uses:` lines and need a manual bump: the actionlint version
   and sha256 in `lint-actions.yml`, and the default `uv-version` in
   `python-ci.yml`. The list is in `pins.md`.

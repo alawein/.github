@@ -1,0 +1,16 @@
+{
+  "action": "opened",
+  "number": 101,
+  "pull_request": {
+    "number": 101,
+    "title": "chore(deps): bump actions",
+    "body": "## Context\n\nNo-issue: scheduled dependency maintenance for this repository.\n\n## Changes\n\nSHA pins for GitHub Actions.\n\n## Testing Evidence\n\nCI checks on this PR.\n\n## Screenshots/Logs\n\nn/a text-only pin bump.\n\n## Rollback Plan\n\nRevert the pin commit.\n",
+    "draft": false,
+    "user": {
+      "login": "renovate[bot]",
+      "type": "Bot"
+    },
+    "head": {"ref": "chore/deps-actions"},
+    "base": {"ref": "main"}
+  }
+}
