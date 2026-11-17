@@ -186,13 +186,12 @@ The PR-title gate permits a skipped producer only on an actual main-push event.
 
 ## Opt in to PR policy and hygiene
 
-The opt-in callers, like every stub and starter, pin signed annotated `v1.4.0`
-at `f5dbd4d7656e286e20d2aa24463253c32a56521b` (see [pins](pins.md)).
-
-Adoption has two phases: `v1.3.0` supplies the released reusable workflow
-code; reviewed kit main supplies the follow-on templates and `-RequirePrPolicy`
-setup/verification support. Copy those templates and run the helpers from
-reviewed main after adoption merges; retain the released workflow pins.
+Distributed stubs, starters, and opt-in templates pin the freeze SHA in
+[pins](pins.md) (reviewed `main` `4fb018bbf776a0d9d78eb3016770720e4e52e2c5`
+until a new release tag). Keep `uses:` and `kit-ref` identical. Existing
+published callers on older pins (including signed `v1.4.0` at
+`f5dbd4d7656e286e20d2aa24463253c32a56521b`) keep old behavior until they
+repin. Copy templates and run helpers from the same reviewed revision you pin.
 
 1. Merge the two jobs in
    [pr-policy.jobs.yml](../templates/workflows/pr-policy.jobs.yml) under the
