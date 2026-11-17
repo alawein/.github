@@ -24,23 +24,23 @@ concurrency:
 
 jobs:
   run-markdown-lint:
-    uses: alawein/.github/.github/workflows/lint-markdown.yml@df657341161483defc4a27fd69e85759b7c10937 # quality gates
+    uses: alawein/.github/.github/workflows/lint-markdown.yml@4fb018bbf776a0d9d78eb3016770720e4e52e2c5 # quality gates
 
   run-link-check:
-    uses: alawein/.github/.github/workflows/check-links.yml@df657341161483defc4a27fd69e85759b7c10937 # quality gates
+    uses: alawein/.github/.github/workflows/check-links.yml@4fb018bbf776a0d9d78eb3016770720e4e52e2c5 # quality gates
     with:
       offline: true
 
   run-actionlint:
-    uses: alawein/.github/.github/workflows/lint-actions.yml@df657341161483defc4a27fd69e85759b7c10937 # quality gates
+    uses: alawein/.github/.github/workflows/lint-actions.yml@4fb018bbf776a0d9d78eb3016770720e4e52e2c5 # quality gates
 
   run-pr-title:
     permissions:
       pull-requests: read
-    uses: alawein/.github/.github/workflows/pr-title.yml@df657341161483defc4a27fd69e85759b7c10937 # quality gates
+    uses: alawein/.github/.github/workflows/pr-title.yml@4fb018bbf776a0d9d78eb3016770720e4e52e2c5 # quality gates
 
   run-node-ci:
-    uses: alawein/.github/.github/workflows/node-ci.yml@df657341161483defc4a27fd69e85759b7c10937 # quality gates
+    uses: alawein/.github/.github/workflows/node-ci.yml@4fb018bbf776a0d9d78eb3016770720e4e52e2c5 # quality gates
     with:
       require-lint: true
       node-version: lts/*

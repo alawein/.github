@@ -41,20 +41,18 @@ the checksum from the release's `actionlint_<version>_checksums.txt` (or the ass
 
 ## Pins to this repo
 
-Distributed callers and starters provisionally pin quality revision
-`df657341161483defc4a27fd69e85759b7c10937`. Their `kit-ref` values match the reusable
-workflow SHA. Code starters opt into mandatory lint; the policy fragment opts into
-complete review evidence. `tests/test_workflow_gates.py` checks that templates pin
-one revision, so caller pins and `kit-ref` values change together.
+Distributed callers and starters freeze to reviewed `main` commit
+`4fb018bbf776a0d9d78eb3016770720e4e52e2c5` (observed 2026-11-17 via
+`gh api repos/alawein/.github/commits/main --jq .sha`). Their `kit-ref` values match
+the reusable workflow SHA. Trailing comments remain `# quality gates` until a release
+tag is cut; then switch comments to `# vX.Y.Z`. Code starters opt into mandatory lint;
+the policy fragment opts into complete review evidence. `tests/test_workflow_gates.py`
+checks that templates pin one revision, so caller pins and `kit-ref` values change
+together.
 
-The provisional pin does not claim a GitHub release or hosted availability. Freeze
-and publish the reviewed kit revision before publishing consumers, and repin all
-consumers and templates together. Existing published callers retain their old behavior
-until they adopt the new pin.
-
-Previously, all caller stubs, starters and opt-in templates pinned signed annotated
-`v1.4.0` at `f5dbd4d7656e286e20d2aa24463253c32a56521b`, tagged on 2026-11-11
-after CI passed on that commit. The hygiene workflow checks out reviewed audit source
+Existing published callers on older pins (including signed `v1.4.0` at
+`f5dbd4d7656e286e20d2aa24463253c32a56521b`) retain their old behavior until they
+adopt this freeze. The hygiene workflow checks out reviewed audit source
 `98c7496007ae504a3509be1c29d02afa87640aca` and runs it with `--token-limited`.
 For published pins, use the full SHA with a `# vX.Y.Z` comment so dependency updates
 can propose the next bump. To bump, see [ci.md](ci.md), "Bump a pin".

@@ -15,7 +15,7 @@ import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 NODE_DIR = os.environ.get("NODE22_DIR")
-KIT_SHA = "df657341161483defc4a27fd69e85759b7c10937"
+KIT_SHA = "4fb018bbf776a0d9d78eb3016770720e4e52e2c5"
 BASH = Path(r"C:\Program Files\Git\bin\bash.exe") if platform.system() == "Windows" else Path("/bin/bash")
 
 
