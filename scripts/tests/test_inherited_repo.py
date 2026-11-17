@@ -145,10 +145,11 @@ class InheritedRepoTests(unittest.TestCase):
             self.assertFalse((repo / "ran-preinstall").exists())
             self.assertEqual((repo / "NOTES.md").read_text(encoding="utf-8"), "keep-this-sentence\n")
 
-            baseline = subprocess.run(["python", "-m", "unittest", "test_add.py"], cwd=repo, capture_output=True, text=True)
+            # -B: the fix keeps add.py's size, so a same-second rewrite could reuse stale bytecode.
+            baseline = subprocess.run(["python", "-B", "-m", "unittest", "test_add.py"], cwd=repo, capture_output=True, text=True)
             self.assertNotEqual(baseline.returncode, 0)
             (repo / "add.py").write_text("def add(left, right):\n    return left + right\n", encoding="utf-8")
-            repaired = subprocess.run(["python", "-m", "unittest", "test_add.py"], cwd=repo, capture_output=True, text=True)
+            repaired = subprocess.run(["python", "-B", "-m", "unittest", "test_add.py"], cwd=repo, capture_output=True, text=True)
             self.assertEqual(repaired.returncode, 0, repaired.stdout + repaired.stderr)
             head = subprocess.run(["git", "rev-parse", "HEAD"], cwd=repo, check=True, capture_output=True, text=True).stdout.strip()
             self.assertEqual(head, starting)
