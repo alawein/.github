@@ -18,12 +18,17 @@ GitHub-hosted minutes. Labels: `railway,self-hosted,linux,x64,ephemeral`.
    | `GITHUB_APP_INSTALLATION_TOKEN` | **Preferred.** Fine-scoped PAT (or App token mint path) that can create runner registration tokens. Entrypoint mints a fresh registration token on every start when this is set. A fixed GitHub App installation token expires in about one hour and fails later restarts unless refreshed; prefer a PAT whose expiry covers the service lifetime. |
    | `RUNNER_REG_TOKEN` | **Fallback only** when `GITHUB_APP_INSTALLATION_TOKEN` is unset. Short-lived registration token from GitHub (expires ~1h; one-shot). Do not leave an expired value set alongside a PAT — the entrypoint ignores `RUNNER_REG_TOKEN` whenever the App/PAT var is present. |
 
-4. Deploy. Confirm the runner appears under repo **Settings → Actions →
+4. Service settings: watch path `/runners/github-actions-railway/**` so
+   unrelated `main` pushes do not restart the runner; teardown draining
+   (about 120 s) so a running job can finish on redeploy; replica limits sized
+   to the heaviest job (2 vCPU / 4 GB covers kit jobs). Applying a staged
+   setting redeploys the latest `main` commit.
+5. Deploy. Confirm the runner appears under repo **Settings → Actions →
    Runners** with the expected labels.
-5. Dual-run a **non-required** probe job with
+6. Dual-run a **non-required** probe job with
    `runs-on: [self-hosted, railway, ephemeral]`. Keep required checks on
    `ubuntu-24.04` until the probe is green. Remove the probe afterward.
-6. Rollback: remove self-hosted labels from YAML → delete the Railway
+7. Rollback: remove self-hosted labels from YAML → delete the Railway
    service → revoke the App/PAT.
 
 ### Mint a registration token (human)
@@ -62,8 +67,19 @@ Prefer an input flag on reusables rather than hard-switching required jobs.
   `ALWAYS` restarts after idle or mid-job stops do not loop on "already
   configured".
 - Do **not** attach `railway` labels to fork `pull_request` jobs; keep forks on
-  GitHub-hosted runners. Guard with
-  `github.event.pull_request.head.repo.fork == false` when needed.
+  GitHub-hosted runners. `node-ci.yml` and `python-ci.yml` enforce this: fork
+  PRs ignore the `runner` input. Guard any other job with
+  `github.event.pull_request.head.repo.fork == false`.
+- Set repo **Settings → Actions → General** fork PR approval to "Require
+  approval for all external contributors" while this pool is attached.
+- The entrypoint unsets `GITHUB_APP_INSTALLATION_TOKEN`, `RUNNER_REG_TOKEN`
+  and the minted registration token before `exec ./run.sh`, so job steps do
+  not inherit the PAT. Seal the PAT variable in Railway so the dashboard and
+  API cannot show it.
+- The runner does not deregister itself on shutdown: doing so would keep a
+  mint credential alive beside job code. Each redeploy leaves the previous
+  runner offline; GitHub removes offline ephemeral runners after one day, or
+  remove it under **Settings → Actions → Runners**.
 - Do not place privileged secrets on the self-hosted pool beyond registration.
 - Prefer `permissions: contents: read` on jobs that land here.
 - Never use this pool for `pull_request_target` that can reach secrets.
