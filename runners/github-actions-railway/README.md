@@ -57,6 +57,10 @@ Prefer an input flag on reusables rather than hard-switching required jobs.
 ## Security
 
 - Always start with `--ephemeral` (this image does).
+- On every start the entrypoint clears leftover `.runner` / `.credentials*`
+  (and best-effort `config.sh remove`) before re-registering, so Railway
+  `ALWAYS` restarts after idle or mid-job stops do not loop on "already
+  configured".
 - Do **not** attach `railway` labels to fork `pull_request` jobs; keep forks on
   GitHub-hosted runners. Guard with
   `github.event.pull_request.head.repo.fork == false` when needed.
