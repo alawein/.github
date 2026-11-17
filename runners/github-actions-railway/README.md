@@ -15,8 +15,8 @@ GitHub-hosted minutes. Labels: `railway,self-hosted,linux,x64,ephemeral`.
    | --- | --- |
    | `GITHUB_REPO` | Target repo, e.g. `alawein/.github` |
    | `RUNNER_LABELS` | `railway,self-hosted,linux,x64,ephemeral` |
-   | `GITHUB_APP_INSTALLATION_TOKEN` | Preferred: App installation token or fine-scoped PAT that can create runner registration tokens |
-   | `RUNNER_REG_TOKEN` | Optional fallback: paste a short-lived registration token from GitHub (expires ~1h; for one restart only) |
+   | `GITHUB_APP_INSTALLATION_TOKEN` | Fine-scoped PAT (or App token mint path) that can create runner registration tokens. A fixed GitHub App installation token expires in about one hour and fails later restarts unless refreshed; prefer a PAT whose expiry covers the service lifetime. |
+   | `RUNNER_REG_TOKEN` | Optional one-shot fallback: paste a short-lived registration token from GitHub (expires ~1h; fails on later restarts) |
 
 4. Deploy. Confirm the runner appears under repo **Settings → Actions →
    Runners** with the expected labels.
@@ -33,9 +33,11 @@ If automation cannot mint tokens (missing admin / manage_runners):
 1. Open `https://github.com/alawein/.github/settings/actions/runners/new`.
 2. Copy the short-lived registration token from the configure step (do not
    commit or paste it into chat).
-3. Set Railway variable `RUNNER_REG_TOKEN` to that value (or prefer a
-   longer-lived `GITHUB_APP_INSTALLATION_TOKEN` that can call
-   `POST /repos/{owner}/{repo}/actions/runners/registration-token`).
+3. For a single boot, set Railway variable `RUNNER_REG_TOKEN` to that value.
+   For restarts after successful jobs (`restartPolicyType = ALWAYS`), set
+   `GITHUB_APP_INSTALLATION_TOKEN` to a fine-scoped PAT that can call
+   `POST /repos/{owner}/{repo}/actions/runners/registration-token` and whose
+   expiry covers the service lifetime.
 4. Redeploy / restart the service once.
 
 Never commit tokens, print them in logs, or store them in this repo.
@@ -79,4 +81,4 @@ Prefer an input flag on reusables rather than hard-switching required jobs.
 | --- | --- |
 | `Dockerfile` | Official `actions-runner` image + jq/git/python |
 | `entrypoint.sh` | Mint or accept registration token; `--ephemeral` run |
-| `railway.toml` | Dockerfile build; restart on failure |
+| `railway.toml` | Dockerfile build; restart always after each job |
