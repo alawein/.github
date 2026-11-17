@@ -30,8 +30,10 @@ merged ones across your checkouts, use `scripts/repo-sweep.ps1`; the rules are i
 From this repo's root, run `just check` for Markdown lint, offline local links,
 and the docs build step. `just lint`, `just test`, `just build`, and `just fix`
 run the individual tasks. The Markdown runner is pinned to
-`markdownlint-cli2@0.23.2`; install lychee for the link check. CI also runs
-`actionlint` and `pr-title` as described in [CI](docs/ci.md).
+`markdownlint-cli2@0.23.2`; install lychee for the link check. In CI,
+`ci.yml` runs `markdown-lint`, `link-check`, `actionlint`, `zizmor`, and
+`metadata-tests`, and `policy.yml` runs `pr-title` and `pr-policy`, as described
+in [CI](docs/ci.md).
 
 ## Where files belong
 
@@ -44,7 +46,7 @@ run the individual tasks. The Markdown runner is pinned to
 | [Vercel](docs/vercel.md) | Site deployment and domain guidance |
 | [Starters](templates/starters) | Minimal docs, TypeScript, Python, site, and lab repos |
 | [Templates](templates) | Workflows, ownership, README, and review files |
-| [Issue forms](.github/ISSUE_TEMPLATE) | Shared bug, feature, and task forms with chooser settings |
+| [Issue forms](.github/ISSUE_TEMPLATE) | Shared bug, documentation, feature, task, and tech-debt forms with chooser settings |
 | [Scripts](scripts) and [rulesets](rulesets) | Local setup and GitHub policy definitions |
 | [.github/workflows](.github/workflows) | Reusable checks and this kit's own CI |
 | [assets](assets) | Approved repository artwork |
