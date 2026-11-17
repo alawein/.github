@@ -40,3 +40,4 @@ One line per session, newest at the bottom. Format:
 - 2026-11-17 | railway runner | The pool had no consumers, so nothing showed it runs real jobs | Add the non-required metadata-tests-railway probe (fast path, fork PRs skipped) and declare the runner labels in actionlint.yaml.
 - 2026-11-17 | pin-freeze | Published freeze lagged reviewed main after #54 while consumers stayed on older pins | Advance kit template/docs freeze to the approved main SHA without consumer bumps; keep `# quality gates` until a release tag.
 - 2026-11-17 | railway runner | The probe failed one generator test because the runner image had no pwsh | Install pinned PowerShell 7.6.10 (sha256-checked) in the runner Dockerfile; bump version and checksum together.
+- 2026-11-17 | dependabot | The kit kept a dependabot.yml (limit 0) despite the 2026-10-06 owner decision, and maios, fallax and loopholelab had drifted too | Remove dependabot.yml everywhere; Renovate alone owns updates here.

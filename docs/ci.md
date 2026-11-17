@@ -129,7 +129,7 @@ successful policy producer, including on push to main; cancellation, failure or
 a skipped producer cannot pass it. `ci.yml`'s `metadata-tests` job is its own
 required context. It runs `scripts/tests`, then the root `tests` suite after
 installing PyYAML from the hash-pinned wheels in `tests/requirements.txt`
-(Dependabot updates that file's version and hashes together) and the pinned
+(Renovate's pip_requirements manager updates that file's version and hashes together) and the pinned
 actionlint, just and lychee archives. It exports `LYCHEE_BIN`; with `CI=true`
 the lychee tests fail instead of skipping when it is unset. The metadata
 suite also generates docs, profile, TypeScript, Python, site and lab outputs
@@ -340,10 +340,10 @@ draft until those are filled. A fixture for a compliant bot PR lives at
 - Prefer Renovate with `default.json`: `branchPrefix` is `chore/deps-` and
   `prBodyTemplate` already fills the five sections plus `No-issue:` for scheduled
   maintenance.
-- Keep Dependabot `open-pull-requests-limit: 0` when Renovate owns version updates.
-  Dependabot's default `dependabot/…` branches fail `pr-policy` (observed Policy
-  failures such as run `43650759868`). Do not re-enable Dependabot version PRs
-  without a branch and body contract that matches house rules.
+- Dependabot is off (owner decision 2026-10-06, reaffirmed 2026-11-17): no
+  `dependabot.yml`, no alerts and no security updates. Its default `dependabot/…`
+  branches also fail `pr-policy` (observed Policy failures such as run
+  `43650759868`).
 - Two pins are not `uses:` lines and need a manual bump: the actionlint version
   and sha256 in `lint-actions.yml`, and the default `uv-version` in
   `python-ci.yml`. The list is in `pins.md`.
