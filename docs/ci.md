@@ -64,6 +64,10 @@ Keep the default until a self-hosted pool is proven green. Fork pull requests
 ignore `runner` and always use `ubuntu-24.04`, so fork code never reaches a
 self-hosted pool.
 
+`ci.yml`'s `metadata-tests-railway` job proves the Railway pool: it runs the
+`scripts/tests` fast path on `[self-hosted, railway, ephemeral]` with
+`continue-on-error`, skips fork pull requests, and is not a required check.
+
 `python-ci.yml` accepts `uv-install-method` (`setup-uv` default, or `pip`). Use
 `pip` when `astral-sh/setup-uv` fails on GitHub Releases CDN timeouts (504s); it
 installs the pinned `uv-version` from PyPI with `--only-binary=:all:` then runs

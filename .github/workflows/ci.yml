@@ -131,6 +131,22 @@ jobs:
         if: steps.gen.outputs.heavy == 'true'
         run: python -m unittest discover -s tests -p 'test_*.py' -v
 
+  # Non-required probe of the Railway self-hosted pool. Fork PRs never reach it.
+  metadata-tests-railway:
+    if: github.event.pull_request.head.repo.fork != true
+    runs-on: [self-hosted, railway, ephemeral]
+    continue-on-error: true
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12.10"
+      - name: Fast path metadata suite
+        run: python -m unittest discover -s scripts/tests -p 'test_*.py' -v
+
   markdown-lint:
     needs: [run-markdown-lint]
     if: ${{ always() }}

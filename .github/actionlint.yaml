@@ -1,4 +1,7 @@
 # actionlint rules for this repository. See https://github.com/rhysd/actionlint/blob/main/docs/config.md
+self-hosted-runner:
+  # Labels of the Railway runner (runners/github-actions-railway).
+  labels: [railway, ephemeral]
 paths:
   .github/workflows/**/*.yml:
     ignore:
