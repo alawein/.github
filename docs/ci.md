@@ -343,6 +343,12 @@ draft until those are filled. A fixture for a compliant bot PR lives at
   and sha256 in `lint-actions.yml`, and the default `uv-version` in
   `python-ci.yml`. The list is in `pins.md`.
 
+## Fleet pin inventory
+
+Run `python3 scripts/audit_fleet_pins.py` (needs `gh` auth) for a read-only table of
+consumer `uses: alawein/.github/...@<sha>` pins. Code search can be incomplete under
+rate limits; treat gaps as UNVERIFIED and re-run before a fleet bump.
+
 ## Bump a pin
 
 Third-party action, in this repo:
