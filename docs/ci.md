@@ -57,6 +57,11 @@ CodeQL is not a workflow here. Turn it on with GitHub's default setup
 
 ## Reusable workflow inputs
 
+`node-ci.yml` and `python-ci.yml` accept optional `runner` (default `ubuntu-24.04`).
+Pass a GitHub-hosted label or a self-hosted label expression (for example
+`[self-hosted, railway, ephemeral]`) when dual-running jobs off hosted runners.
+Keep the default until a self-hosted pool is proven green.
+
 `node-ci.yml` also supports `require-lint: true`, paired with `run-lint: true`.
 It refuses a missing or blank lint script before installation, runs `npm run lint`
 without optional-script suppression, and propagates its exit code. Code repositories
