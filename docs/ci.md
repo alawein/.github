@@ -189,7 +189,7 @@ The PR-title gate permits a skipped producer only on an actual main-push event.
 ## Opt in to PR policy and hygiene
 
 Distributed stubs, starters, and opt-in templates pin the freeze SHA in
-[pins](pins.md) (reviewed `main` `4fb018bbf776a0d9d78eb3016770720e4e52e2c5`
+[pins](pins.md) (reviewed `main` `cc3b595f8e9e92a9ed6fc63b3be177cc8a571965`
 until a new release tag). Keep `uses:` and `kit-ref` identical. Existing
 published callers on older pins (including signed `v1.4.0` at
 `f5dbd4d7656e286e20d2aa24463253c32a56521b`) keep old behavior until they
@@ -288,7 +288,7 @@ failed on purpose, so no caller ran unpinned code. The steps, for the record:
 4. Later bumps follow "Bump a pin".
 
 Current distributed template pins freeze to reviewed `main`
-`4fb018bbf776a0d9d78eb3016770720e4e52e2c5` (2026-11-17). Comments stay
+`cc3b595f8e9e92a9ed6fc63b3be177cc8a571965` (2026-11-17). Comments stay
 `# quality gates` until a release tag exists. Prior published callers may still use
 signed `v1.4.0` at `f5dbd4d7656e286e20d2aa24463253c32a56521b` until they repin.
 v1.4.0 added the separate policy gates, `::error::` policy annotations, wider branch types, checksum-pinned zizmor and the `ubuntu-24.04` runner pins; it keeps `require-test` and the paired local/external link inputs.

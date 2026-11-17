@@ -42,7 +42,7 @@ the checksum from the release's `actionlint_<version>_checksums.txt` (or the ass
 ## Pins to this repo
 
 Distributed callers and starters freeze to reviewed `main` commit
-`4fb018bbf776a0d9d78eb3016770720e4e52e2c5` (observed 2026-11-17 via
+`cc3b595f8e9e92a9ed6fc63b3be177cc8a571965` (observed 2026-11-17 via
 `gh api repos/alawein/.github/commits/main --jq .sha`). Their `kit-ref` values match
 the reusable workflow SHA. Trailing comments remain `# quality gates` until a release
 tag is cut; then switch comments to `# vX.Y.Z`. Code starters opt into mandatory lint;

@@ -11,7 +11,7 @@ import unittest
 ROOT = Path(__file__).resolve().parents[2]
 AUDIT_SOURCE_SHA = "98c7496007ae504a3509be1c29d02afa87640aca"
 AUDIT_SOURCE_HASH = "21e8f4a3b22af15a4b2468c99d27f8aad3062f9eca2b4918a3f5098000f18592"
-KIT_SHA = "4fb018bbf776a0d9d78eb3016770720e4e52e2c5"
+KIT_SHA = "cc3b595f8e9e92a9ed6fc63b3be177cc8a571965"
 BASH = (str(Path(os.environ.get("ProgramFiles", "C:/Program Files")) / "Git/bin/bash.exe")
         if os.name == "nt" else shutil.which("bash"))
 

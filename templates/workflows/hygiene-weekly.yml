@@ -16,6 +16,6 @@ jobs:
     permissions:
       contents: read
       pull-requests: read
-    uses: alawein/.github/.github/workflows/hygiene.yml@4fb018bbf776a0d9d78eb3016770720e4e52e2c5 # quality gates
+    uses: alawein/.github/.github/workflows/hygiene.yml@cc3b595f8e9e92a9ed6fc63b3be177cc8a571965 # quality gates
     with:
       expected-required-checks: markdown-lint,link-check,actionlint,pr-title
