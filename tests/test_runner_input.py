@@ -39,5 +39,14 @@ class RunnerInputTests(unittest.TestCase):
             self.assertIn(f"'{default}'", workflow(name)["jobs"]["ci"]["runs-on"], name)
 
 
+class RailwayImageTests(unittest.TestCase):
+    def test_image_installs_pinned_verified_powershell(self):
+        text = (ROOT / "runners/github-actions-railway/Dockerfile").read_text(encoding="utf-8")
+        self.assertRegex(text, r"ARG PWSH_VERSION=\d+\.\d+\.\d+\n")
+        self.assertRegex(text, r"ARG PWSH_SHA256=[0-9a-f]{64}\n")
+        self.assertIn("sha256sum -c", text)
+        self.assertIn("ln -s /opt/microsoft/powershell/7/pwsh /usr/local/bin/pwsh", text)
+
+
 if __name__ == "__main__":
     unittest.main()
