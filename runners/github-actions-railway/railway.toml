@@ -1,0 +1,12 @@
+# Config-as-code for the ephemeral Actions runner service.
+# Do not store tokens here; set them as Railway variables only.
+
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+# Ephemeral runners exit 0 after a successful job; ALWAYS restarts so the next
+# registration can occur. Prefer GITHUB_APP_INSTALLATION_TOKEN (PAT) over a
+# one-shot RUNNER_REG_TOKEN so restarts can mint fresh registration tokens.
+restartPolicyType = "ALWAYS"
