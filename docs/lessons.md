@@ -32,3 +32,4 @@ One line per session, newest at the bottom. Format:
 - 2026-11-11 | required checks | A body-edit run with per-PR cancellation cancels the same-SHA push run, and its always-run gates then fail required contexts | Keep `edited` only in a separate workflow that holds the title and body gates.
 - 2026-11-14 | PR evidence | A list-nested fenced example supplied false required-section headings | Share container-aware fence parsing and preserve code output as evidence within real sections.
 - 2026-11-14 | synthetic PR fixtures | A main-push event leaked into a PR metadata fixture and failed post-merge CI | Set the fixture child event to pull_request and run the real matcher in separate push and PR processes.
+- 2026-11-17 | gha audit | Thirteen short kit jobs billed ~14 minutes for ~80s wall; archive-guard/gates dominate cost; MAIOS is not a kit consumer | Collapse tiny jobs, path-filter metadata-tests, keep policy/ci split, dual-run Railway only for heavy jobs.

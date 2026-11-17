@@ -12,10 +12,10 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  archive-guard:
+  lint:
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-24.04
-    timeout-minutes: 1
-    permissions: {}
+    timeout-minutes: 5
     steps:
       - name: Refuse to run in an archive repo
         env:
@@ -24,13 +24,6 @@ jobs:
           case "${REPO#*/}" in
             ARCHIVE-*) echo "::error::${REPO} is an archive repo. Workflows never run here."; exit 1 ;;
           esac
-
-  lint:
-    needs: [archive-guard]
-    if: github.event_name == 'pull_request'
-    runs-on: ubuntu-24.04
-    timeout-minutes: 5
-    steps:
       # Default rules: type(scope): subject. Same as the profile repo.
       - uses: amannn/action-semantic-pull-request@2252a14e810aa9b85c2d560bd7070c802206ecf6 # v6.1.2
         env:

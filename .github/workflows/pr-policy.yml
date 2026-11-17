@@ -20,10 +20,9 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  archive-guard:
+  check:
     runs-on: ubuntu-24.04
-    timeout-minutes: 1
-    permissions: {}
+    timeout-minutes: 5
     steps:
       - name: Refuse to run in an archive repo
         env:
@@ -32,12 +31,6 @@ jobs:
           case "${REPO#*/}" in
             ARCHIVE-*) echo "::error::${REPO} is an archive repo. Workflows never run here."; exit 1 ;;
           esac
-
-  check:
-    needs: [archive-guard]
-    runs-on: ubuntu-24.04
-    timeout-minutes: 5
-    steps:
       - name: Validate kit ref
         id: ref
         env:

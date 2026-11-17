@@ -57,6 +57,16 @@ CodeQL is not a workflow here. Turn it on with GitHub's default setup
 
 ## Reusable workflow inputs
 
+`node-ci.yml` and `python-ci.yml` accept optional `runner` (default `ubuntu-24.04`).
+Pass a GitHub-hosted label or a self-hosted label expression (for example
+`[self-hosted, railway, ephemeral]`) when dual-running jobs off hosted runners.
+Keep the default until a self-hosted pool is proven green.
+
+`python-ci.yml` accepts `uv-install-method` (`setup-uv` default, or `pip`). Use
+`pip` when `astral-sh/setup-uv` fails on GitHub Releases CDN timeouts (504s); it
+installs the pinned `uv-version` from PyPI with `--only-binary=:all:` then runs
+`uv sync --locked`.
+
 `node-ci.yml` also supports `require-lint: true`, paired with `run-lint: true`.
 It refuses a missing or blank lint script before installation, runs `npm run lint`
 without optional-script suppression, and propagates its exit code. Code repositories
@@ -257,10 +267,10 @@ checks inline.
 
 ## Archive guard
 
-Every reusable workflow starts with a job named `archive-guard`. It fails when
-the repository name starts with `ARCHIVE-`, and every other job in the file
-lists it under `needs`. The job is in [archive.md](archive.md), Layer 4. Copy
-it unchanged into any new reusable workflow.
+Every reusable workflow starts its primary job with a step that refuses
+`ARCHIVE-*` repository names before checkout or other work. The step is Layer 4
+in [archive.md](archive.md). Keep it as the first step of the work job so archive
+repos fail closed without a separate billed job.
 
 ## After the first commit
 
@@ -276,15 +286,17 @@ failed on purpose, so no caller ran unpinned code. The steps, for the record:
 3. Tag the commit `v1.0.0` so the `# v1.0.0` comment next to each pin is true.
 4. Later bumps follow "Bump a pin".
 
-Current distributed pins use signed `v1.4.0` at
-`f5dbd4d7656e286e20d2aa24463253c32a56521b`; CI passed on that commit before tagging.
-v1.4.0 adds the separate policy gates, `::error::` policy annotations, wider branch types, checksum-pinned zizmor and the `ubuntu-24.04` runner pins; it keeps `require-test` and the paired local/external link inputs.
+Current distributed template pins freeze to reviewed `main`
+`4fb018bbf776a0d9d78eb3016770720e4e52e2c5` (2026-11-17). Comments stay
+`# quality gates` until a release tag exists. Prior published callers may still use
+signed `v1.4.0` at `f5dbd4d7656e286e20d2aa24463253c32a56521b` until they repin.
+v1.4.0 added the separate policy gates, `::error::` policy annotations, wider branch types, checksum-pinned zizmor and the `ubuntu-24.04` runner pins; it keeps `require-test` and the paired local/external link inputs.
 
 ## Permission rules
 
 - Every workflow sets `permissions: contents: read` at the top. Raise a
   permission per job, never for the whole file. A job that needs no token
-  (`archive-guard`, the gate jobs) sets `permissions: {}`.
+  (the gate jobs) sets `permissions: {}`.
 - A reusable workflow can only lower what its caller grants. If a callee needs
   more than the caller job has, the call fails. So the caller job must grant
   `pull-requests: read` for `pr-title.yml`.
@@ -312,9 +324,30 @@ v1.4.0 adds the separate policy gates, `::error::` policy annotations, wider bra
   see [dependency policy](system/delivery.md#dependencies). Action and tool pins
   still require reviewed updates. Existing Dependabot version-update config is
   disabled when a repository adopts Renovate, so both bots do not open duplicates.
+
+### Dependency update bots and `pr-policy`
+
+Ready PRs must use a house branch (`chore/deps-…`) and the five evidence sections
+(Context, Changes, Testing Evidence, Screenshots/Logs, Rollback Plan), or stay
+draft until those are filled. A fixture for a compliant bot PR lives at
+`scripts/tests/fixtures/dependabot-pr-valid.json`.
+
+- Prefer Renovate with `default.json`: `branchPrefix` is `chore/deps-` and
+  `prBodyTemplate` already fills the five sections plus `No-issue:` for scheduled
+  maintenance.
+- Keep Dependabot `open-pull-requests-limit: 0` when Renovate owns version updates.
+  Dependabot's default `dependabot/…` branches fail `pr-policy` (observed Policy
+  failures such as run `43650759868`). Do not re-enable Dependabot version PRs
+  without a branch and body contract that matches house rules.
 - Two pins are not `uses:` lines and need a manual bump: the actionlint version
   and sha256 in `lint-actions.yml`, and the default `uv-version` in
   `python-ci.yml`. The list is in `pins.md`.
+
+## Fleet pin inventory
+
+Run `python3 scripts/audit_fleet_pins.py` (needs `gh` auth) for a read-only table of
+consumer `uses: alawein/.github/...@<sha>` pins. Code search can be incomplete under
+rate limits; treat gaps as UNVERIFIED and re-run before a fleet bump.
 
 ## Bump a pin
 

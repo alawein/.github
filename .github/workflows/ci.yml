@@ -35,6 +35,8 @@ jobs:
   run-zizmor:
     uses: $/.github/workflows/lint-zizmor.yml
 
+  # Required context name stays metadata-tests. Docs-only PRs take the fast path;
+  # generator/template/workflow/root-test changes run the full suite.
   metadata-tests:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
@@ -42,18 +44,49 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          fetch-depth: 0
+      - name: Detect generator paths
+        id: gen
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE="${{ github.event.pull_request.base.sha }}"
+          else
+            BASE="${{ github.event.before }}"
+            if [ -z "$BASE" ] || [ "$BASE" = "0000000000000000000000000000000000000000" ]; then
+              BASE="$(git rev-parse HEAD~1 2>/dev/null || true)"
+            fi
+          fi
+          if [ -z "$BASE" ] || ! git cat-file -e "${BASE}^{commit}" 2>/dev/null; then
+            echo "heavy=true" >> "$GITHUB_OUTPUT"
+            echo "Could not resolve base commit; running heavy metadata suite."
+            exit 0
+          fi
+          if git diff --name-only "$BASE" HEAD \
+            | grep -E '^(scripts/new-repo\.ps1|templates/|tests/|\.github/workflows/)'; then
+            echo "heavy=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "heavy=false" >> "$GITHUB_OUTPUT"
+          fi
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: "3.12.10"
+      - name: Fast path metadata suite
+        if: steps.gen.outputs.heavy != 'true'
+        run: python -m unittest discover -s scripts/tests -p 'test_*.py' -v
       - name: Test metadata and workflow guards
+        if: steps.gen.outputs.heavy == 'true'
         run: python -m unittest discover -s scripts/tests -p 'test_*.py' -v
       - name: Set up update-policy validator runtime
+        if: steps.gen.outputs.heavy == 'true'
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: "26.13.0"
           cache: npm
           cache-dependency-path: default.json
       - name: Validate dependency-update policy
+        if: steps.gen.outputs.heavy == 'true'
         run: |
           npm exec --yes --package=renovate@44.238.1 -- renovate-config-validator --strict default.json
           npm exec --yes --package=renovate@44.238.1 -- node scripts/tests/test-update-policy-events.mjs
@@ -61,6 +94,7 @@ jobs:
       # lychee-action v2.9.0 installs). Release archives are pinned by version and sha256 like
       # lint-actions.yml; change version and checksum together.
       - name: Install actionlint v1.7.12, just 1.59.0 and lychee 0.24.2
+        if: steps.gen.outputs.heavy == 'true'
         shell: bash
         env:
           ACTIONLINT_VERSION: "1.7.12"
@@ -90,9 +124,11 @@ jobs:
           echo "LYCHEE_BIN=$bin/lychee" >> "$GITHUB_ENV"
       # The root suite parses workflow YAML; PyYAML installs only from the hash-pinned wheels.
       - name: Install root test dependencies
+        if: steps.gen.outputs.heavy == 'true'
         run: |
           python -m pip install --require-hashes --only-binary=:all: --no-deps -r tests/requirements.txt
       - name: Test reusable workflow behavior
+        if: steps.gen.outputs.heavy == 'true'
         run: python -m unittest discover -s tests -p 'test_*.py' -v
 
   markdown-lint:

@@ -15,7 +15,7 @@ import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 NODE_DIR = os.environ.get("NODE22_DIR")
-KIT_SHA = "df657341161483defc4a27fd69e85759b7c10937"
+KIT_SHA = "4fb018bbf776a0d9d78eb3016770720e4e52e2c5"
 BASH = Path(r"C:\Program Files\Git\bin\bash.exe") if platform.system() == "Windows" else Path("/bin/bash")
 
 
@@ -207,12 +207,13 @@ class ZizmorGateTests(unittest.TestCase):
         audit = workflow("lint-zizmor.yml")
         self.assertIn("workflow_call", audit[True])
         self.assertEqual(audit["permissions"], {"contents": "read"})
-        self.assertEqual(audit["jobs"]["lint"]["needs"], ["archive-guard"])
-        guard = audit["jobs"]["archive-guard"]
-        self.assertEqual(guard["permissions"], {})
+        self.assertNotIn("archive-guard", audit["jobs"])
+        self.assertNotIn("needs", audit["jobs"]["lint"])
+        guard = audit["jobs"]["lint"]["steps"][0]
+        self.assertEqual(guard["name"], "Refuse to run in an archive repo")
         for repository, expected in (("alawein/.github", 0), ("alawein/ARCHIVE-kit", 1)):
             with self.subTest(repository=repository):
-                result = subprocess.run([str(BASH), "-c", guard["steps"][0]["run"]],
+                result = subprocess.run([str(BASH), "-c", guard["run"]],
                                         env={**os.environ, "REPO": repository}, capture_output=True, text=True)
                 self.assertEqual(result.returncode, expected, result.stdout + result.stderr)
 

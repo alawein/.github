@@ -306,6 +306,17 @@ class PolicyTests(unittest.TestCase):
                 self.assertNotEqual(result.returncode, 0)
                 self.assertNotIn("Traceback", result.stderr)
 
+    def test_dependabot_style_fixture_passes_with_house_branch_and_sections(self):
+        fixture = Path(__file__).resolve().parent / "fixtures" / "dependabot-pr-valid.json"
+        result = subprocess.run(
+            [sys.executable, str(SCRIPT), "--event", str(fixture)],
+            env={**os.environ, "REQUIRE_SECTIONS": "true", "GITHUB_EVENT_NAME": "pull_request"},
+            capture_output=True,
+            text=True,
+        )
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("PR policy compliant", result.stdout)
+
 
 if __name__ == "__main__":
     unittest.main()

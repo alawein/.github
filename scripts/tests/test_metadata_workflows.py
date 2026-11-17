@@ -11,7 +11,7 @@ import unittest
 ROOT = Path(__file__).resolve().parents[2]
 AUDIT_SOURCE_SHA = "98c7496007ae504a3509be1c29d02afa87640aca"
 AUDIT_SOURCE_HASH = "21e8f4a3b22af15a4b2468c99d27f8aad3062f9eca2b4918a3f5098000f18592"
-KIT_SHA = "df657341161483defc4a27fd69e85759b7c10937"
+KIT_SHA = "4fb018bbf776a0d9d78eb3016770720e4e52e2c5"
 BASH = (str(Path(os.environ.get("ProgramFiles", "C:/Program Files")) / "Git/bin/bash.exe")
         if os.name == "nt" else shutil.which("bash"))
 
@@ -20,9 +20,15 @@ class RootSuiteGuardTests(unittest.TestCase):
     def test_ci_still_runs_the_root_suite(self):
         # Lives outside tests/: a root-suite check cannot notice that the root suite stopped running.
         text = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
-        # The whole step, so commenting it out, `|| true`, `if:` or `continue-on-error` also fail.
-        self.assertRegex(text, r"(?m)^      - name: Test reusable workflow behavior\n"
-                               r"        run: python -m unittest discover -s tests -p 'test_\*\.py' -v\n(?!        )")
+        # Heavy path keeps the root suite; only the generator path-filter may gate it.
+        # Reject `|| true`, `continue-on-error`, or dropping the discover command.
+        self.assertRegex(
+            text,
+            r"(?m)^      - name: Test reusable workflow behavior\n"
+            r"        if: steps\.gen\.outputs\.heavy == 'true'\n"
+            r"        run: python -m unittest discover -s tests -p 'test_\*\.py' -v\n(?!        )",
+        )
+        self.assertNotIn("continue-on-error", text.split("Test reusable workflow behavior", 1)[1].split("\n\n", 1)[0])
 
 
 class MetadataWorkflowTests(unittest.TestCase):
