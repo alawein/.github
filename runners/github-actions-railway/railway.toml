@@ -6,6 +6,7 @@ builder = "DOCKERFILE"
 dockerfilePath = "Dockerfile"
 
 [deploy]
-restartPolicyType = "ON_FAILURE"
-restartPolicyMaxRetries = 3
-# Ephemeral: process exits after one job; Railway restarts → new registration.
+# Ephemeral runners exit 0 after a successful job; ALWAYS restarts so the next
+# registration can occur. Prefer GITHUB_APP_INSTALLATION_TOKEN (PAT) over a
+# one-shot RUNNER_REG_TOKEN so restarts can mint fresh registration tokens.
+restartPolicyType = "ALWAYS"
