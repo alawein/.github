@@ -6,11 +6,9 @@ set -euo pipefail
 : "${RUNNER_LABELS:=railway,self-hosted,linux,x64,ephemeral}"
 
 REG_TOKEN=""
-if [[ -n "${RUNNER_REG_TOKEN:-}" ]]; then
-  # Short-lived registration token pasted from GitHub (expires ~1h; one-shot).
-  REG_TOKEN="${RUNNER_REG_TOKEN}"
-elif [[ -n "${GITHUB_APP_INSTALLATION_TOKEN:-}" ]]; then
-  # Mint a registration token from a PAT/App token that can manage runners.
+if [[ -n "${GITHUB_APP_INSTALLATION_TOKEN:-}" ]]; then
+  # Prefer minting so ALWAYS restarts keep working when a PAT/App token is set.
+  # A leftover RUNNER_REG_TOKEN must not win over this path after it expires.
   # Write body to a temp file so HTTP failures keep status on stderr.
   resp="$(mktemp)"
   http_code="$(curl -sS -o "${resp}" -w "%{http_code}" -X POST \
@@ -30,6 +28,9 @@ elif [[ -n "${GITHUB_APP_INSTALLATION_TOKEN:-}" ]]; then
     echo "Failed to obtain runner registration token from GitHub API" >&2
     exit 1
   fi
+elif [[ -n "${RUNNER_REG_TOKEN:-}" ]]; then
+  # Fallback only when no mint credential is set (expires ~1h; one-shot).
+  REG_TOKEN="${RUNNER_REG_TOKEN}"
 else
   echo "Set GITHUB_APP_INSTALLATION_TOKEN (preferred) or RUNNER_REG_TOKEN" >&2
   exit 1
