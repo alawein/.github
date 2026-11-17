@@ -6,12 +6,14 @@ workflow file and extracts `uses: alawein/.github/...@<sha>` pins.
 """
 from __future__ import annotations
 
+import argparse
 import json
 import re
 import subprocess
 import sys
 import time
 from collections import defaultdict
+from pathlib import Path
 from urllib.parse import quote
 
 PIN_RE = re.compile(
@@ -71,19 +73,11 @@ def fetch_file(full_name: str, path: str) -> str:
         return f"# ERROR fetching {full_name}/{path}: {err}"
 
 
-def main() -> int:
-    print(f"# Fleet pin audit for `{SEARCH_QUERY}`\n", flush=True)
-    try:
+def collect_inventory(items: list[dict] | None = None) -> dict:
+    """Return pin inventory dict: rows + pin_counts + search metadata."""
+    if items is None:
         items = search_items()
-    except SystemExit as error:
-        print(str(error), file=sys.stderr)
-        return 2
-
-    if not items:
-        print("No code-search hits (empty result or insufficient search scope).")
-        return 0
-
-    by_repo: dict[str, list[tuple[str, list[str]]]] = defaultdict(list)
+    by_repo: dict[str, list[tuple[str, list[str], int]]] = defaultdict(list)
     pin_counts: dict[str, int] = defaultdict(int)
 
     for item in items:
@@ -97,22 +91,70 @@ def main() -> int:
         by_repo[repo].append((path, unique, len(pins)))
         time.sleep(0.2)
 
-    print("| Repository | Path | Distinct pins | Call count |")
-    print("| --- | --- | --- | ---: |")
+    rows: list[dict] = []
     for repo in sorted(by_repo):
         for path, pins, count in sorted(by_repo[repo], key=lambda row: row[0]):
-            shown = ", ".join(pins) if pins else "(no sha pin matched)"
-            print(f"| {repo} | `{path}` | `{shown}` | {count} |")
+            rows.append(
+                {
+                    "repository": repo,
+                    "path": path,
+                    "pins": pins,
+                    "pin": pins[0] if len(pins) == 1 else None,
+                    "call_count": count,
+                }
+            )
+    return {
+        "search_query": SEARCH_QUERY,
+        "search_complete": len(items) < 500,
+        "rows": rows,
+        "pin_counts": dict(sorted(pin_counts.items(), key=lambda kv: (-kv[1], kv[0]))),
+    }
 
+
+def print_markdown(inventory: dict) -> None:
+    print(f"# Fleet pin audit for `{inventory['search_query']}`\n", flush=True)
+    if not inventory["rows"]:
+        print("No code-search hits (empty result or insufficient search scope).")
+        return
+    print("| Repository | Path | Distinct pins | Call count |")
+    print("| --- | --- | --- | ---: |")
+    for row in inventory["rows"]:
+        shown = ", ".join(row["pins"]) if row["pins"] else "(no sha pin matched)"
+        print(f"| {row['repository']} | `{row['path']}` | `{shown}` | {row['call_count']} |")
     print("\n## Pin frequency\n")
     print("| Pin | Occurrences |")
     print("| --- | ---: |")
-    for pin, count in sorted(pin_counts.items(), key=lambda kv: (-kv[1], kv[0])):
+    for pin, count in inventory["pin_counts"].items():
         print(f"| `{pin}` | {count} |")
-
     print("\n## Notes\n")
     print("- Kit templates currently freeze to reviewed main; consumers may still lag.")
     print("- ARCHIVE-* doctrine callers should fail closed via the archive guard step.")
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--format", choices=("markdown", "json"), default="markdown")
+    parser.add_argument("--output", help="Write JSON inventory to this path")
+    args = parser.parse_args(argv)
+
+    try:
+        inventory = collect_inventory()
+    except SystemExit as error:
+        print(str(error), file=sys.stderr)
+        return 2
+
+    if args.format == "json" or args.output:
+        text = json.dumps(inventory, indent=2) + "\n"
+        if args.output:
+            path = Path(args.output)
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(text, encoding="utf-8")
+            print(f"wrote {path}", flush=True)
+        else:
+            sys.stdout.write(text)
+        return 0
+
+    print_markdown(inventory)
     return 0
 
 

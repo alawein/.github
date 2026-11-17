@@ -348,6 +348,9 @@ Run `python3 scripts/audit_fleet_pins.py` (needs `gh` auth) for a read-only tabl
 consumer `uses: alawein/.github/...@<sha>` pins. Code search can be incomplete under
 rate limits; treat gaps as UNVERIFIED and re-run before a fleet bump.
 
+For the aggregated Fleet Control Center snapshot (pins + kit checks + optional live
+kit enrichment), see [fleet-control-center.md](fleet-control-center.md).
+
 ## Bump a pin
 
 Third-party action, in this repo:
