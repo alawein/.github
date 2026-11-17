@@ -32,3 +32,4 @@ One line per session, newest at the bottom. Format:
 - 2026-11-11 | required checks | A body-edit run with per-PR cancellation cancels the same-SHA push run, and its always-run gates then fail required contexts | Keep `edited` only in a separate workflow that holds the title and body gates.
 - 2026-11-14 | PR evidence | A list-nested fenced example supplied false required-section headings | Share container-aware fence parsing and preserve code output as evidence within real sections.
 - 2026-11-14 | synthetic PR fixtures | A main-push event leaked into a PR metadata fixture and failed post-merge CI | Set the fixture child event to pull_request and run the real matcher in separate push and PR processes.
+- 2026-11-17 | railway runner | Cloud `gh` integration lacks Actions admin to mint registration tokens; Github MCP auth was declined | Ship runner image/config on a PR; mint `RUNNER_REG_TOKEN` or App token in the dashboard and set it only as a Railway variable.
