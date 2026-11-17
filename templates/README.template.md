@@ -30,6 +30,8 @@ The first screen explains purpose, useful output, and the shortest way to try it
 
 {{State the expected useful result and how to supply the reader's own input. Label synthetic or bundled examples. If work is saved, show how to reopen it; name any setup or service the example requires.}}
 
+<!-- Before writing the expected result: run the commands above exactly as written, from a fresh clone and the install shown here. Paste the output the run printed. If the output includes numbers, add a test that reads this block so the README and the code cannot drift. For a seeded run, run it twice and compare. -->
+
 <!-- For saved offline artifacts, say what reopening or verification checks, what a mismatch does, and how to retry without losing prior input or output. Describe only behavior the product actually supports. -->
 
 <!-- If live use sends data or triggers an external action, explain which step crosses that boundary. Say what the local example actually produces and how to recognize a disabled integration. Keep real addresses, keys and customer records out of the example. -->
@@ -37,6 +39,12 @@ The first screen explains purpose, useful output, and the shortest way to try it
 ## What it does
 
 {{Two or three concrete capabilities, with inputs and outputs. Include a material limitation when it affects use. Omit this section if the introduction and example already explain enough.}}
+
+## Limits
+
+{{What it does not do, what has not been measured, and the systems and versions it was checked on. Say plainly when a check has only run locally.}}
+
+<!-- Keep claims inside the evidence here and in every shipped page, metadata field and image: no conformance, accuracy, speed or adoption wording without a recorded measurement. -->
 
 ## Checks
 
@@ -60,3 +68,5 @@ Report a vulnerability privately, as described in
 ## License
 
 {{License name}}. See [LICENSE](LICENSE).
+
+<!-- Closed source: use an all-rights-reserved LICENSE, mark the package private so a registry rejects uploads, and check every publish or Pages workflow before the first tag. -->
