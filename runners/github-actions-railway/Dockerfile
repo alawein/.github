@@ -1,6 +1,7 @@
 # Ephemeral GitHub Actions runner for Railway dual-run experiments.
-# Pin matches Phase 5 of the workflow-audit plan; bump deliberately.
-FROM ghcr.io/actions/actions-runner:2.329.0
+# Pin to current stable actions/runner release; bump deliberately.
+# Source: https://github.com/actions/runner/releases/tag/v2.338.2
+FROM ghcr.io/actions/actions-runner:2.338.2
 
 USER root
 # Base image already ships curl/git/python; --no-upgrade avoids flaky

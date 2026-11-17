@@ -84,6 +84,10 @@ Prefer an input flag on reusables rather than hard-switching required jobs.
 
 | File | Role |
 | --- | --- |
-| `Dockerfile` | Official `actions-runner` image + jq/git/python |
-| `entrypoint.sh` | Mint or accept registration token; `--ephemeral` run |
+| `Dockerfile` | Official `actions-runner` image pin `2.338.2` + jq/git/python |
+| `entrypoint.sh` | Mint or accept registration token; `--ephemeral` + `--disableupdate` |
 | `railway.toml` | Dockerfile build; restart always after each job |
+
+Image pin tracks the latest stable [`actions/runner`](https://github.com/actions/runner/releases)
+tag (`v2.338.2` as of 2026-10-26). Bump the Dockerfile when GitHub deprecates
+the pin; keep `--disableupdate` only while the pin is current.

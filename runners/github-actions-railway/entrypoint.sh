@@ -38,11 +38,13 @@ fi
 
 cd /home/runner
 
-# Railway ALWAYS keeps the filesystem across restarts. actions-runner 2.329 only
-# removes .runner after a completed ephemeral job; idle/mid-job restarts leave
+# Railway ALWAYS keeps the filesystem across restarts. actions-runner ephemeral
+# mode only removes .runner after a completed job; idle/mid-job restarts leave
 # local config and the next config.sh fails with "already configured", which
 # becomes an ALWAYS restart loop. Clear prior local state first (best-effort
 # remote remove, then delete local files). Never print tokens.
+# Keep --disableupdate while the Dockerfile pin matches current stable
+# (actions/runner v2.338.2) so deploys stay reproducible.
 if [[ -f .runner || -f .credentials || -f .credentials_rsaparams ]]; then
   ./config.sh remove --unattended --token "${REG_TOKEN}" >/dev/null 2>&1 || true
   rm -f .runner .credentials .credentials_rsaparams
