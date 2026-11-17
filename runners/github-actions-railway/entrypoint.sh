@@ -47,6 +47,7 @@ cd /home/runner
   --name "railway-${HOSTNAME:-runner}"
 
 # Do not leave registration credentials in the job listener environment.
+# exec replaces this shell so /proc/<pid>/environ no longer holds the originals.
 unset REG_TOKEN RUNNER_REG_TOKEN GITHUB_APP_INSTALLATION_TOKEN
 
-./run.sh
+exec ./run.sh
