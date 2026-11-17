@@ -39,6 +39,22 @@ class RunnerInputTests(unittest.TestCase):
             self.assertIn(f"'{default}'", workflow(name)["jobs"]["ci"]["runs-on"], name)
 
 
+class RailwayProbeTests(unittest.TestCase):
+    def setUp(self):
+        self.job = workflow("ci.yml")["jobs"]["metadata-tests-railway"]
+
+    def test_probe_job_runs_on_railway(self):
+        self.assertEqual(self.job["runs-on"], ["self-hosted", "railway", "ephemeral"])
+
+    def test_probe_job_skips_forks(self):
+        self.assertIn("github.event.pull_request.head.repo.fork != true", self.job["if"])
+
+    def test_probe_job_is_not_required(self):
+        self.assertIs(self.job["continue-on-error"], True)
+        for ruleset in (ROOT / "rulesets").glob("*.json"):
+            self.assertNotIn("metadata-tests-railway", ruleset.read_text(encoding="utf-8"), ruleset.name)
+
+
 class RailwayImageTests(unittest.TestCase):
     def test_image_installs_pinned_verified_powershell(self):
         text = (ROOT / "runners/github-actions-railway/Dockerfile").read_text(encoding="utf-8")
