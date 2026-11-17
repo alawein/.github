@@ -257,10 +257,10 @@ checks inline.
 
 ## Archive guard
 
-Every reusable workflow starts with a job named `archive-guard`. It fails when
-the repository name starts with `ARCHIVE-`, and every other job in the file
-lists it under `needs`. The job is in [archive.md](archive.md), Layer 4. Copy
-it unchanged into any new reusable workflow.
+Every reusable workflow starts its primary job with a step that refuses
+`ARCHIVE-*` repository names before checkout or other work. The step is Layer 4
+in [archive.md](archive.md). Keep it as the first step of the work job so archive
+repos fail closed without a separate billed job.
 
 ## After the first commit
 
@@ -284,7 +284,7 @@ v1.4.0 adds the separate policy gates, `::error::` policy annotations, wider bra
 
 - Every workflow sets `permissions: contents: read` at the top. Raise a
   permission per job, never for the whole file. A job that needs no token
-  (`archive-guard`, the gate jobs) sets `permissions: {}`.
+  (the gate jobs) sets `permissions: {}`.
 - A reusable workflow can only lower what its caller grants. If a callee needs
   more than the caller job has, the call fails. So the caller job must grant
   `pull-requests: read` for `pr-title.yml`.

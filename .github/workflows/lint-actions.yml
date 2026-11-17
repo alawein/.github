@@ -11,10 +11,9 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  archive-guard:
+  lint:
     runs-on: ubuntu-24.04
-    timeout-minutes: 1
-    permissions: {}
+    timeout-minutes: 5
     steps:
       - name: Refuse to run in an archive repo
         env:
@@ -23,12 +22,6 @@ jobs:
           case "${REPO#*/}" in
             ARCHIVE-*) echo "::error::${REPO} is an archive repo. Workflows never run here."; exit 1 ;;
           esac
-
-  lint:
-    needs: [archive-guard]
-    runs-on: ubuntu-24.04
-    timeout-minutes: 5
-    steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false

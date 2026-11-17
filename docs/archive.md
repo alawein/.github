@@ -102,23 +102,18 @@ Run `scripts/check-live-references.ps1 -Roots @($kitRoot, $profileRoot, $siteRoo
 Historical references require a reviewed exception in the script with the repo origin, exact repo-relative path, full line, reason, and one permitted occurrence. A second occurrence fails. Do not exempt an entire file. Run `scripts/tests/check-live-references.Tests.ps1` to check both the planted failure and clean fixture.
 
 - The kit's setup and verify scripts refuse any repo whose name starts with `ARCHIVE-`.
-- Every reusable workflow starts with a guard job that fails when the repository name starts with
-  `ARCHIVE-`, and every other job in that workflow lists it under `needs`. The guard:
+- Every reusable workflow starts its primary job with a guard step that fails when the repository
+  name starts with `ARCHIVE-` (before checkout or other work):
 
   ```yaml
-  jobs:
-    archive-guard:
-      runs-on: ubuntu-24.04
-      timeout-minutes: 1
-      permissions: {}
-      steps:
-        - name: Refuse to run in an archive repo
-          env:
-            REPO: ${{ github.repository }}
-          run: |
-            case "${REPO#*/}" in
-              ARCHIVE-*) echo "::error::${REPO} is an archive repo. Workflows never run here."; exit 1 ;;
-            esac
+  steps:
+    - name: Refuse to run in an archive repo
+      env:
+        REPO: ${{ github.repository }}
+      run: |
+        case "${REPO#*/}" in
+          ARCHIVE-*) echo "::error::${REPO} is an archive repo. Workflows never run here."; exit 1 ;;
+        esac
   ```
 
 - Local rule for people and agents: never clone, edit, fork, or reference an `ARCHIVE-` repo in
