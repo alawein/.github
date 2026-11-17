@@ -27,7 +27,12 @@ class UvInstallMethodTests(unittest.TestCase):
             by_name["Install uv via pip"]["if"],
             "inputs.installer == 'uv' && inputs.uv-install-method == 'pip'",
         )
-        self.assertIn('uv==${{ inputs.uv-version }}', by_name["Install uv via pip"]["run"])
+        self.assertEqual(
+            by_name["Install uv via pip"]["env"]["UV_VERSION"],
+            "${{ inputs.uv-version }}",
+        )
+        self.assertIn("uv==${UV_VERSION}", by_name["Install uv via pip"]["run"])
+        self.assertNotIn("${{ inputs.uv-version }}", by_name["Install uv via pip"]["run"])
         setup_uv = next(s for s in steps if s.get("uses", "").startswith("astral-sh/setup-uv@"))
         self.assertEqual(
             setup_uv["if"],

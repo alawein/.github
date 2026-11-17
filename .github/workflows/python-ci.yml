@@ -85,9 +85,11 @@ jobs:
           python-version: ${{ inputs.python-version }}
       - name: Install uv via pip
         if: inputs.installer == 'uv' && inputs.uv-install-method == 'pip'
+        env:
+          UV_VERSION: ${{ inputs.uv-version }}
         run: >
           python -m pip install --disable-pip-version-check --only-binary=:all:
-          "uv==${{ inputs.uv-version }}"
+          "uv==${UV_VERSION}"
       - name: Install (uv pip method)
         if: inputs.installer == 'uv' && inputs.uv-install-method == 'pip'
         run: uv sync --locked
