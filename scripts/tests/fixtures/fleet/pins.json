@@ -1,0 +1,23 @@
+{
+  "search_query": "org:alawein uses: alawein/.github path:.github/workflows",
+  "search_complete": true,
+  "rows": [
+    {
+      "repository": "alawein/alawein",
+      "path": ".github/workflows/ci.yml",
+      "pins": ["f5dbd4d7656e286e20d2aa24463253c32a56521b"],
+      "pin": "f5dbd4d7656e286e20d2aa24463253c32a56521b",
+      "call_count": 5
+    },
+    {
+      "repository": "alawein/siftgrain-audit",
+      "path": ".github/workflows/ci.yml",
+      "pins": ["f5dbd4d7656e286e20d2aa24463253c32a56521b"],
+      "pin": "f5dbd4d7656e286e20d2aa24463253c32a56521b",
+      "call_count": 5
+    }
+  ],
+  "pin_counts": {
+    "f5dbd4d7656e286e20d2aa24463253c32a56521b": 10
+  }
+}
