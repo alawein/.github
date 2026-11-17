@@ -1,0 +1,11 @@
+# Config-as-code for the ephemeral Actions runner service.
+# Do not store tokens here; set them as Railway variables only.
+
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 3
+# Ephemeral: process exits after one job; Railway restarts → new registration.
