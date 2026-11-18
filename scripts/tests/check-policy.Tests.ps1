@@ -300,7 +300,7 @@ try {
   if ($parameterPlan.Code -ne 0 -or $parameterPlan.Out -notmatch '(?m)^DRY\s+gh api -X PUT repos/alawein/example/rulesets/3 --input -\s+<-\s+(.+)$') { throw "missing parameter preservation plan: $($parameterPlan.Out)" }
   $plannedParameters = (($Matches[1] | ConvertFrom-Json).rules | Where-Object type -eq pull_request).parameters
   if (($plannedParameters.allowed_merge_methods -join ',') -cne 'squash' -or $plannedParameters.required_approving_review_count -ne 2 -or -not $plannedParameters.require_code_owner_review -or -not $plannedParameters.require_extra_approval_for_unattributed_changes) { throw 'setup did not enforce the baseline while retaining stronger existing PR parameters' }
-  $env:FAKE_GH_RULESET = Join-Path $env:TEMP 'kit-check-policy-ruleset.json'
+  $env:FAKE_GH_RULESET = Join-Path ([IO.Path]::GetTempPath()) 'kit-check-policy-ruleset.json'
   try {
     Set-Content -LiteralPath $env:FAKE_GH_RULESET -Value $firstPlan
     $repeat = Invoke-PolicyScript setup-repo.ps1 checks-extra-bound alawein/example tool standard
