@@ -85,6 +85,16 @@ with visibility would need a rename.
 Decision: a TypeScript lab uses the `typescript` starter with a `-lab` name. Why:
 one more starter for a rare case is more upkeep than it saves.
 
+### Recorded exceptions
+
+`verify-repo.ps1` still prints FAIL for these lines. They are owner decisions,
+not drift.
+
+| Repo | Exception | Expected FAIL lines | Owner decision |
+| --- | --- | --- | --- |
+| `maios` | Outside this standard. It keeps `master`, its own branch ruleset, its own CI and its gate-trust rules. Do not run `setup-repo.ps1` on it | Default branch, merge settings, labels, `main-guard`, `release-tags`, `ci.yml` jobs | 2026-11-17 |
+| `maios-vnext` | Keeps `master` to match `maios`. `setup-repo.ps1` skips the branch ruleset for a `master` default branch | Default branch, `main-guard` | 2026-11-17 |
+
 ## Family
 
 Family is domain metadata, not a folder and not a class. The single assignment
