@@ -87,6 +87,55 @@ class FleetControlCenterTests(unittest.TestCase):
         self.assertTrue(snapshot["maios_export"]["read_only"])
         self.fcc.assert_valid(snapshot)
 
+    def test_multi_pin_row_records_every_distinct_sha(self):
+        pins = json.loads((FIXTURES / "pins-multi.json").read_text(encoding="utf-8"))["rows"]
+        kit_commit = "fc72c586b68d6141b84d35303ee60ad69d7e8c55"
+        snapshot = self.fcc.build_snapshot(
+            kit_root=KIT_ROOT,
+            pin_rows=pins,
+            kit_commit=kit_commit,
+            observed_at="2026-11-18T00:00:00Z",
+            scope="LIMITED",
+            sources=["fixture-multi"],
+        )
+        consumer = snapshot["workflow_registry"]["consumer_pins"]
+        multi = [
+            row
+            for row in consumer
+            if row["repository"] == "alawein/standards-pathfinder"
+            and row["path"] == ".github/workflows/ci.yml"
+        ]
+        recorded = sorted(row["pin"] for row in multi)
+        self.assertEqual(
+            recorded,
+            [
+                "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            ],
+        )
+        self.assertTrue(all(row["vs_kit"] == "STALE" for row in multi))
+        self.assertGreaterEqual(snapshot["workflow_registry"]["outdated_pin_count"], 2)
+        drift_pins = {
+            finding["observed"]
+            for finding in snapshot["drift"]["findings"]
+            if finding["repository"] == "alawein/standards-pathfinder"
+        }
+        self.assertEqual(
+            drift_pins,
+            {
+                "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            },
+        )
+        # single-pin current kit SHA still records as PASS and does not inflate stale count alone
+        current = [
+            row
+            for row in consumer
+            if row["repository"] == "alawein/alawein" and row["pin"] == kit_commit
+        ]
+        self.assertEqual(len(current), 1)
+        self.assertEqual(current[0]["vs_kit"], "PASS")
+
     def test_cli_writes_observed_at(self):
         with tempfile.TemporaryDirectory() as tmp:
             out = Path(tmp) / "fleet.json"
@@ -109,6 +158,67 @@ class FleetControlCenterTests(unittest.TestCase):
             self.assertTrue(stamp.is_file())
             data = json.loads(out.read_text(encoding="utf-8"))
             self.assertEqual(data["observed_at"], stamp.read_text(encoding="utf-8").strip())
+
+    def test_empty_recent_runs_ci_reliability_is_not_pass(self):
+        live_kit = {
+            "visibility": "public",
+            "default_branch": "main",
+            "latest_ci_status": "UNKNOWN",
+            "open_pr_count": 0,
+            "blocked_pr_count": 0,
+            "active_workflows": [],
+            "governance_state": "UNKNOWN",
+            "status": "LIMITED",
+            "notes": "synthetic empty runs",
+            "ci_status": "PASS",  # buggy producer claim
+            "recent_runs": [],
+            "prs": [],
+            "partial": True,
+            "governance_status": "UNKNOWN",
+            "governance_observed": {},
+            "governance_unknown": [],
+        }
+        snapshot = self.fcc.build_snapshot(
+            kit_root=KIT_ROOT,
+            pin_rows=[],
+            kit_commit="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            observed_at="2026-11-18T00:00:00Z",
+            scope="PASS",  # caller mistakenly asks for PASS
+            sources=["unit-test"],
+            live_kit=live_kit,
+        )
+        self.assertNotEqual(snapshot["ci_reliability"]["status"], "PASS")
+        self.assertNotEqual(snapshot["provenance"]["scope"], "PASS")
+        self.assertIn(snapshot["ci_reliability"]["status"], {"LIMITED", "UNKNOWN"})
+        self.assertEqual(snapshot["provenance"]["scope"], "LIMITED")
+        self.assertEqual(snapshot["ci_reliability"]["recent_runs"], [])
+
+    def test_collect_live_kit_marks_partial_when_runs_get_fails(self):
+        calls = {"n": 0}
+
+        def fake_gh_get(path: str):
+            calls["n"] += 1
+            if path.startswith(f"repos/{self.fcc.KIT}/actions/runs"):
+                return None
+            if path.startswith(f"repos/{self.fcc.KIT}/pulls"):
+                return []
+            if path.startswith(f"repos/{self.fcc.KIT}/rulesets"):
+                return []
+            if path == f"repos/{self.fcc.KIT}":
+                return {"private": False, "default_branch": "main"}
+            raise AssertionError(f"unexpected path {path}")
+
+        original = self.fcc._gh_get
+        self.fcc._gh_get = fake_gh_get
+        try:
+            live = self.fcc.collect_live_kit()
+        finally:
+            self.fcc._gh_get = original
+
+        self.assertTrue(live["partial"])
+        self.assertEqual(live["recent_runs"], [])
+        self.assertNotEqual(live["ci_status"], "PASS")
+        self.assertGreaterEqual(calls["n"], 1)
 
 
 class FleetPinAuditorTests(unittest.TestCase):

@@ -33,6 +33,14 @@ def gh_api(path: str) -> Any:
     return json.loads(out)
 
 
+def _gh_get(path: str) -> Any | None:
+    """GET via gh api. Return None on failure (partial observation)."""
+    try:
+        return gh_api(path)
+    except (subprocess.CalledProcessError, json.JSONDecodeError, TypeError, ValueError):
+        return None
+
+
 def load_pin_rows(path: Path | None) -> list[dict[str, Any]]:
     if path is None:
         return []
@@ -68,22 +76,38 @@ def build_snapshot(
     stamp = observed_at or utc_now()
     src = sources or ["rulesets/checks.json", "pin fixture or audit"]
 
+    live = live_kit or {}
+    live_partial = bool(live.get("partial"))
+    live_runs = list(live.get("recent_runs") or [])
+    ci_status = live.get("ci_status", "UNKNOWN")
+    if live_kit is not None and (live_partial or not live_runs):
+        if ci_status == "PASS":
+            ci_status = "LIMITED"
+        if scope == "PASS":
+            scope = "LIMITED"
+
     stale_pins: list[dict[str, Any]] = []
     for row in pin_rows:
-        pin = row.get("pin") or (row.get("pins") or [None])[0]
-        if not pin or pin == "UNKNOWN":
-            continue
-        vs = "PASS" if kit_commit != "UNKNOWN" and pin == kit_commit else "STALE"
-        if kit_commit == "UNKNOWN":
-            vs = "UNKNOWN"
-        stale_pins.append(
-            {
-                "repository": row["repository"],
-                "path": row.get("path", ""),
-                "pin": pin,
-                "vs_kit": vs,
-            }
-        )
+        distinct = row.get("pins")
+        if isinstance(distinct, list) and distinct:
+            pin_list = list(dict.fromkeys(str(p) for p in distinct if p))
+        else:
+            single = row.get("pin")
+            pin_list = [str(single)] if single else []
+        for pin in pin_list:
+            if not pin or pin == "UNKNOWN":
+                continue
+            vs = "PASS" if kit_commit != "UNKNOWN" and pin == kit_commit else "STALE"
+            if kit_commit == "UNKNOWN":
+                vs = "UNKNOWN"
+            stale_pins.append(
+                {
+                    "repository": row["repository"],
+                    "path": row.get("path", ""),
+                    "pin": pin,
+                    "vs_kit": vs,
+                }
+            )
 
     consumer_names = sorted({row["repository"] for row in pin_rows if row.get("repository") != KIT})
     repositories: list[dict[str, Any]] = [
@@ -166,10 +190,10 @@ def build_snapshot(
             "note": "Do not auto-upgrade consumer pins.",
         },
         "ci_reliability": {
-            "status": (live_kit or {}).get("ci_status", "UNKNOWN"),
+            "status": ci_status if live_kit is not None else "UNKNOWN",
             "repository": KIT,
-            "recent_runs": (live_kit or {}).get("recent_runs", []),
-            "failure_classification": (live_kit or {}).get("failure_classification", []),
+            "recent_runs": live_runs,
+            "failure_classification": live.get("failure_classification", []),
         },
         "pull_requests": {
             "status": "WARN" if (live_kit or {}).get("prs") else "UNKNOWN",
@@ -246,12 +270,15 @@ def write_snapshot(snapshot: dict[str, Any], output: Path) -> None:
 
 
 def collect_live_kit() -> dict[str, Any]:
-    repo = gh_api(f"repos/{KIT}")
-    runs = gh_api(f"repos/{KIT}/actions/runs?per_page=5")
-    pulls = gh_api(f"repos/{KIT}/pulls?state=open")
-    rulesets = gh_api(f"repos/{KIT}/rulesets")
+    repo = _gh_get(f"repos/{KIT}") or {}
+    runs = _gh_get(f"repos/{KIT}/actions/runs?per_page=5")
+    pulls = _gh_get(f"repos/{KIT}/pulls?state=open")
+    rulesets = _gh_get(f"repos/{KIT}/rulesets")
+
+    runs_missing = runs is None
+    runs_payload = runs if isinstance(runs, dict) else {}
     recent = []
-    for run in (runs.get("workflow_runs") or [])[:5]:
+    for run in (runs_payload.get("workflow_runs") or [])[:5]:
         recent.append(
             {
                 "name": run.get("name"),
@@ -261,8 +288,10 @@ def collect_live_kit() -> dict[str, Any]:
                 "url": run.get("html_url"),
             }
         )
+
+    pulls_list = pulls if isinstance(pulls, list) else []
     prs = []
-    for pull in pulls if isinstance(pulls, list) else []:
+    for pull in pulls_list:
         prs.append(
             {
                 "repository": KIT,
@@ -280,27 +309,53 @@ def collect_live_kit() -> dict[str, Any]:
                 "url": pull.get("html_url"),
             }
         )
+
+    # Failed GET, other live gaps, or empty workflow_runs all count as partial.
+    partial = bool(
+        runs_missing
+        or repo == {}
+        or pulls is None
+        or rulesets is None
+        or not recent
+    )
+
+    if not recent:
+        ci_status = "LIMITED"
+    elif any(r.get("conclusion") == "failure" for r in recent):
+        ci_status = "WARN"
+    else:
+        ci_status = "PASS"
+
     return {
-        "visibility": "private" if repo.get("private") else "public",
-        "default_branch": repo.get("default_branch", "main"),
+        "visibility": (
+            "private" if repo.get("private") else "public" if repo else "UNKNOWN"
+        ),
+        "default_branch": repo.get("default_branch", "main") if repo else "UNKNOWN",
         "latest_ci_status": "PASS"
         if recent and recent[0].get("conclusion") == "success"
         else "UNKNOWN",
         "open_pr_count": len(prs),
         "blocked_pr_count": len(prs),
         "active_workflows": sorted({str(r.get("name")) for r in recent if r.get("name")}),
-        "governance_state": "PASS" if rulesets else "UNKNOWN",
-        "status": "WARN" if prs else "PASS",
-        "notes": "Live gh snapshot",
-        "ci_status": "WARN"
-        if any(r.get("conclusion") == "failure" for r in recent)
-        else "PASS",
+        "governance_state": "PASS"
+        if isinstance(rulesets, list) and rulesets
+        else "UNKNOWN",
+        "status": "LIMITED" if partial else ("WARN" if prs else "PASS"),
+        "notes": "Live gh snapshot (partial)" if partial else "Live gh snapshot",
+        "ci_status": ci_status,
         "recent_runs": recent,
         "prs": prs,
-        "governance_status": "PASS" if rulesets else "UNKNOWN",
+        "partial": partial,
+        "governance_status": "PASS"
+        if isinstance(rulesets, list) and rulesets
+        else "UNKNOWN",
         "governance_observed": {
             "rulesets": [
-                {"id": r.get("id"), "name": r.get("name"), "enforcement": r.get("enforcement")}
+                {
+                    "id": r.get("id"),
+                    "name": r.get("name"),
+                    "enforcement": r.get("enforcement"),
+                }
                 for r in (rulesets if isinstance(rulesets, list) else [])
             ]
         },
@@ -332,6 +387,8 @@ def main(argv: list[str] | None = None) -> int:
             kit_commit = kit_commit_live()
         sources.extend([f"gh api repos/{KIT}", f"gh api repos/{KIT}/actions/runs"])
         scope = "LIMITED"
+        if live_kit.get("partial"):
+            sources.append("partial: actions runs or related live GET missing")
 
     snapshot = build_snapshot(
         kit_root=args.kit_root,

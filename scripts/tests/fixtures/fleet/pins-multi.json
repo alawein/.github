@@ -1,0 +1,28 @@
+{
+  "search_query": "org:alawein uses: alawein/.github path:.github/workflows",
+  "search_complete": true,
+  "rows": [
+    {
+      "repository": "alawein/standards-pathfinder",
+      "path": ".github/workflows/ci.yml",
+      "pins": [
+        "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      ],
+      "pin": null,
+      "call_count": 6
+    },
+    {
+      "repository": "alawein/alawein",
+      "path": ".github/workflows/ci.yml",
+      "pins": ["fc72c586b68d6141b84d35303ee60ad69d7e8c55"],
+      "pin": "fc72c586b68d6141b84d35303ee60ad69d7e8c55",
+      "call_count": 5
+    }
+  ],
+  "pin_counts": {
+    "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa": 3,
+    "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb": 3,
+    "fc72c586b68d6141b84d35303ee60ad69d7e8c55": 5
+  }
+}
