@@ -132,7 +132,7 @@ $fakeCommand = Get-Command gh -ErrorAction Stop
 if ($fakeCommand.Source -ne (Join-Path $PSScriptRoot 'gh.cmd') -or (Get-Command gh.exe -ErrorAction SilentlyContinue)) { throw 'fake gh command did not resolve safely' }
 $env:FAKE_GH_LOG = Join-Path $env:TEMP 'kit-check-policy-fake-gh.log'
 $scripts = Split-Path -Parent $PSScriptRoot
-function Invoke-PolicyScript([string]$Name, [string]$Case, [string]$Repo, [string]$Class, [string]$Profile, [switch]$Strict, [switch]$RequirePrPolicy, [string]$Language = 'typescript') {
+function Invoke-PolicyScript([string]$Name, [string]$Case, [string]$Repo, [string]$Class, [string]$Profile, [switch]$Strict, [switch]$RequirePrPolicy, [string]$Language = 'typescript', [switch]$Apply, [hashtable]$Extra = @{}) {
   $env:FAKE_GH_CASE = $Case
   $env:FAKE_GH_CLASS = $Class
   $env:FAKE_GH_LANGUAGE = $Language
@@ -145,6 +145,8 @@ function Invoke-PolicyScript([string]$Name, [string]$Case, [string]$Repo, [strin
   if ($Class) { $scriptArgs.Class = $Class }
   if ($Strict) { $scriptArgs.Strict = $true }
   if ($RequirePrPolicy) { $scriptArgs.RequirePrPolicy = $true }
+  if ($Apply) { $scriptArgs.Apply = $true }
+  foreach ($k in $Extra.Keys) { $scriptArgs[$k] = $Extra[$k] }
   $quotedArgs = @($scriptArgs.Keys | ForEach-Object {
     $value = $scriptArgs[$_]
     if ($value -is [bool]) { "$_=`$true" } else { "$_='" + $value.Replace("'", "''") + "'" }
@@ -153,7 +155,7 @@ function Invoke-PolicyScript([string]$Name, [string]$Case, [string]$Repo, [strin
   $output = (& $pwshPath -NoProfile -Command $bootstrap 2>&1 | Out-String)
   $code = $LASTEXITCODE
   $calls = Get-Content -LiteralPath $env:FAKE_GH_LOG -Raw
-  if ($calls -match '(?m)^api\s+-X\s+|(?m)^api\s+--method\s+|(?m)^api\s+.*--input') { throw "$Name attempted a mutation" }
+  if (-not $Apply -and $calls -match '(?m)^api\s+-X\s+|(?m)^api\s+--method\s+|(?m)^api\s+.*--input') { throw "$Name attempted a mutation" }
   return [pscustomobject]@{ Out=$output; Code=$code; Calls=$calls }
 }
 try {
@@ -306,6 +308,12 @@ try {
   if (-not (Test-StatusCheckRequirement ([pscustomobject]@{context='browser-tests'}) @($bound))) { throw 'an unbound baseline rejected a stronger producer binding' }
   Write-Host 'PASS: producer equality and stronger bound-baseline comparison'
 
+  $already = Invoke-PolicyScript setup-repo.ps1 apply-422 alawein/example docs standard -Apply
+  # Exit code under -Apply is the read-back audit's, which fails on fixture data; count write failures instead.
+  if ($already.Out -notmatch 'Write failures: 0\s' -or $already.Out -notmatch '(?m)^  OK \(already done\):' -or $already.Out -match 'FAILED') { throw "already-off Dependabot 422 was reported as a failure: $($already.Out)" }
+  $denied = Invoke-PolicyScript setup-repo.ps1 apply-403 alawein/example docs standard -Apply
+  if ($denied.Code -ne 2 -or $denied.Out -notmatch 'STOP: 403') { throw "a 403 on automated-security-fixes did not stop setup: $($denied.Out)" }
+  Write-Host 'PASS: already-off Dependabot 422 is done, a 403 on the same call still stops'
   Write-Host 'PASS: fake gh script policy cases and mutation refusal'
 } finally {
   $env:PATH = $savedPath
