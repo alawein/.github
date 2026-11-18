@@ -72,11 +72,8 @@ jobs:
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: "3.12.10"
-      - name: Fast path metadata suite
-        if: steps.gen.outputs.heavy != 'true'
-        run: python -m unittest discover -s scripts/tests -p 'test_*.py' -v
-      - name: Test metadata and workflow guards
-        if: steps.gen.outputs.heavy == 'true'
+      # Fast and heavy paths both run scripts/tests once; heavy-only work follows below.
+      - name: Metadata scripts suite
         run: python -m unittest discover -s scripts/tests -p 'test_*.py' -v
       - name: Set up update-policy validator runtime
         if: steps.gen.outputs.heavy == 'true'
@@ -120,6 +117,7 @@ jobs:
           echo "${LYCHEE_SHA256}  $RUNNER_TEMP/$archive" | sha256sum --check -
           tar -xzf "$RUNNER_TEMP/$archive" -C "$bin" --strip-components=1 lychee-x86_64-unknown-linux-musl/lychee
           echo "$bin" >> "$GITHUB_PATH"
+          # Same-job reuse: later steps call actionlint, just and lychee from PATH (no second install).
           # The root lychee tests fail instead of skipping when CI=true and this is unset.
           echo "LYCHEE_BIN=$bin/lychee" >> "$GITHUB_ENV"
       # The root suite parses workflow YAML; PyYAML installs only from the hash-pinned wheels.

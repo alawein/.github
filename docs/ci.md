@@ -5,6 +5,12 @@ current. One place to fix, one pin to bump. Which checks are required, and why,
 is in [delivery.md](system/delivery.md), "Merging and checks". Do not copy that
 list here.
 
+For the November 2026 measure-first streamline (what changed, what was
+deferred, and where required names come from), see
+[Kit self streamline](#kit-self-streamline). The coordinating plan lives in the
+human CI Workflow Review track (`2026-11-17-ci-streamline`); current-vs-proposed
+architecture diagrams stay there. This repo does not ship SVG copies.
+
 ## Use it
 
 `scripts/new-repo.ps1` already puts the right stub in a new repo. Use these
@@ -131,7 +137,8 @@ kit workflow that reruns on `edited`; `ci.yml` omits it so a PR body edit never
 cancels a CI run on the same SHA. The always-report `pr-policy` gate requires a
 successful policy producer, including on push to main; cancellation, failure or
 a skipped producer cannot pass it. `ci.yml`'s `metadata-tests` job is its own
-required context. It runs `scripts/tests`, then the root `tests` suite after
+required context. It always runs `scripts/tests` once, then on the heavy path
+runs the root `tests` suite after
 installing PyYAML from the hash-pinned wheels in `tests/requirements.txt`
 (Renovate's pip_requirements manager updates that file's version and hashes together) and the pinned
 actionlint, just and lychee archives. It exports `LYCHEE_BIN`; with `CI=true`
@@ -147,8 +154,12 @@ rules only after observing an eligible successful PR run at its current SHA.
 
 `rulesets/checks.json` is the canonical required-check list: `fleet_base` for
 consumers, the per-language extra, the `pr-policy` opt-in, and `kit_self` for this
-repo's own ruleset. `tests/test_check_list.py` fails when any copy (ruleset
-templates, setup and verify scripts, the hygiene defaults, this repo's gate jobs)
+repo's own ruleset. Required bare names and why they matter are in
+[delivery.md](system/delivery.md), "Merging and checks" — do not copy that list
+here. Gate jobs must match `kit_self` from `checks.json`.
+`metadata-tests-railway` is intentionally absent (`continue-on-error`, not
+required). `tests/test_check_list.py` fails when any copy (ruleset templates,
+setup and verify scripts, the hygiene defaults, this repo's gate jobs)
 disagrees with it, so change the list there first.
 
 `hygiene.yml` accepts `expected-required-checks`, a comma-separated list defaulting
@@ -426,6 +437,51 @@ any workflow in this repo or in a caller repo.
   `ruff format --check`, `pytest`. With `pip`, the requirements file must list
   ruff and pytest. Inputs: `python-version`, `installer`, `uv-version`,
   `requirements-file`, `working-directory`, `run-lint`, `run-test`.
+
+## Kit self streamline
+
+November 2026 work on `alawein/.github` followed measure-first gates: live
+ruleset verification and per-job timing samples (Tasks 1–2) set explicit
+yes/no flags before workflow edits. Structural cuts ran only when those flags
+allowed them; YAML on this branch reflects that scope.
+
+**Job-level path routing.** `metadata-tests` chooses fast vs heavy with an
+in-job `Detect generator paths` step, not workflow-level `paths` filters.
+Required producers must always report, so `ci.yml` and `policy.yml` have no
+`on.pull_request.paths` / `paths-ignore`. The heavy-path regex is frozen to
+`^(scripts/new-repo\.ps1|templates/|tests/|\.github/workflows/)`; unresolved
+base SHA fails closed to heavy. Fast path runs `scripts/tests` only; heavy path
+adds pinned tool installs and the root `tests/` suite (see `metadata-tests`
+above).
+
+**Policy vs CI split preserved.** SHA and metadata gates stay in `ci.yml`
+without `edited`. Title, body, and `pr-policy` gates stay in `policy.yml`, the
+only kit workflow that reruns on `edited`, so a body edit does not cancel CI on
+the same SHA.
+
+**Railway pool probe.** Task 2 set `MOVE_RAILWAY_PROBE=no`. The
+`metadata-tests-railway` job remains on the PR/push CI path, is non-required,
+skips fork PRs, and uses `continue-on-error`. Moving it to a scheduled workflow
+stays deferred until fresh timings justify it.
+
+**Gate consolidation (limited).** Task 2 allowed collapsing duplicate work
+inside jobs, not merging bare gate names. The duplicate `scripts/tests` steps in
+`metadata-tests` became one unconditional step; six thin `if: ${{ always() }}`
+gate jobs plus the `metadata-tests` producer remain, matching `kit_self` in
+`rulesets/checks.json`. Renaming or deleting gates still needs a ruleset
+migration in the same change set.
+
+**Caching unchanged.** Task 2 had no per-step install median ≥30s across jobs;
+dependency caches in reusables and the heavy-path npm cache on `default.json`
+were left as-is. Pinned curl+sha256 installs for actionlint, just, and lychee
+were not given cross-job download caches without new measurements.
+
+**Merge queue.** Live ruleset reads found no merge-queue rule and no
+`merge_group` trigger on kit workflows; auto-merge on the repo is not Merge
+Queue. No `merge_group` workflow was added (YAGNI unless settings change).
+
+**Open PR budget.** House streamline branches use `chore/ci-streamline-<topic>`.
+Pause new kit PRs when three or more are already waiting on `alawein/.github`.
 
 ## Keeping CI lean
 
