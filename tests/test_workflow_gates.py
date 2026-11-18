@@ -12,6 +12,18 @@ from pathlib import Path
 
 import yaml
 
+from workflow_gate_contract import (
+    GateProfile,
+    LINT_GATE_JOBS,
+    POLICY_GATE_JOBS,
+    PR_TITLE_RUN,
+    SUCCESS_ONLY_RUN,
+    expected_gate_pass,
+    gate_profile,
+    gate_result_matrix,
+    normalize_gate_run,
+)
+
 
 ROOT = Path(__file__).resolve().parents[1]
 NODE_DIR = os.environ.get("NODE22_DIR")
@@ -202,6 +214,88 @@ class CiGateListTests(unittest.TestCase):
         self.assertTrue(any("discover -s scripts/tests" in run for run in runs))
         self.assertTrue(any("--require-hashes" in run and "tests/requirements.txt" in run for run in runs))
         self.assertTrue(any('LYCHEE_BIN=$bin/lychee" >> "$GITHUB_ENV"' in run for run in runs))
+
+
+def run_gate_shell(run, env):
+    return subprocess.run(
+        [str(BASH), "-c", run],
+        env={**os.environ, **env},
+        capture_output=True,
+        text=True,
+    ).returncode
+
+
+def gate_require_run(workflow_name, gate_job):
+    jobs = workflow(workflow_name)["jobs"]
+    step = jobs[gate_job]["steps"][0]
+    return step["run"], step.get("env", {})
+
+
+class GateSkipFailMatrixTests(unittest.TestCase):
+    def test_helper_encodes_documented_matrix_corners(self):
+        # success | any | pass
+        for profile in GateProfile:
+            self.assertTrue(expected_gate_pass(profile, "success", event="pull_request", ref="x"))
+        # failure | cancelled | any | fail
+        for profile in GateProfile:
+            for result in ("failure", "cancelled", ""):
+                self.assertFalse(
+                    expected_gate_pass(profile, result, event="push", ref="refs/heads/main"),
+                    (profile, result),
+                )
+        # skipped | pull_request | fail (including pr-title)
+        self.assertFalse(
+            expected_gate_pass(GateProfile.PR_TITLE, "skipped", event="pull_request", ref="refs/pull/1/merge"),
+        )
+        # skipped | push + main | pass only pr-title
+        self.assertTrue(
+            expected_gate_pass(GateProfile.PR_TITLE, "skipped", event="push", ref="refs/heads/main"),
+        )
+        self.assertFalse(
+            expected_gate_pass(GateProfile.SUCCESS_ONLY, "skipped", event="push", ref="refs/heads/main"),
+        )
+        # skipped | push + main | fail lint / pr-policy (via SUCCESS_ONLY)
+        for gate in LINT_GATE_JOBS + ("pr-policy",):
+            self.assertEqual(gate_profile(gate), GateProfile.SUCCESS_ONLY, gate)
+
+    def test_matrix_cells_agree_with_predicate(self):
+        for cell in gate_result_matrix():
+            self.assertEqual(
+                expected_gate_pass(cell.profile, cell.result, event=cell.event, ref=cell.ref),
+                cell.should_pass,
+                cell,
+            )
+
+    def test_ci_lint_gates_use_success_only_shell_matching_helper(self):
+        for gate_job in LINT_GATE_JOBS:
+            with self.subTest(gate=gate_job):
+                run, env = gate_require_run("ci.yml", gate_job)
+                self.assertEqual(normalize_gate_run(run), SUCCESS_ONLY_RUN)
+                self.assertEqual(env.get("RESULT"), "${{ needs.run-" + gate_job + ".result }}")
+                for cell in gate_result_matrix():
+                    if cell.profile is not GateProfile.SUCCESS_ONLY:
+                        continue
+                    code = run_gate_shell(run, {"RESULT": cell.result, "EVENT": cell.event, "REF": cell.ref})
+                    self.assertEqual(code, 0 if cell.should_pass else 1, cell)
+
+    def test_policy_gates_match_contract_and_matrix(self):
+        for gate_job in POLICY_GATE_JOBS:
+            with self.subTest(gate=gate_job):
+                run, env = gate_require_run("policy.yml", gate_job)
+                profile = gate_profile(gate_job)
+                canonical = PR_TITLE_RUN if profile is GateProfile.PR_TITLE else SUCCESS_ONLY_RUN
+                self.assertEqual(normalize_gate_run(run), canonical, gate_job)
+                need_key = "run-pr-title" if gate_job == "pr-title" else "run-pr-policy"
+                self.assertEqual(env.get("RESULT"), "${{ needs." + need_key + ".result }}")
+                if gate_job == "pr-title":
+                    self.assertEqual(env.get("EVENT"), "${{ github.event_name }}")
+                    self.assertEqual(env.get("REF"), "${{ github.ref }}")
+                for cell in gate_result_matrix():
+                    if cell.profile is not profile:
+                        continue
+                    shell_env = {"RESULT": cell.result, "EVENT": cell.event, "REF": cell.ref}
+                    code = run_gate_shell(run, shell_env)
+                    self.assertEqual(code, 0 if cell.should_pass else 1, (gate_job, cell))
 
 
 class ZizmorGateTests(unittest.TestCase):
