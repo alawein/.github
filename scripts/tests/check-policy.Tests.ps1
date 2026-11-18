@@ -127,10 +127,18 @@ Write-Host 'PASS: hub and site ruleset fixtures'
 $pwshPath = (Get-Command pwsh -ErrorAction Stop).Source
 $savedPath = $env:PATH
 $env:FAKE_PWSH = $pwshPath
-$env:PATH = "$PSScriptRoot;$env:WINDIR\System32;$(Split-Path -Parent $pwshPath)"
-$fakeCommand = Get-Command gh -ErrorAction Stop
-if ($fakeCommand.Source -ne (Join-Path $PSScriptRoot 'gh.cmd') -or (Get-Command gh.exe -ErrorAction SilentlyContinue)) { throw 'fake gh command did not resolve safely' }
-$env:FAKE_GH_LOG = Join-Path $env:TEMP 'kit-check-policy-fake-gh.log'
+$sep = [IO.Path]::PathSeparator
+if ($IsWindows) {
+  $env:PATH = "$PSScriptRoot$sep$env:WINDIR\System32$sep$(Split-Path -Parent $pwshPath)"
+  $fakeCommand = Get-Command gh -ErrorAction Stop
+  if ($fakeCommand.Source -ne (Join-Path $PSScriptRoot 'gh.cmd') -or (Get-Command gh.exe -ErrorAction SilentlyContinue)) { throw 'fake gh command did not resolve safely' }
+} else {
+  # /usr/bin/pwsh is a link; its real folder keeps /usr/bin (and a real gh) off PATH.
+  $pwshDir = Split-Path -Parent ((Get-Item -LiteralPath $pwshPath).ResolvedTarget ?? $pwshPath)
+  $env:PATH = "$PSScriptRoot$sep$pwshDir"
+  if (Get-Command gh -CommandType Application -ErrorAction SilentlyContinue) { throw 'a real gh is reachable from the test PATH' }
+}
+$env:FAKE_GH_LOG = Join-Path ([IO.Path]::GetTempPath()) 'kit-check-policy-fake-gh.log'
 $scripts = Split-Path -Parent $PSScriptRoot
 function Invoke-PolicyScript([string]$Name, [string]$Case, [string]$Repo, [string]$Class, [string]$Profile, [switch]$Strict, [switch]$RequirePrPolicy, [string]$Language = 'typescript', [switch]$Apply, [hashtable]$Extra = @{}) {
   $env:FAKE_GH_CASE = $Case
