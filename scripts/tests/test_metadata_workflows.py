@@ -133,6 +133,10 @@ class MetadataWorkflowTests(unittest.TestCase):
         self.assertIn("if: ${{ always() }}", policy)
         self.assertIn("permissions: {}", policy)
         self.assertNotIn("pull-requests:", policy)
+        # Fragment stays a policy.yml merge target; Mode A carve-out guidance stays documented.
+        self.assertIn("Never copy this fragment as a standalone workflow", policy)
+        self.assertIn("carve-out", policy)
+        self.assertIn(".github/workflows/policy.yml", policy)
         hygiene = (ROOT / "templates/workflows/hygiene-weekly.yml").read_text(encoding="utf-8")
         self.assertIn("hygiene.yml@" + KIT_SHA + " # quality gates", hygiene)
         self.assertNotIn("kit-ref:", hygiene)

@@ -306,6 +306,49 @@ class DistributedGateTests(unittest.TestCase):
                                       capture_output=True, text=True)
                 self.assertEqual(lint.returncode, 0, lint.stdout + lint.stderr)
 
+    def test_mode_a_consumer_stubs_isolate_edited_from_sha_cancellation(self):
+        # Mode A keeps edited on the single CI stub; assert the full concurrency map.
+        expected_group = (
+            "${{ github.workflow }}-${{ github.event.action == 'edited' && "
+            "format('metadata-{0}', github.run_id) || "
+            "format('build-{0}', github.event.pull_request.number || github.ref) }}"
+        )
+        expected_cancel = (
+            "${{ github.event_name == 'pull_request' && github.event.action != 'edited' }}"
+        )
+        paths = [ROOT / "templates/workflows" / f"{stub}.yml" for stub in ("docs", "node", "python", "site")]
+        paths += sorted((ROOT / "templates/starters").glob("*/.github/workflows/ci.yml"))
+        for path in paths:
+            with self.subTest(path=str(path.relative_to(ROOT))):
+                text = path.read_text(encoding="utf-8")
+                ci = yaml.safe_load(text)
+                concurrency = ci["concurrency"]
+                self.assertIn("edited", ci[True]["pull_request"]["types"])
+                self.assertEqual(
+                    concurrency,
+                    {"group": expected_group, "cancel-in-progress": expected_cancel},
+                )
+                # edited → unique metadata run_id group; non-edited → shared build group.
+                self.assertIn("github.event.action == 'edited'", concurrency["group"])
+                self.assertIn("format('metadata-{0}', github.run_id)", concurrency["group"])
+                self.assertIn(
+                    "format('build-{0}', github.event.pull_request.number || github.ref)",
+                    concurrency["group"],
+                )
+                # cancel stays on for non-edited pull_request actions only.
+                self.assertIn("github.event.action != 'edited'", concurrency["cancel-in-progress"])
+                self.assertIn("Mode A", text)
+                self.assertIn("policy.yml", text)
+                self.assertIn("Do not remove this edited carve-out", text)
+                self.assertIn("still cancel superseded runs", text)
+                for job in ci["jobs"].values():
+                    if "uses" in job:
+                        self.assertTrue(job["uses"].endswith("@" + KIT_SHA))
+        fragment = (ROOT / "templates/workflows/pr-policy.jobs.yml").read_text(encoding="utf-8")
+        self.assertIn("kit-ref: " + KIT_SHA, fragment)
+        self.assertIn("edited-only metadata-${{ github.run_id }} carve-out", fragment)
+        self.assertIn("still cancel superseded runs", fragment)
+
 
 if __name__ == "__main__":
     unittest.main()
