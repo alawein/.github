@@ -46,3 +46,4 @@ One line per session, newest at the bottom. Format:
 - 2026-11-17 | setup-repo | Every -Apply run printed FAILED for a 422 when Dependabot alerts were already off, then applied everything else | Fixed 2026-11-18: setup-repo prints "OK (already done)" for that 422 and counts no failure
 - 2026-11-18 | approvals | A maios merge approval stopped counting when another session merged first and the PR head changed | Ask for publish-mode c with the merge line so a rebased head stays inside the grant
 - 2026-11-18 | fleet control | Empty or failed Actions runs still painted CI reliability PASS, and multi-pin workflow rows only kept pins[0] | Soft-fail live GETs with partial/LIMITED scope, and expand every distinct pin into consumer_pins and drift.
+- 2026-11-18 | ci streamline | Task 2 showed thin always() gates at ~40% median CI billable but bare ruleset names forbid merging them | Collapse duplicate steps inside metadata-tests; keep six gate jobs until ruleset migration.

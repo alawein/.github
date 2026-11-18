@@ -131,7 +131,8 @@ kit workflow that reruns on `edited`; `ci.yml` omits it so a PR body edit never
 cancels a CI run on the same SHA. The always-report `pr-policy` gate requires a
 successful policy producer, including on push to main; cancellation, failure or
 a skipped producer cannot pass it. `ci.yml`'s `metadata-tests` job is its own
-required context. It runs `scripts/tests`, then the root `tests` suite after
+required context. It always runs `scripts/tests` once, then on the heavy path
+runs the root `tests` suite after
 installing PyYAML from the hash-pinned wheels in `tests/requirements.txt`
 (Renovate's pip_requirements manager updates that file's version and hashes together) and the pinned
 actionlint, just and lychee archives. It exports `LYCHEE_BIN`; with `CI=true`

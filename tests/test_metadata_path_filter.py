@@ -39,13 +39,12 @@ class MetadataPathFilterTests(unittest.TestCase):
         self.assertIn("templates/", detect["run"])
         self.assertIn("heavy=", detect["run"])
 
-        fast = next(s for s in steps if s.get("name") == "Fast path metadata suite")
-        self.assertEqual(fast["if"], "steps.gen.outputs.heavy != 'true'")
-        self.assertIn("discover -s scripts/tests", fast["run"])
-
-        heavy = next(s for s in steps if s.get("name") == "Test metadata and workflow guards")
-        self.assertEqual(heavy["if"], "steps.gen.outputs.heavy == 'true'")
-        self.assertIn("discover -s scripts/tests", heavy["run"])
+        scripts_suite = next(s for s in steps if s.get("name") == "Metadata scripts suite")
+        self.assertNotIn("if", scripts_suite)
+        self.assertIn("discover -s scripts/tests", scripts_suite["run"])
+        suite_steps = [s for s in steps if "discover -s scripts/tests" in s.get("run", "")]
+        self.assertEqual(len(suite_steps), 1, suite_steps)
+        self.assertEqual(suite_steps[0]["name"], "Metadata scripts suite")
 
         heavy_guards = [
             s for s in steps

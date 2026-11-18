@@ -109,6 +109,22 @@ class LinkGateTests(unittest.TestCase):
 
 
 class CiGateListTests(unittest.TestCase):
+    def test_kit_self_contexts_use_one_always_gate_or_metadata_job(self):
+        checks = json.loads((ROOT / "rulesets/checks.json").read_text(encoding="utf-8"))
+        ci = workflow("ci.yml")["jobs"]
+        policy = workflow("policy.yml")["jobs"]
+        for ctx in checks["kit_self"]:
+            if ctx == "metadata-tests":
+                self.assertIn(ctx, ci)
+                self.assertNotEqual(ci[ctx].get("if"), "${{ always() }}")
+                continue
+            jobs = ci if ctx in ci else policy
+            self.assertIn(ctx, jobs, ctx)
+            gate = jobs[ctx]
+            self.assertEqual(gate.get("if"), "${{ always() }}", ctx)
+            self.assertEqual(gate.get("permissions"), {}, ctx)
+            self.assertEqual(gate["needs"], [f"run-{ctx}"], ctx)
+
     def test_header_names_every_always_report_gate(self):
         # Live ruleset 24266592 required six contexts on 2026-11-11 while this comment listed four.
         gates = sorted(name for name, job in workflow("ci.yml")["jobs"].items()
