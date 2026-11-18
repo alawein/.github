@@ -134,7 +134,8 @@ function Invoke-GhRead([string[]]$GhArgs, [switch]$Soft) {
 }
 
 # Method is PUT, POST or PATCH. Json is optional (a PUT with no body is fine).
-function Invoke-GhWrite([string]$Method, [string]$Path, [string]$Json) {
+# AlreadyDone: a pattern in the error text meaning the repo is already in the wanted state.
+function Invoke-GhWrite([string]$Method, [string]$Path, [string]$Json, [string]$AlreadyDone = '') {
   $a = @('api', '-X', $Method, $Path)
   if ($Json) { $a += @('--input', '-') }
   if (-not $Apply) {
@@ -146,7 +147,9 @@ function Invoke-GhWrite([string]$Method, [string]$Path, [string]$Json) {
   else { $text = (& $Gh @a 2>&1 | Out-String).Trim() }
   $code = $LASTEXITCODE
   Start-Sleep -Seconds 3
-  if ($code -ne 0) {
+  if ($code -ne 0 -and $AlreadyDone -and $text -match $AlreadyDone -and $text -notmatch 'HTTP 403|HTTP 429|rate limit') {
+    Write-Host ('  OK (already done): {0}' -f ($text.Substring(0, [Math]::Min(200, $text.Length))))
+  } elseif ($code -ne 0) {
     $script:Failures++
     Write-Host ('  FAILED (exit {0}): {1}' -f $code, ($text.Substring(0, [Math]::Min(300, $text.Length))))
     if ($text -match 'HTTP 403|HTTP 429|rate limit|Upgrade to GitHub Pro') {
@@ -332,7 +335,7 @@ Write-Host "`n== 2. Actions token: read only, cannot approve pull requests =="
 
 Write-Host "`n== 3. Dependabot alerts off, security updates off (owner decision 2026-10-06) =="
 [void](Invoke-GhWrite 'DELETE' "repos/$Repo/vulnerability-alerts" '')
-[void](Invoke-GhWrite 'DELETE' "repos/$Repo/automated-security-fixes" '')
+[void](Invoke-GhWrite 'DELETE' "repos/$Repo/automated-security-fixes" '' 'Vulnerability alerts must be enabled')
 if ($isPublic) {
   Write-Host 'Private vulnerability reporting (the "Report a vulnerability" button that SECURITY.md points to):'
   [void](Invoke-GhWrite 'PUT' "repos/$Repo/private-vulnerability-reporting" '')

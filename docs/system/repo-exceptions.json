@@ -1,0 +1,62 @@
+{
+  "schema": 1,
+  "exceptions": [
+    {
+      "repo": "alawein/maios",
+      "checks": [
+        "default branch",
+        "squash message is blank",
+        "auto-merge allowed",
+        "wiki off",
+        "projects off",
+        "ruleset main-guard exists",
+        "ruleset release-tags exists",
+        "label feat",
+        "label fix",
+        "label docs",
+        "label chore",
+        "label blocked",
+        ".github/workflows/ci.yml with the required jobs"
+      ],
+      "decided": "2026-11-17"
+    },
+    {
+      "repo": "alawein/maios-vnext",
+      "checks": [
+        "default branch",
+        "SHA pinning required (turn on after first green CI run)",
+        "ruleset main-guard exists",
+        ".github/workflows/ci.yml with the required jobs"
+      ],
+      "decided": "2026-11-17"
+    },
+    {
+      "repo": "alawein/fallax",
+      "checks": [
+        "no license (class default)"
+      ],
+      "decided": "2026-11-17"
+    },
+    {
+      "repo": "alawein/loopholelab",
+      "checks": [
+        "no license (class default)"
+      ],
+      "decided": "2026-11-17"
+    },
+    {
+      "repo": "alawein/outpost",
+      "checks": [
+        "no license (class default)"
+      ],
+      "decided": "2026-11-17"
+    },
+    {
+      "repo": "alawein/refup",
+      "checks": [
+        "no license (class default)"
+      ],
+      "decided": "2026-11-17"
+    }
+  ]
+}

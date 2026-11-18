@@ -34,6 +34,10 @@
   Expect the opt-in pr-policy gate and required context. Private repos need
   -Strict unless Class site implies it. Incompatible with hub-check.
 
+.PARAMETER ExceptionsFile
+  Owner exceptions, default docs\system\repo-exceptions.json. A listed check
+  that fails prints EXCEPT and does not count as FAIL; one that passes adds a
+  NOTE that the exception is no longer needed. A missing or bad file stops, exit 2.
 .EXAMPLE
   .\verify-repo.ps1 -Repo alawein/example-app -Class tool -Language python
 #>
@@ -44,7 +48,8 @@ param(
   [ValidateSet('typescript', 'python')][string]$Language = 'typescript',
   [ValidateSet('standard', 'hub-check')][string]$CheckProfile = 'standard',
   [switch]$Strict,
-  [switch]$RequirePrPolicy
+  [switch]$RequirePrPolicy,
+  [string]$ExceptionsFile = ''
 )
 
 $ErrorActionPreference = 'Continue'
@@ -64,12 +69,27 @@ try { $checkPolicy = Get-CheckPolicy -Repo $Repo -Class $Class -Language $Langua
 catch { Write-Host ('STOP: ' + $_.Exception.Message); exit 2 }
 $RequiredChecks = @($checkPolicy.RequiredChecks)
 $workflowPath = $checkPolicy.WorkflowPath
+if (-not $ExceptionsFile) { $ExceptionsFile = Join-Path $KitRoot 'docs/system/repo-exceptions.json' }
+$Excused = @()
+$ExcusedOn = ''
+try {
+  $excDoc = Get-Content -LiteralPath $ExceptionsFile -Raw -ErrorAction Stop | ConvertFrom-Json -ErrorAction Stop
+  if ($excDoc.schema -ne 1) { throw 'schema is not 1' }
+  foreach ($e in @($excDoc.exceptions)) {
+    if ([string]$e.repo -ieq $Repo) { $Excused += @($e.checks | ForEach-Object { [string]$_ }); $ExcusedOn = [string]$e.decided }
+  }
+} catch { Write-Host ('STOP: exceptions file: {0}: {1}' -f $ExceptionsFile, $_.Exception.Message); exit 2 }
 $script:Pass = 0
 $script:Fail = 0
+$script:Except = 0
 
 function Add-Result([string]$Name, [bool]$Ok, [string]$Detail) {
-  if ($Ok) { $script:Pass++; $tag = 'PASS' } else { $script:Fail++; $tag = 'FAIL' }
+  $isExcused = $Excused -ccontains $Name
+  if ($Ok) { $script:Pass++; $tag = 'PASS' }
+  elseif ($isExcused) { $script:Except++; Write-Host ('EXCEPT  {0}: {1} (owner decision {2})' -f $Name, $Detail, $ExcusedOn); return }
+  else { $script:Fail++; $tag = 'FAIL' }
   Write-Host ('{0}  {1}: {2}' -f $tag, $Name, $Detail)
+  if ($Ok -and $isExcused) { Write-Host ('NOTE  exception no longer needed: {0}' -f $Name) }
 }
 function Add-Note([string]$Name, [string]$Detail) { Write-Host ('NOTE  {0}: {1}' -f $Name, $Detail) }
 
@@ -366,6 +386,6 @@ if ($spdx -eq 'NOASSERTION') { Add-Note 'license file' 'GitHub could not match t
 # ---------- result ----------
 
 Write-Host ''
-Write-Host ('Result: {0} pass, {1} fail' -f $script:Pass, $script:Fail)
+Write-Host ('Result: {0} pass, {1} fail, {2} excepted' -f $script:Pass, $script:Fail, $script:Except)
 if ($script:Fail -gt 0) { exit 1 }
 exit 0

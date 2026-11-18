@@ -127,12 +127,20 @@ Write-Host 'PASS: hub and site ruleset fixtures'
 $pwshPath = (Get-Command pwsh -ErrorAction Stop).Source
 $savedPath = $env:PATH
 $env:FAKE_PWSH = $pwshPath
-$env:PATH = "$PSScriptRoot;$env:WINDIR\System32;$(Split-Path -Parent $pwshPath)"
-$fakeCommand = Get-Command gh -ErrorAction Stop
-if ($fakeCommand.Source -ne (Join-Path $PSScriptRoot 'gh.cmd') -or (Get-Command gh.exe -ErrorAction SilentlyContinue)) { throw 'fake gh command did not resolve safely' }
-$env:FAKE_GH_LOG = Join-Path $env:TEMP 'kit-check-policy-fake-gh.log'
+$sep = [IO.Path]::PathSeparator
+if ($IsWindows) {
+  $env:PATH = "$PSScriptRoot$sep$env:WINDIR\System32$sep$(Split-Path -Parent $pwshPath)"
+  $fakeCommand = Get-Command gh -ErrorAction Stop
+  if ($fakeCommand.Source -ne (Join-Path $PSScriptRoot 'gh.cmd') -or (Get-Command gh.exe -ErrorAction SilentlyContinue)) { throw 'fake gh command did not resolve safely' }
+} else {
+  # /usr/bin/pwsh is a link; its real folder keeps /usr/bin (and a real gh) off PATH.
+  $pwshDir = Split-Path -Parent ((Get-Item -LiteralPath $pwshPath).ResolvedTarget ?? $pwshPath)
+  $env:PATH = "$PSScriptRoot$sep$pwshDir"
+  if (Get-Command gh -CommandType Application -ErrorAction SilentlyContinue) { throw 'a real gh is reachable from the test PATH' }
+}
+$env:FAKE_GH_LOG = Join-Path ([IO.Path]::GetTempPath()) 'kit-check-policy-fake-gh.log'
 $scripts = Split-Path -Parent $PSScriptRoot
-function Invoke-PolicyScript([string]$Name, [string]$Case, [string]$Repo, [string]$Class, [string]$Profile, [switch]$Strict, [switch]$RequirePrPolicy, [string]$Language = 'typescript') {
+function Invoke-PolicyScript([string]$Name, [string]$Case, [string]$Repo, [string]$Class, [string]$Profile, [switch]$Strict, [switch]$RequirePrPolicy, [string]$Language = 'typescript', [switch]$Apply, [hashtable]$Extra = @{}) {
   $env:FAKE_GH_CASE = $Case
   $env:FAKE_GH_CLASS = $Class
   $env:FAKE_GH_LANGUAGE = $Language
@@ -145,6 +153,8 @@ function Invoke-PolicyScript([string]$Name, [string]$Case, [string]$Repo, [strin
   if ($Class) { $scriptArgs.Class = $Class }
   if ($Strict) { $scriptArgs.Strict = $true }
   if ($RequirePrPolicy) { $scriptArgs.RequirePrPolicy = $true }
+  if ($Apply) { $scriptArgs.Apply = $true }
+  foreach ($k in $Extra.Keys) { $scriptArgs[$k] = $Extra[$k] }
   $quotedArgs = @($scriptArgs.Keys | ForEach-Object {
     $value = $scriptArgs[$_]
     if ($value -is [bool]) { "$_=`$true" } else { "$_='" + $value.Replace("'", "''") + "'" }
@@ -153,7 +163,7 @@ function Invoke-PolicyScript([string]$Name, [string]$Case, [string]$Repo, [strin
   $output = (& $pwshPath -NoProfile -Command $bootstrap 2>&1 | Out-String)
   $code = $LASTEXITCODE
   $calls = Get-Content -LiteralPath $env:FAKE_GH_LOG -Raw
-  if ($calls -match '(?m)^api\s+-X\s+|(?m)^api\s+--method\s+|(?m)^api\s+.*--input') { throw "$Name attempted a mutation" }
+  if (-not $Apply -and $calls -match '(?m)^api\s+-X\s+|(?m)^api\s+--method\s+|(?m)^api\s+.*--input') { throw "$Name attempted a mutation" }
   return [pscustomobject]@{ Out=$output; Code=$code; Calls=$calls }
 }
 try {
@@ -290,7 +300,7 @@ try {
   if ($parameterPlan.Code -ne 0 -or $parameterPlan.Out -notmatch '(?m)^DRY\s+gh api -X PUT repos/alawein/example/rulesets/3 --input -\s+<-\s+(.+)$') { throw "missing parameter preservation plan: $($parameterPlan.Out)" }
   $plannedParameters = (($Matches[1] | ConvertFrom-Json).rules | Where-Object type -eq pull_request).parameters
   if (($plannedParameters.allowed_merge_methods -join ',') -cne 'squash' -or $plannedParameters.required_approving_review_count -ne 2 -or -not $plannedParameters.require_code_owner_review -or -not $plannedParameters.require_extra_approval_for_unattributed_changes) { throw 'setup did not enforce the baseline while retaining stronger existing PR parameters' }
-  $env:FAKE_GH_RULESET = Join-Path $env:TEMP 'kit-check-policy-ruleset.json'
+  $env:FAKE_GH_RULESET = Join-Path ([IO.Path]::GetTempPath()) 'kit-check-policy-ruleset.json'
   try {
     Set-Content -LiteralPath $env:FAKE_GH_RULESET -Value $firstPlan
     $repeat = Invoke-PolicyScript setup-repo.ps1 checks-extra-bound alawein/example tool standard
@@ -306,6 +316,25 @@ try {
   if (-not (Test-StatusCheckRequirement ([pscustomobject]@{context='browser-tests'}) @($bound))) { throw 'an unbound baseline rejected a stronger producer binding' }
   Write-Host 'PASS: producer equality and stronger bound-baseline comparison'
 
+  $already = Invoke-PolicyScript setup-repo.ps1 apply-422 alawein/example docs standard -Apply
+  # Exit code under -Apply is the read-back audit's, which fails on fixture data; count write failures instead.
+  if ($already.Out -notmatch 'Write failures: 0\s' -or $already.Out -notmatch '(?m)^  OK \(already done\):' -or $already.Out -match 'FAILED') { throw "already-off Dependabot 422 was reported as a failure: $($already.Out)" }
+  $denied = Invoke-PolicyScript setup-repo.ps1 apply-403 alawein/example docs standard -Apply
+  if ($denied.Code -ne 2 -or $denied.Out -notmatch 'STOP: 403') { throw "a 403 on automated-security-fixes did not stop setup: $($denied.Out)" }
+  Write-Host 'PASS: already-off Dependabot 422 is done, a 403 on the same call still stops'
+  $fx = Join-Path $PSScriptRoot 'fixtures'
+  $exc = @{ ExceptionsFile = (Join-Path $fx 'exceptions-example.json') }
+  $excused = Invoke-PolicyScript verify-repo.ps1 labels-missing alawein/example docs standard -Extra $exc
+  if ($excused.Code -ne 0 -or $excused.Out -notmatch '(?m)^EXCEPT\s+label fix:[^\r\n]*owner decision 2026-11-17' -or $excused.Out -match '(?m)^FAIL' -or $excused.Out -notmatch ', 1 excepted') { throw "recorded exception did not excuse its check: $($excused.Out)" }
+  $other = Invoke-PolicyScript verify-repo.ps1 labels-missing alawein/other docs standard -Extra $exc
+  if ($other.Code -ne 1 -or $other.Out -notmatch '(?m)^FAIL\s+label fix:') { throw 'an exception for another repo or check name excused label fix' }
+  $stale = Invoke-PolicyScript verify-repo.ps1 labels-extra alawein/example docs standard -Extra $exc
+  if ($stale.Out -notmatch '(?m)^PASS\s+label fix:' -or $stale.Out -notmatch '(?m)^NOTE\s+exception no longer needed: label fix') { throw 'a passing excused check was not reported as stale' }
+  foreach ($bad in @((Join-Path $fx 'exceptions-missing.json'), (Join-Path $fx 'exceptions-broken.json'))) {
+    $broken = Invoke-PolicyScript verify-repo.ps1 labels-missing alawein/example docs standard -Extra @{ ExceptionsFile = $bad }
+    if ($broken.Code -ne 2 -or $broken.Out -notmatch 'STOP: exceptions file') { throw "unreadable exceptions file did not stop the audit: $bad" }
+  }
+  Write-Host 'PASS: recorded exceptions excuse only their repo and check, stale ones are noted, a bad file stops'
   Write-Host 'PASS: fake gh script policy cases and mutation refusal'
 } finally {
   $env:PATH = $savedPath

@@ -87,12 +87,13 @@ one more starter for a rare case is more upkeep than it saves.
 
 ### Recorded exceptions
 
-`verify-repo.ps1` still prints FAIL for these lines. They are owner decisions,
-not drift.
+These are owner decisions, not drift. `verify-repo.ps1` prints EXCEPT instead
+of FAIL for the checks listed in [`repo-exceptions.json`](repo-exceptions.json),
+which holds their exact names. Change both together.
 
-| Repo | Exception | Expected FAIL lines | Owner decision |
+| Repo | Exception | Excused checks | Owner decision |
 | --- | --- | --- | --- |
-| `maios` | Outside this standard. It keeps `master`, its own branch ruleset, its own CI and its gate-trust rules. Do not run `setup-repo.ps1` on it | Default branch, merge settings, labels, `main-guard`, `release-tags`, `ci.yml` jobs | 2026-11-17 |
+| `maios` | Outside this standard. It keeps `master`, its own branch ruleset, its own CI and its gate-trust rules. Do not run `setup-repo.ps1` on it | Default branch, merge settings, wiki and projects, labels, `main-guard`, `release-tags`, `ci.yml` jobs | 2026-11-17 |
 | `maios-vnext` | Keeps `master` to match `maios`. `setup-repo.ps1` skips the branch ruleset for a `master` default branch. No kit CI yet: its docs, lockfile and lint need their own pass first | Default branch, `main-guard`, `ci.yml` jobs, SHA pinning | 2026-11-17 |
 | `fallax`, `loopholelab`, `outpost`, `refup` | Private, but keep their MIT `LICENSE` so a relaunch does not need to re-add it. The license is the owner's choice, not drift | `no license (class default)` | 2026-11-17 |
 

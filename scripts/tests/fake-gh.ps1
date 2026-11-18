@@ -1,6 +1,14 @@
 function Invoke-FakeGh {
 $ErrorActionPreference = 'Stop'
 Add-Content -LiteralPath $env:FAKE_GH_LOG -Value ($args -join ' ')
+# apply-422 / apply-403: the only cases that accept writes, to test how setup-repo reads a failed one.
+if ($env:FAKE_GH_CASE -in @('apply-422', 'apply-403') -and $args -contains '-X') {
+  if (($args -join ' ') -match '-X DELETE repos/alawein/example/automated-security-fixes') {
+    if ($env:FAKE_GH_CASE -eq 'apply-422') { '{"message":"Vulnerability alerts must be enabled to configure automated security fixes.","status":"422"}' } else { 'HTTP 403' }
+    $global:LASTEXITCODE = 1; return
+  }
+  '{}'; $global:LASTEXITCODE = 0; return
+}
 if ($args -contains '-X' -or $args -contains '--method' -or $args -contains '--input') { Write-Error 'fake gh refuses mutations'; $global:LASTEXITCODE = 90; return }
 if ($args[0] -eq 'auth') { 'Logged in'; $global:LASTEXITCODE = 0; return }
 if ($args[0] -ne 'api') { Write-Error 'unexpected gh command'; $global:LASTEXITCODE = 91; return }
