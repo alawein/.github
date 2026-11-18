@@ -314,6 +314,19 @@ try {
   $denied = Invoke-PolicyScript setup-repo.ps1 apply-403 alawein/example docs standard -Apply
   if ($denied.Code -ne 2 -or $denied.Out -notmatch 'STOP: 403') { throw "a 403 on automated-security-fixes did not stop setup: $($denied.Out)" }
   Write-Host 'PASS: already-off Dependabot 422 is done, a 403 on the same call still stops'
+  $fx = Join-Path $PSScriptRoot 'fixtures'
+  $exc = @{ ExceptionsFile = (Join-Path $fx 'exceptions-example.json') }
+  $excused = Invoke-PolicyScript verify-repo.ps1 labels-missing alawein/example docs standard -Extra $exc
+  if ($excused.Code -ne 0 -or $excused.Out -notmatch '(?m)^EXCEPT\s+label fix:[^\r\n]*owner decision 2026-11-17' -or $excused.Out -match '(?m)^FAIL' -or $excused.Out -notmatch ', 1 excepted') { throw "recorded exception did not excuse its check: $($excused.Out)" }
+  $other = Invoke-PolicyScript verify-repo.ps1 labels-missing alawein/other docs standard -Extra $exc
+  if ($other.Code -ne 1 -or $other.Out -notmatch '(?m)^FAIL\s+label fix:') { throw 'an exception for another repo or check name excused label fix' }
+  $stale = Invoke-PolicyScript verify-repo.ps1 labels-extra alawein/example docs standard -Extra $exc
+  if ($stale.Out -notmatch '(?m)^PASS\s+label fix:' -or $stale.Out -notmatch '(?m)^NOTE\s+exception no longer needed: label fix') { throw 'a passing excused check was not reported as stale' }
+  foreach ($bad in @((Join-Path $fx 'exceptions-missing.json'), (Join-Path $fx 'exceptions-broken.json'))) {
+    $broken = Invoke-PolicyScript verify-repo.ps1 labels-missing alawein/example docs standard -Extra @{ ExceptionsFile = $bad }
+    if ($broken.Code -ne 2 -or $broken.Out -notmatch 'STOP: exceptions file') { throw "unreadable exceptions file did not stop the audit: $bad" }
+  }
+  Write-Host 'PASS: recorded exceptions excuse only their repo and check, stale ones are noted, a bad file stops'
   Write-Host 'PASS: fake gh script policy cases and mutation refusal'
 } finally {
   $env:PATH = $savedPath
