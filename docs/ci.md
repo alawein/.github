@@ -154,13 +154,13 @@ rules only after observing an eligible successful PR run at its current SHA.
 
 `rulesets/checks.json` is the canonical required-check list: `fleet_base` for
 consumers, the per-language extra, the `pr-policy` opt-in, and `kit_self` for this
-repo's own ruleset. This repo's ruleset and gate jobs must keep exactly the
-seven `kit_self` bare names:
-`markdown-lint`, `link-check`, `actionlint`, `zizmor`, `metadata-tests`,
-`pr-title`, `pr-policy`. `metadata-tests-railway` is intentionally absent
-(`continue-on-error`, not required). `tests/test_check_list.py` fails when any
-copy (ruleset templates, setup and verify scripts, the hygiene defaults, this
-repo's gate jobs) disagrees with it, so change the list there first.
+repo's own ruleset. Required bare names and why they matter are in
+[delivery.md](system/delivery.md), "Merging and checks" — do not copy that list
+here. Gate jobs must match `kit_self` from `checks.json`.
+`metadata-tests-railway` is intentionally absent (`continue-on-error`, not
+required). `tests/test_check_list.py` fails when any copy (ruleset templates,
+setup and verify scripts, the hygiene defaults, this repo's gate jobs)
+disagrees with it, so change the list there first.
 
 `hygiene.yml` accepts `expected-required-checks`, a comma-separated list defaulting
 to the original four contexts; it has no `kit-ref` input. Callers pin the reviewed
