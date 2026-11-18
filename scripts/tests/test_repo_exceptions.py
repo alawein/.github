@@ -20,6 +20,7 @@ class RepoExceptionsTests(unittest.TestCase):
         self.assertEqual(doc["schema"], 1)
         in_file = {e["repo"].removeprefix("alawein/") for e in doc["exceptions"]}
         self.assertEqual(table_repos(), in_file)
+        self.assertEqual(len(in_file), len(doc["exceptions"]), "a repo is listed twice")
         for e in doc["exceptions"]:
             self.assertTrue(e["checks"], e["repo"])
             self.assertRegex(e["decided"], r"^\d{4}-\d{2}-\d{2}$")

@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "exceptions": [
+    { "repo": "alawein/example", "checks": ["label fix"], "decided": "2026-11-17" },
+    { "repo": "alawein/Example", "checks": ["label docs"], "decided": "2026-11-18" }
+  ]
+}
