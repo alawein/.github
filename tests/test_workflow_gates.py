@@ -306,6 +306,36 @@ class DistributedGateTests(unittest.TestCase):
                                       capture_output=True, text=True)
                 self.assertEqual(lint.returncode, 0, lint.stdout + lint.stderr)
 
+    def test_mode_a_consumer_stubs_isolate_edited_from_sha_cancellation(self):
+        # Mode A keeps edited on the single CI stub; the carve-out must match kit policy intent.
+        expected_group = (
+            "${{ github.workflow }}-${{ github.event.action == 'edited' && "
+            "format('metadata-{0}', github.run_id) || "
+            "format('build-{0}', github.event.pull_request.number || github.ref) }}"
+        )
+        expected_cancel = (
+            "${{ github.event_name == 'pull_request' && github.event.action != 'edited' }}"
+        )
+        paths = [ROOT / "templates/workflows" / f"{stub}.yml" for stub in ("docs", "node", "python", "site")]
+        paths += sorted((ROOT / "templates/starters").glob("*/.github/workflows/ci.yml"))
+        for path in paths:
+            with self.subTest(path=str(path.relative_to(ROOT))):
+                text = path.read_text(encoding="utf-8")
+                ci = yaml.safe_load(text)
+                self.assertIn("edited", ci[True]["pull_request"]["types"])
+                self.assertEqual(ci["concurrency"]["group"], expected_group)
+                self.assertEqual(ci["concurrency"]["cancel-in-progress"], expected_cancel)
+                self.assertIn("policy.yml", text)
+                self.assertIn("Do not remove", text)
+                self.assertIn("Mode A", text)
+                for job in ci["jobs"].values():
+                    if "uses" in job:
+                        self.assertTrue(job["uses"].endswith("@" + KIT_SHA))
+        fragment = (ROOT / "templates/workflows/pr-policy.jobs.yml").read_text(encoding="utf-8")
+        self.assertIn("policy.yml", fragment)
+        self.assertIn("carve-out", fragment)
+        self.assertIn("kit-ref: " + KIT_SHA, fragment)
+
 
 if __name__ == "__main__":
     unittest.main()

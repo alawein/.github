@@ -19,6 +19,11 @@ on:
 permissions:
   contents: read
 
+# Mode A: single CI stub keeps `edited` for title/body gates. Isolate edited onto
+# metadata-${{ github.run_id }} with cancel-in-progress false so a body edit cannot
+# cancel SHA lint/build runs or fail always-report gates. Prefer the kit policy.yml
+# split (ci.yml without edited; policy.yml owns edited) when migrating. Do not remove
+# this carve-out while `edited` remains on this workflow.
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.action == 'edited' && format('metadata-{0}', github.run_id) || format('build-{0}', github.event.pull_request.number || github.ref) }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' && github.event.action != 'edited' }}

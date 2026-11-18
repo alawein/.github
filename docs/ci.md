@@ -16,10 +16,14 @@ steps to add one by hand.
 3. Set the pin after each `@` to a full commit SHA of `alawein/.github` (see
    "After the first commit" and "Bump a pin").
 4. Run `scripts/setup-repo.ps1`. It requires the class check names in `ci.yml`.
-   Metadata gates may remain there or move together to `policy.yml` with complete
-   PR event coverage, immutable producers, matching implementation refs, required
-   evidence sections, and always-report wrappers. Split metadata events and their
-   reusable producers complete independently instead of cancelling earlier events.
+   Prefer the kit split: keep SHA lint/build in `ci.yml` without `edited`, and put
+   title/policy (including `edited`) in `policy.yml` with complete PR event coverage,
+   immutable producers, matching implementation refs, required evidence sections,
+   and always-report wrappers. Metadata events and their reusable producers must
+   complete independently instead of cancelling earlier events. Until a consumer
+   migrates, Mode A keeps a single `CI` stub with `edited` and the
+   `metadata-${{ github.run_id }}` concurrency carve-out so a body edit cannot
+   cancel SHA gates; do not remove that carve-out while `edited` remains.
 
 For the approved private TypeScript hub `alawein/career-engine`, the local
 `-CheckProfile hub-check` option reads `.github/workflows/check.yml` and expects
@@ -428,17 +432,22 @@ any workflow in this repo or in a caller repo.
 Runner time is rounded up per job, and every run of every PR uses it. These
 rules apply to any caller of the kit.
 
-- Rerun on `edited` only what reads the PR title or body. Distributed callers
-  keep `edited` because the title and policy gates live in the same workflow.
-  The kit itself splits them into `policy.yml`: with per-PR cancellation, an
+- Rerun on `edited` only what reads the PR title or body. Prefer the kit split:
+  `ci.yml` omits `edited`; `policy.yml` owns title/policy and `edited`. Distributed
+  stubs still keep `edited` in one `CI` workflow (Mode A) while title gates live
+  there; they isolate edited onto `metadata-${{ github.run_id }}` with
+  `cancel-in-progress` false for that action so a body edit cannot cancel SHA
+  lint/build runs or fail always-report gates. Do not remove that carve-out while
+  `edited` remains. With plain per-PR cancellation and no carve-out, an
   edit-triggered run cancels the push run on the same SHA, and that run's
   always-report gates then fail their required contexts. A repo with no such
   gates should leave `edited` out.
 - Trigger on `push` for `main` only, plus `pull_request` for `main`, so a branch
   with an open PR does not run twice.
 - Cancel superseded runs with a `concurrency` group per PR and
-  `cancel-in-progress` on `pull_request` events. Never cancel `main` pushes or
-  scheduled runs.
+  `cancel-in-progress` on `pull_request` events, except Mode A edited isolation
+  and kit `policy.yml` (per-run group, never cancel). Never cancel `main` pushes
+  or scheduled runs.
 - Set `timeout-minutes` on every job, sized to the slowest normal run plus a
   margin.
 - Prefer fewer jobs. Each job repeats setup and rounds up to a whole minute, so

@@ -1,9 +1,13 @@
 # Opt-in jobs fragment: merge these jobs under jobs in .github/workflows/policy.yml.
 # Never copy this fragment as a standalone workflow or merge it into build CI.
+# Prefer the kit split: keep SHA lint/build in ci.yml without `edited`, and put
+# title/policy (including `edited`) in policy.yml. See .github/workflows/policy.yml.
 # Configure pull_request types opened, edited, synchronize, reopened,
 # ready_for_review and converted_to_draft, and push to main.
 # Set top-level contents: read and a distinct concurrency group for every run,
 # for example policy-${{ github.run_id }}, with cancel-in-progress: false.
+# If a consumer still keeps `edited` on a single CI stub (Mode A), retain the
+# metadata-${{ github.run_id }} carve-out; do not remove it while `edited` remains.
 # No inherited secrets are needed.
 run-pr-policy:
   uses: alawein/.github/.github/workflows/pr-policy.yml@cc3b595f8e9e92a9ed6fc63b3be177cc8a571965 # quality gates
