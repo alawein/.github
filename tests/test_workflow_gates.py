@@ -122,14 +122,22 @@ class CiGateListTests(unittest.TestCase):
 
     def test_only_policy_workflow_reruns_on_edited(self):
         # Run 43116245493 (body edit, same SHA) cancelled push run 43116219207, whose gates then failed.
+        # Task 2 sample (2026-11-18): PR cancel rate 0/30 — keep the kit split locked anyway.
         ci, policy = workflow("ci.yml"), workflow("policy.yml")
         self.assertNotIn("edited", ci[True]["pull_request"]["types"])
         self.assertIn("ready_for_review", ci[True]["pull_request"]["types"])
         self.assertIn("edited", policy[True]["pull_request"]["types"])
-        self.assertNotEqual(ci["concurrency"]["group"], policy["concurrency"]["group"])
-        # Each metadata event completes independently and always reports its actual result.
-        self.assertIn("github.run_id", policy["concurrency"]["group"])
+        self.assertEqual(
+            ci["concurrency"]["group"],
+            "${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}",
+        )
+        self.assertEqual(
+            ci["concurrency"]["cancel-in-progress"],
+            "${{ github.event_name == 'pull_request' }}",
+        )
+        self.assertEqual(policy["concurrency"]["group"], "policy-${{ github.run_id }}")
         self.assertIs(policy["concurrency"]["cancel-in-progress"], False)
+        self.assertNotEqual(ci["concurrency"]["group"], policy["concurrency"]["group"])
         gates = sorted(name for name, job in policy["jobs"].items()
                        if job.get("if") == "${{ always() }}" and job.get("permissions") == {})
         self.assertEqual(gates, ["pr-policy", "pr-title"])
