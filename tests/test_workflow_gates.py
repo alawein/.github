@@ -6,13 +6,18 @@ import platform
 import re
 import shutil
 import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
 
 import yaml
 
-from workflow_gate_contract import (
+TESTS = Path(__file__).resolve().parent
+if str(TESTS) not in sys.path:
+    sys.path.insert(0, str(TESTS))
+
+from workflow_gate_contract import (  # noqa: E402
     GateProfile,
     LINT_GATE_JOBS,
     POLICY_GATE_JOBS,
