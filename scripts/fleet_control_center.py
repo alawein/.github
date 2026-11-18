@@ -88,20 +88,26 @@ def build_snapshot(
 
     stale_pins: list[dict[str, Any]] = []
     for row in pin_rows:
-        pin = row.get("pin") or (row.get("pins") or [None])[0]
-        if not pin or pin == "UNKNOWN":
-            continue
-        vs = "PASS" if kit_commit != "UNKNOWN" and pin == kit_commit else "STALE"
-        if kit_commit == "UNKNOWN":
-            vs = "UNKNOWN"
-        stale_pins.append(
-            {
-                "repository": row["repository"],
-                "path": row.get("path", ""),
-                "pin": pin,
-                "vs_kit": vs,
-            }
-        )
+        distinct = row.get("pins")
+        if isinstance(distinct, list) and distinct:
+            pin_list = list(dict.fromkeys(str(p) for p in distinct if p))
+        else:
+            single = row.get("pin")
+            pin_list = [str(single)] if single else []
+        for pin in pin_list:
+            if not pin or pin == "UNKNOWN":
+                continue
+            vs = "PASS" if kit_commit != "UNKNOWN" and pin == kit_commit else "STALE"
+            if kit_commit == "UNKNOWN":
+                vs = "UNKNOWN"
+            stale_pins.append(
+                {
+                    "repository": row["repository"],
+                    "path": row.get("path", ""),
+                    "pin": pin,
+                    "vs_kit": vs,
+                }
+            )
 
     consumer_names = sorted({row["repository"] for row in pin_rows if row.get("repository") != KIT})
     repositories: list[dict[str, Any]] = [

@@ -87,6 +87,55 @@ class FleetControlCenterTests(unittest.TestCase):
         self.assertTrue(snapshot["maios_export"]["read_only"])
         self.fcc.assert_valid(snapshot)
 
+    def test_multi_pin_row_records_every_distinct_sha(self):
+        pins = json.loads((FIXTURES / "pins-multi.json").read_text(encoding="utf-8"))["rows"]
+        kit_commit = "fc72c586b68d6141b84d35303ee60ad69d7e8c55"
+        snapshot = self.fcc.build_snapshot(
+            kit_root=KIT_ROOT,
+            pin_rows=pins,
+            kit_commit=kit_commit,
+            observed_at="2026-11-18T00:00:00Z",
+            scope="LIMITED",
+            sources=["fixture-multi"],
+        )
+        consumer = snapshot["workflow_registry"]["consumer_pins"]
+        multi = [
+            row
+            for row in consumer
+            if row["repository"] == "alawein/standards-pathfinder"
+            and row["path"] == ".github/workflows/ci.yml"
+        ]
+        recorded = sorted(row["pin"] for row in multi)
+        self.assertEqual(
+            recorded,
+            [
+                "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            ],
+        )
+        self.assertTrue(all(row["vs_kit"] == "STALE" for row in multi))
+        self.assertGreaterEqual(snapshot["workflow_registry"]["outdated_pin_count"], 2)
+        drift_pins = {
+            finding["observed"]
+            for finding in snapshot["drift"]["findings"]
+            if finding["repository"] == "alawein/standards-pathfinder"
+        }
+        self.assertEqual(
+            drift_pins,
+            {
+                "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            },
+        )
+        # single-pin current kit SHA still records as PASS and does not inflate stale count alone
+        current = [
+            row
+            for row in consumer
+            if row["repository"] == "alawein/alawein" and row["pin"] == kit_commit
+        ]
+        self.assertEqual(len(current), 1)
+        self.assertEqual(current[0]["vs_kit"], "PASS")
+
     def test_cli_writes_observed_at(self):
         with tempfile.TemporaryDirectory() as tmp:
             out = Path(tmp) / "fleet.json"
