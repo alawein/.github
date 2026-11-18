@@ -1,10 +1,11 @@
 function Invoke-FakeGh {
 $ErrorActionPreference = 'Stop'
 Add-Content -LiteralPath $env:FAKE_GH_LOG -Value ($args -join ' ')
-# apply-422 / apply-403: the only cases that accept writes, to test how setup-repo reads a failed one.
-if ($env:FAKE_GH_CASE -in @('apply-422', 'apply-403') -and $args -contains '-X') {
+# apply-422 / apply-422-pro / apply-403: the only cases that accept writes, to test how setup-repo reads a failed one.
+if ($env:FAKE_GH_CASE -in @('apply-422', 'apply-422-pro', 'apply-403') -and $args -contains '-X') {
   if (($args -join ' ') -match '-X DELETE repos/alawein/example/automated-security-fixes') {
-    if ($env:FAKE_GH_CASE -eq 'apply-422') { '{"message":"Vulnerability alerts must be enabled to configure automated security fixes.","status":"422"}' } else { 'HTTP 403' }
+    if ($env:FAKE_GH_CASE -eq 'apply-422-pro') { '{"message":"Vulnerability alerts must be enabled to configure automated security fixes. Upgrade to GitHub Pro or make this repository public to enable this feature.","status":"422"}' }
+    elseif ($env:FAKE_GH_CASE -eq 'apply-422') { '{"message":"Vulnerability alerts must be enabled to configure automated security fixes.","status":"422"}' } else { 'HTTP 403' }
     $global:LASTEXITCODE = 1; return
   }
   '{}'; $global:LASTEXITCODE = 0; return

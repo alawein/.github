@@ -147,7 +147,7 @@ function Invoke-GhWrite([string]$Method, [string]$Path, [string]$Json, [string]$
   else { $text = (& $Gh @a 2>&1 | Out-String).Trim() }
   $code = $LASTEXITCODE
   Start-Sleep -Seconds 3
-  if ($code -ne 0 -and $AlreadyDone -and $text -match $AlreadyDone -and $text -notmatch 'HTTP 403|HTTP 429|rate limit') {
+  if ($code -ne 0 -and $AlreadyDone -and $text -match $AlreadyDone -and $text -notmatch 'HTTP 403|HTTP 429|rate limit|Upgrade to GitHub Pro') {
     Write-Host ('  OK (already done): {0}' -f ($text.Substring(0, [Math]::Min(200, $text.Length))))
   } elseif ($code -ne 0) {
     $script:Failures++

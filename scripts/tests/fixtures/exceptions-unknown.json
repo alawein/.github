@@ -1,0 +1,6 @@
+{
+  "schema": 1,
+  "exceptions": [
+    { "repo": "alawein/example", "checks": ["label fix", "no such check"], "decided": "2026-11-17" }
+  ]
+}

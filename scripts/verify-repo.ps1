@@ -37,7 +37,8 @@
 .PARAMETER ExceptionsFile
   Owner exceptions, default docs\system\repo-exceptions.json. A listed check
   that fails prints EXCEPT and does not count as FAIL; one that passes adds a
-  NOTE that the exception is no longer needed. A missing or bad file stops, exit 2.
+  NOTE that the exception is no longer needed, and a listed name no check
+  printed adds a NOTE too. A missing or bad file, or a repo listed twice, stops, exit 2.
 .EXAMPLE
   .\verify-repo.ps1 -Repo alawein/example-app -Class tool -Language python
 #>
@@ -74,16 +75,20 @@ $Excused = @()
 $ExcusedOn = ''
 try {
   $excDoc = Get-Content -LiteralPath $ExceptionsFile -Raw -ErrorAction Stop | ConvertFrom-Json -ErrorAction Stop
-  if ($excDoc.schema -ne 1) { throw 'schema is not 1' }
+  if (-not ($excDoc.schema -is [long] -and $excDoc.schema -eq 1)) { throw 'schema is not the number 1' }
+  $repos = @($excDoc.exceptions | ForEach-Object { ([string]$_.repo).ToLowerInvariant() })
+  if (@($repos | Group-Object | Where-Object Count -gt 1).Count) { throw 'a repo is listed more than once' }
   foreach ($e in @($excDoc.exceptions)) {
-    if ([string]$e.repo -ieq $Repo) { $Excused += @($e.checks | ForEach-Object { [string]$_ }); $ExcusedOn = [string]$e.decided }
+    if ([string]$e.repo -ieq $Repo) { $Excused = @($e.checks | ForEach-Object { [string]$_ }); $ExcusedOn = [string]$e.decided }
   }
 } catch { Write-Host ('STOP: exceptions file: {0}: {1}' -f $ExceptionsFile, $_.Exception.Message); exit 2 }
 $script:Pass = 0
 $script:Fail = 0
 $script:Except = 0
 
+$script:Seen = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
 function Add-Result([string]$Name, [bool]$Ok, [string]$Detail) {
+  [void]$script:Seen.Add($Name)
   $isExcused = $Excused -ccontains $Name
   if ($Ok) { $script:Pass++; $tag = 'PASS' }
   elseif ($isExcused) { $script:Except++; Write-Host ('EXCEPT  {0}: {1} (owner decision {2})' -f $Name, $Detail, $ExcusedOn); return }
@@ -385,6 +390,7 @@ if ($spdx -eq 'NOASSERTION') { Add-Note 'license file' 'GitHub could not match t
 
 # ---------- result ----------
 
+foreach ($n in $Excused) { if (-not $script:Seen.Contains($n)) { Write-Host ('NOTE  exception matches no check this audit ran: {0}' -f $n) } }
 Write-Host ''
 Write-Host ('Result: {0} pass, {1} fail, {2} excepted' -f $script:Pass, $script:Fail, $script:Except)
 if ($script:Fail -gt 0) { exit 1 }

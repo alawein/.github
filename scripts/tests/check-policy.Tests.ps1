@@ -321,6 +321,8 @@ try {
   if ($already.Out -notmatch 'Write failures: 0\s' -or $already.Out -notmatch '(?m)^  OK \(already done\):' -or $already.Out -match 'FAILED') { throw "already-off Dependabot 422 was reported as a failure: $($already.Out)" }
   $denied = Invoke-PolicyScript setup-repo.ps1 apply-403 alawein/example docs standard -Apply
   if ($denied.Code -ne 2 -or $denied.Out -notmatch 'STOP: 403') { throw "a 403 on automated-security-fixes did not stop setup: $($denied.Out)" }
+  $pro = Invoke-PolicyScript setup-repo.ps1 apply-422-pro alawein/example docs standard -Apply
+  if ($pro.Out -match '(?m)^  OK \(already done\):' -or $pro.Out -notmatch 'FAILED') { throw "a plan-limit 422 was treated as already done: $($pro.Out)" }
   Write-Host 'PASS: already-off Dependabot 422 is done, a 403 on the same call still stops'
   $fx = Join-Path $PSScriptRoot 'fixtures'
   $exc = @{ ExceptionsFile = (Join-Path $fx 'exceptions-example.json') }
@@ -334,6 +336,12 @@ try {
     $broken = Invoke-PolicyScript verify-repo.ps1 labels-missing alawein/example docs standard -Extra @{ ExceptionsFile = $bad }
     if ($broken.Code -ne 2 -or $broken.Out -notmatch 'STOP: exceptions file') { throw "unreadable exceptions file did not stop the audit: $bad" }
   }
+  foreach ($bad in @((Join-Path $fx 'exceptions-duplicate.json'), (Join-Path $fx 'exceptions-schema-true.json'))) {
+    $broken = Invoke-PolicyScript verify-repo.ps1 labels-missing alawein/example docs standard -Extra @{ ExceptionsFile = $bad }
+    if ($broken.Code -ne 2 -or $broken.Out -notmatch 'STOP: exceptions file') { throw "a duplicate repo or non-numeric schema did not stop the audit: $bad" }
+  }
+  $unknown = Invoke-PolicyScript verify-repo.ps1 labels-missing alawein/example docs standard -Extra @{ ExceptionsFile = (Join-Path $fx 'exceptions-unknown.json') }
+  if ($unknown.Out -notmatch '(?m)^NOTE\s+exception matches no check this audit ran: no such check' -or $unknown.Out -match 'matches no check this audit ran: label fix') { throw "an exception naming no real check was not noted: $($unknown.Out)" }
   Write-Host 'PASS: recorded exceptions excuse only their repo and check, stale ones are noted, a bad file stops'
   Write-Host 'PASS: fake gh script policy cases and mutation refusal'
 } finally {
