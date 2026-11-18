@@ -7,7 +7,9 @@
 # Set top-level contents: read and a distinct concurrency group for every run,
 # for example policy-${{ github.run_id }}, with cancel-in-progress: false.
 # If a consumer still keeps `edited` on a single CI stub (Mode A), retain the
-# metadata-${{ github.run_id }} carve-out; do not remove it while `edited` remains.
+# edited-only metadata-${{ github.run_id }} carve-out; non-edited pull_request
+# actions must still cancel superseded runs. Do not remove the carve-out while
+# `edited` remains on that CI stub.
 # No inherited secrets are needed.
 run-pr-policy:
   uses: alawein/.github/.github/workflows/pr-policy.yml@cc3b595f8e9e92a9ed6fc63b3be177cc8a571965 # quality gates

@@ -435,19 +435,18 @@ rules apply to any caller of the kit.
 - Rerun on `edited` only what reads the PR title or body. Prefer the kit split:
   `ci.yml` omits `edited`; `policy.yml` owns title/policy and `edited`. Distributed
   stubs still keep `edited` in one `CI` workflow (Mode A) while title gates live
-  there; they isolate edited onto `metadata-${{ github.run_id }}` with
-  `cancel-in-progress` false for that action so a body edit cannot cancel SHA
-  lint/build runs or fail always-report gates. Do not remove that carve-out while
-  `edited` remains. With plain per-PR cancellation and no carve-out, an
-  edit-triggered run cancels the push run on the same SHA, and that run's
-  always-report gates then fail their required contexts. A repo with no such
+  there. Mode A isolates only `edited` onto `metadata-${{ github.run_id }}` with
+  `cancel-in-progress` false for that action; opened/synchronize/reopened stay on
+  the per-PR build group and still cancel superseded runs. Do not remove that
+  edited carve-out while `edited` remains. With plain per-PR cancellation and no
+  carve-out, an edit-triggered run cancels the push run on the same SHA, and that
+  run's always-report gates then fail their required contexts. A repo with no such
   gates should leave `edited` out.
 - Trigger on `push` for `main` only, plus `pull_request` for `main`, so a branch
   with an open PR does not run twice.
-- Cancel superseded runs with a `concurrency` group per PR and
-  `cancel-in-progress` on `pull_request` events, except Mode A edited isolation
-  and kit `policy.yml` (per-run group, never cancel). Never cancel `main` pushes
-  or scheduled runs.
+- Cancel superseded non-edited `pull_request` runs with a per-PR `concurrency`
+  group. Mode A disables cancel only for `edited`; kit `policy.yml` uses a
+  per-run group and never cancels. Never cancel `main` pushes or scheduled runs.
 - Set `timeout-minutes` on every job, sized to the slowest normal run plus a
   margin.
 - Prefer fewer jobs. Each job repeats setup and rounds up to a whole minute, so
