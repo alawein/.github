@@ -41,13 +41,19 @@ class RunnerInputTests(unittest.TestCase):
 
 class RailwayProbeTests(unittest.TestCase):
     def setUp(self):
-        self.job = workflow("ci.yml")["jobs"]["metadata-tests-railway"]
+        self.assertNotIn("metadata-tests-railway", workflow("ci.yml")["jobs"])
+        self.workflow = workflow("railway-pool-probe.yml")
+        self.job = self.workflow["jobs"]["metadata-tests-railway"]
+
+    def test_probe_lives_on_scheduled_workflow(self):
+        triggers = self.workflow[True]
+        self.assertIn("schedule", triggers)
+        self.assertIn("workflow_dispatch", triggers)
+        self.assertNotIn("pull_request", triggers)
+        self.assertNotIn("push", triggers)
 
     def test_probe_job_runs_on_railway(self):
         self.assertEqual(self.job["runs-on"], ["self-hosted", "railway", "ephemeral"])
-
-    def test_probe_job_skips_forks(self):
-        self.assertIn("github.event.pull_request.head.repo.fork != true", self.job["if"])
 
     def test_probe_job_is_not_required(self):
         self.assertIs(self.job["continue-on-error"], True)
