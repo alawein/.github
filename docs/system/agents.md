@@ -89,15 +89,22 @@ its mapping remains UNVERIFIED.
 An agent does these in order before it edits anything.
 
 1. Read `AGENTS.md`. Follow any pointer it gives to the shared standards.
-2. Read the last 20 lines of `docs/lessons.md`. They are the recent mistakes.
+2. Read the last 5–20 lines of `docs/lessons.md`. They are the recent mistakes.
 3. Check the state: current branch, `git status`, the last five commits.
 4. Read the task: the issue, the brief, or the pasted request.
-5. Run the repo's check command once, before any change. Write down the
-   result. This is the baseline, so a later failure is not blamed on the wrong
-   change.
-6. Verify that any path, file, or command a doc names exists. Do not trust a
+5. Always open [Safety floor](#safety-floor). Open [Model routing](#model-routing)
+   when launching helpers. Do not fully load this file or
+   [delivery](delivery.md) unless the task needs more.
+6. When the task prepares, opens, pushes, or merges a PR, load delivery by
+   section:
+   [Branches, commits, and pull requests](delivery.md#branches-commits-and-pull-requests)
+   and [Merging and checks](delivery.md#merging-and-checks).
+7. Run the repo's check command once **only when this task will edit** the
+   repo. Skip for read-only or store-only work. Write down the result when
+   run; this is the baseline.
+8. Verify that any path, file, or command a doc names exists. Do not trust a
    reference that you did not open.
-7. Say back the goal, the scope, and the plan in five lines or fewer. Wait for
+9. Say back the goal, the scope, and the plan in five lines or fewer. Wait for
    a correction only if something is unclear. Otherwise go.
 
 A reusable prompt that runs this routine is in
@@ -131,13 +138,15 @@ Plan, test first, small change, verify, review, record.
   write an inferred claim as if it were verified.
 - Before you report done, list each requested item next to its evidence. An
   item with no evidence is not done.
-- Use the [evidence template](../../templates/agent/evidence.template.md): task,
-  base and reviewed content digest, files, versions, commands, exits, durations,
-  evidence paths, unrun gates, risk and rollback. Redact private inputs.
-- Record a separately started reviewer's session, inspected digest, verdict,
-  findings and resolutions. An author cannot certify their own fresh review.
-  This records provenance, not independence of judgment. Re-run affected checks
-  and obtain scoped re-review after relevant edits.
+- Use the [evidence template](../../templates/agent/evidence.template.md) for
+  routine closeout: task, scope, branch, digest, checks table, unrun gates,
+  risk, and approval (include merge permission). Redact private inputs.
+- Independent-review session details, digest manifests, runtime/version tables,
+  and rollback digests are optional unless the change is being promoted.
+- When promoting, record a separately started reviewer's session, inspected
+  digest, verdict, findings and resolutions. An author cannot certify their own
+  fresh review. This records provenance, not independence of judgment. Re-run
+  affected checks and obtain scoped re-review after relevant edits.
 - Report expected and observed state with source, capture time and
   PASS/WARN/FAIL. An inaccessible account or API is UNVERIFIED, never PASS.
 - Two failed attempts at the same step is the stop signal. Stop, say what you
@@ -185,6 +194,17 @@ move up on evidence. Tiers, not product names, because names change.
 | Cheap (small, fast) | Reading files, listing, searching, inventories, log summaries, format checks, simple renames |
 | Mid (default) | Writing code, tests, and docs, first-pass review, most edits, helpers that draft |
 | Top (slow, costly) | Hard or risky calls: design with cross-repo effect, auth, money, data deletion, release, a bug that two mid attempts failed, the final review of a risky PR |
+
+Cursor slug map (update when the host renames models):
+
+| Tier | Cursor slug to pass on Task/helper launches |
+| --- | --- |
+| Cheap | `composer-2.5-fast` |
+| Mid | session default / mid coding model (do not force Top) |
+| Top | strongest available for auth, money, release, final risky review |
+
+Scout, list, search, inventory, and format helpers **must** pass the Cheap
+slug. Do not launch those helpers with `inherit` when a Cheap slug is listed.
 
 - Helpers get the cheapest tier that can do their brief.
 - Move up a tier after two failed attempts, or when the change touches
@@ -264,6 +284,10 @@ of rewriting it.
 A skill is for a procedure you repeat, such as "cut a release" or "triage a
 failing check". Keep them small and few.
 
+Plan and diff authoring: do not embed full file bodies in plans. Cite paths and
+≤40-line hunks. Do not store full `task-*.diff` artifacts for review; record the
+commit SHA and `git show --stat` (plus ≤40-line hunks when needed).
+
 - Where they live. A repo skill lives at `.claude/skills/NAME/SKILL.md`, and
   `AGENTS.md` lists it by name so any tool can open the file by path. A skill
   used in many repos has one master in one repo. Every other copy is a copy:
@@ -332,7 +356,8 @@ weeks in a row. Do not add a number unless you will act on it.
 | [codex-notes.template.md](../../templates/agent/codex-notes.template.md) | Optional Codex-only notes |
 | [lessons.template.md](../../templates/agent/lessons.template.md) | The lessons log |
 | [session-start-prompt.md](../../templates/agent/session-start-prompt.md) | A prompt to start any session |
-| [orchestrated-improvement-prompt.md](../../templates/agent/orchestrated-improvement-prompt.md) | Master prompt for multi-step, evidence-driven software improvement sweeps |
+| [orchestrated-improvement-prompt.md](../../templates/agent/orchestrated-improvement-prompt.md) | Pointer to the thin orchestrated brief and phase appendices |
+| [orchestrated-improvement-brief.md](../../templates/agent/orchestrated-improvement-brief.md) | ≤800-tok coordinator brief for orchestrated improvement runs |
 | [review-checklist.md](../../templates/agent/review-checklist.md) | What a reviewing agent checks |
 | [evidence.template.md](../../templates/agent/evidence.template.md) | Content-bound check and review provenance |
 | [reviewers.md](reviewers.md) | Advisory reviewer routing and controls |

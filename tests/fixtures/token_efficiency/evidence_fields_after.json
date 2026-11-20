@@ -1,0 +1,12 @@
+{
+  "routine_fields": [
+    "Task:",
+    "Scope:",
+    "Branch:",
+    "Command and working directory",
+    "Required gate not run",
+    "Risk:",
+    "Approval:",
+    "Digest:"
+  ]
+}

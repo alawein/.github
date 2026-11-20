@@ -6,11 +6,18 @@ and starters for alawein repositories. This is the root agent instruction file;
 
 ## Start here
 
-1. Read the latest lines of `docs/lessons.md` and inspect `git status`.
-2. Read [agent rules](docs/system/agents.md) and
-   [delivery rules](docs/system/delivery.md) for shared policy.
-3. Run `just check` before editing and again after editing. Report any check
-   that could not run.
+1. Read the last 5–20 lines of `docs/lessons.md` and inspect `git status`.
+2. Always open [safety floor](docs/system/agents.md#safety-floor) (and
+   [model routing](docs/system/agents.md#model-routing) when launching helpers).
+   Do **not** fully load `docs/system/agents.md` or `docs/system/delivery.md`
+   unless the task needs them.
+3. When the task prepares, opens, pushes, or merges a PR, load delivery by
+   section:
+   [Branches, commits, and pull requests](docs/system/delivery.md#branches-commits-and-pull-requests)
+   and [Merging and checks](docs/system/delivery.md#merging-and-checks).
+4. Run `just check` before and after edits **only when this task edits** the
+   repo (Markdown, workflows, scripts, or templates). Skip for read-only /
+   store-only work. Report any check that could not run.
 
 ## Commands and checks
 

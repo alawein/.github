@@ -1,0 +1,10 @@
+{
+  "method": "utf8_bytes_div_4",
+  "paths": [
+    "AGENTS.md",
+    "docs/system/agents.md",
+    "docs/system/delivery.md"
+  ],
+  "forced_full_stack_tokens": 14746,
+  "note": "Measured 2026-11-19 from scout: 3302+17736+37949 bytes // 4"
+}

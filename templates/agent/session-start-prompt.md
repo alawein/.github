@@ -13,19 +13,26 @@ check. A short brief is fine.}}
 
 LOAD (in order, before any edit)
 1. Read AGENTS.md at the repo root. Follow it.
-2. Read the last 20 lines of docs/lessons.md.
+2. Read the last 5–20 lines of docs/lessons.md.
 3. Run git status, show the branch, and show the last 5 commits.
-4. Run the repo check command once and report the result. This is the
-   baseline.
-5. Open any path or command a doc names before you rely on it.
+4. Always open docs/system/agents.md#safety-floor (alawein/.github). Open
+   #model-routing when you launch helpers. Do not fully load agents.md or
+   delivery.md unless needed.
+5. If this task prepares, opens, pushes, or merges a PR, open delivery.md
+   sections #branches-commits-and-pull-requests and #merging-and-checks only.
+6. If this task will edit the repo, run the repo check command once and
+   report the baseline. Skip the check for read-only / store-only work.
+7. Open any path or command a doc names before you rely on it.
 
 RULES
 - Stay inside this repo and the paths in scope.
 - Stage named files only. Never git add -A. Never commit to main.
-- Use the cheapest model tier that can do each step. Use helpers only when
-  three or more pieces are independent. One owner per file. Helpers do not
-  commit. Check the disk yourself after each helper. Never trust a helper's
-  report.
+- Use the cheapest model that can do each step. For scout/list/search/
+  inventory/format helpers, launch with slug composer-2.5-fast (or the
+  current Cheap slug in agents.md#model-routing). Do not pass inherit for
+  those helpers. Use helpers only when three or more pieces are independent.
+  One owner per file. Helpers do not commit. Check the disk yourself after
+  each helper. Never trust a helper's report.
 - No "done", "fixed", or "passing" without command output.
 - Two failed attempts at one step: stop, say what you tried, then change the
   approach or ask.

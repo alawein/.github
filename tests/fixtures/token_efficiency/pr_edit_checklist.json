@@ -1,0 +1,16 @@
+{
+  "must": [
+    {
+      "pattern": "delivery\\.md#branches-commits-and-pull-requests",
+      "reason": "PR-edit tasks must be directed to delivery branches/PR section"
+    },
+    {
+      "pattern": "delivery\\.md#merging-and-checks",
+      "reason": "PR-edit tasks must be directed to delivery merge section"
+    },
+    {
+      "pattern": "prepare|prepar",
+      "reason": "PR-prep edits must also trigger delivery section load"
+    }
+  ]
+}
