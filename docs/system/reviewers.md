@@ -28,8 +28,10 @@ observed directly. Local configuration is not proof of activation or enforcement
   duplicating them through reviewer tools or GitHub Checks ingestion.
 - Keep code writing, autofix, automatic titles, labels, assignments, issue
   planning, external integrations and post-merge actions off. Review comments
-  and summaries need the named activation approval. Skipped, paused or failed
-  reviews are visible statuses, never approval.
+  and summaries need the named activation approval. Skipped, paused,
+  rate-limited or failed reviews are visible blockers, never approval.
+- Fix a PR's branch in place. Closing a PR and opening a replacement restarts
+  every automatic reviewer and spends its review limit again.
 - Verify global overrides and the effective configuration after owner login:
   [workspace/organization overrides can outrank YAML](https://docs.coderabbit.ai/configuration/configuration-inheritance).
   Native guideline discovery may include multiple files; thin adapters must
@@ -45,6 +47,10 @@ Choose one secondary reviewer for one named risk: Codex for security or
 agent-written changes; Bugbot for complex logic. Supply paths, reviewed
 revision and existing findings. Every outgoing request and any spend need
 named approval; commands below are documented routes, not permission to send.
+A request an agent posts for itself is not a named owner request.
+
+Findings start with `bug:`, `question:` or `nit:`. MAIOS keeps its own
+blocker, major, minor and note levels: `bug:` maps to blocker or major.
 
 | Reviewer | One-shot route and required dormant state | Primary source |
 | --- | --- | --- |
@@ -52,7 +58,7 @@ named approval; commands below are documented routes, not permission to send.
 | Bugbot | `bugbot run` or `cursor review`; keep Autofix off. Verify repo-wide manual-only support (`manualTriggerOnly`); a personal mention-only setting covers only that person's PRs. Otherwise keep the repo disabled. Native rules: `.cursor/BUGBOT.md`. | [Bugbot](https://cursor.com/docs/bugbot) |
 | Kilo | Keep Code Reviews off, including repo overrides; no one-shot comment route is documented for that agent. The separate Kilo Bot supports `@kilocode-bot` questions and consumes credits; verify its identity before any request, and never request fixes. | [Code Reviews](https://kilo.ai/docs/automate/code-reviews/github), [Kilo Bot](https://blog.kilo.ai/p/introducing-kilo-for-github) |
 | Greptile | `@greptileai`; automatic review and auto-approval off. `autoReview: []` disables automatic events; inspect source-branch configuration as well as the dashboard. | [Requests](https://www.greptile.com/docs/code-review/developer-essentials), [configuration](https://www.greptile.com/docs/code-review/greptile-json-reference) |
-| Claude | Managed Manual mode and `@claude review`; never `@claude review always`. Inspect managed review and the separate GitHub Action; the latter can implement changes. Eligibility is UNVERIFIED. | [Managed review](https://code.claude.com/docs/en/code-review), [GitHub Action](https://code.claude.com/docs/en/github-actions) |
+| Claude | `@claude review` from the owner, or `workflow_dispatch` of `claude-review.yml` by the owner from the default branch. The job checks out the default branch, runs in `dontAsk` permission mode with a comment-only tool allowlist, and needs `CLAUDE_CODE_OAUTH_TOKEN`. Inline comments exist only on the comment route. Never `@claude review always`. Managed review needs a Team or Enterprise plan and stays off. Do not add the interactive `@claude` workflow, which can implement changes. | [GitHub Action](https://code.claude.com/docs/en/github-actions), [managed review](https://code.claude.com/docs/en/code-review), [permission modes](https://code.claude.com/docs/en/permission-modes) |
 | Copilot | Select Copilot in the PR Reviewers menu. Keep all personal/ruleset automatic requests, approvals and approval-counting off. | [Manual review](https://docs.github.com/en/copilot/how-tos/use-copilot-agents/request-a-code-review/use-code-review), [configuration](https://docs.github.com/en/copilot/how-tos/copilot-on-github/set-up-copilot/configure-code-review) |
 | Grok | No trigger until installed identity, publisher and controls are verified; do not infer them from another Grok-branded product. | [Current Cursor product](https://cursor.com/docs/grok-bot) |
 
