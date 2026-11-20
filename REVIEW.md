@@ -1,7 +1,7 @@
 # Review instructions
 
 Review-only rules for this repository. CodeRabbit reads this file through
-`knowledge_base.code_guidelines`, and the `claude-review.yml` prompt tells
+`knowledge_base.code_guidelines`, and the planned `claude-review.yml` prompt (not yet shipped) will tell
 Claude to read it. Codex reads the `## Code Review Rules` section of
 `AGENTS.md`, and Bugbot reads `.cursor/BUGBOT.md`; both point here. Reviewers
 read this file from the base branch, so merge a change here before relying on
