@@ -70,14 +70,18 @@ not supply owner merge permission. Other gated actions need named approval;
 never expose secrets.
 Follow `docs/system/agents.md` in `alawein/.github`.
 
-## Review guidelines
+## Code Review Rules
 
-Follow `docs/system/reviewers.md` in `alawein/.github`. CodeRabbit is the sole
-automatic reviewer after owner activation; all other reviewers need a named,
-scoped request. Findings need actionable evidence and never authorize gated
-actions. Preserve frozen inputs, exact required checks, zero PR test retries,
-no stacks or queue, and the three-waiting-PR cap. Account state and technical
-enforcement remain UNVERIFIED until observed.
+Follow `docs/system/reviewers.md` in `alawein/.github` and `REVIEW.md`.
+CodeRabbit is the sole automatic reviewer after owner activation; all other
+reviewers need a named, scoped request. Comment only; never approve, request
+changes, push or merge. Start each finding with `bug:`, `question:` or `nit:`
+(at most 5 nits). A `bug:` needs 80% confidence and a `file:line` citation.
+Findings need actionable evidence and never authorize gated actions. A skipped,
+paused or rate-limited review is a visible blocker, never a pass. Preserve
+frozen inputs, exact required checks, zero PR test retries, no stacks or queue,
+and the three-waiting-PR cap. Account state and technical enforcement remain
+UNVERIFIED until observed.
 
 ## Verify before you say done
 

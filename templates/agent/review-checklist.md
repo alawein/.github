@@ -80,14 +80,16 @@ Return a verdict first: PASS or FIX. Then findings, blockers first.
 
 ```text
 Verdict: FIX
-1. path/file.ext:42 blocker: the empty-list case returns None and the caller
+1. path/file.ext:42 bug: the empty-list case returns None and the caller
    indexes it. Test needed.
-2. path/other.ext:10 nit: name does not match the repo pattern.
+2. path/other.ext:10 question: still used by scripts/setup-repo.ps1?
+3. path/other.ext:12 nit: name does not match the repo pattern.
 Checks I ran: the repo check command, result: 2 failures (list them).
 ```
 
 - One line per finding, on the file and line. State the fact and its
   consequence, then stop.
 - Ask when unsure: "still used?", not "you should remove it".
-- Prefix a minor point with `nit:`. Drop the weakest nits.
+- Prefix each finding with `bug:`, `question:` or `nit:`. Keep at most 5
+  nits; drop the weakest.
 - No praise padding, no recap of the diff.

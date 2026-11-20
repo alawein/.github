@@ -1,0 +1,14 @@
+# Bugbot reads this file from the PR's base branch. It cannot make Bugbot
+# manual-only: that is the per-repo manualTriggerOnly setting (Admin API or
+# dashboard). Keys are the documented ones at https://cursor.com/docs/bugbot.
+version: 1
+triggers:
+  drafts: false
+  frequency: oncePerPr
+review:
+  incremental: true
+prSummary:
+  mode: disabled
+  riskScore: false
+autofix:
+  mode: disabled

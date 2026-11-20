@@ -57,14 +57,18 @@ not supply owner merge permission. Other gated actions need named approval;
 never expose secrets.
 Follow the [shared authority and evidence rules](docs/system/agents.md#safety-floor).
 
-## Review guidelines
+## Code Review Rules
 
-Follow the [reviewer policy](docs/system/reviewers.md). CodeRabbit is the sole
-automatic reviewer after named owner activation; secondary reviewers need
-named, scoped requests. Findings need actionable evidence and never authorize
-gated actions. Preserve required CI, frozen inputs, zero PR test retries, no
-stacks or queue and at most three waiting PRs. Effective account settings and
-technical enforcement remain UNVERIFIED until observed.
+Follow the [reviewer policy](docs/system/reviewers.md) and `REVIEW.md`.
+CodeRabbit is the sole automatic reviewer after named owner activation;
+secondary reviewers need named, scoped requests. Comment only; never approve,
+request changes, push or merge. Start each finding with `bug:`, `question:` or
+`nit:` (at most 5 nits). A `bug:` needs 80% confidence and a `file:line`
+citation. Findings need actionable evidence and never authorize gated actions.
+A skipped, paused or rate-limited review is a visible blocker, never a pass.
+Preserve required CI, frozen inputs, zero PR test retries, no stacks or queue
+and at most three waiting PRs. Effective account settings and technical
+enforcement remain UNVERIFIED until observed.
 
 ## Verify and close out
 
