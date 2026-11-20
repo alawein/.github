@@ -74,9 +74,11 @@ Keep the default until a self-hosted pool is proven green. Fork pull requests
 ignore `runner` and always use `ubuntu-24.04`, so fork code never reaches a
 self-hosted pool.
 
-`ci.yml`'s `metadata-tests-railway` job proves the Railway pool: it runs the
-`scripts/tests` fast path on `[self-hosted, railway, ephemeral]` with
-`continue-on-error`, skips fork pull requests, and is not a required check.
+`railway-pool-probe.yml` proves the Railway pool on a weekly schedule (and
+`workflow_dispatch`): it runs the `scripts/tests` fast path on
+`[self-hosted, railway, ephemeral]` with `continue-on-error` and is not a
+required check. It is intentionally absent from PR/push `ci.yml` so every kit
+change does not dual-run metadata on self-hosted.
 
 `python-ci.yml` accepts `uv-install-method` (`setup-uv` default, or `pip`). Use
 `pip` when `astral-sh/setup-uv` fails on GitHub Releases CDN timeouts (504s); it
@@ -459,10 +461,11 @@ without `edited`. Title, body, and `pr-policy` gates stay in `policy.yml`, the
 only kit workflow that reruns on `edited`, so a body edit does not cancel CI on
 the same SHA.
 
-**Railway pool probe.** Task 2 set `MOVE_RAILWAY_PROBE=no`. The
-`metadata-tests-railway` job remains on the PR/push CI path, is non-required,
-skips fork PRs, and uses `continue-on-error`. Moving it to a scheduled workflow
-stays deferred until fresh timings justify it.
+**Railway pool probe.** Fresh 2026-11-20 timings found `metadata-tests-railway`
+on **25/25** recent successful CI runs (median ~27s job; earlier Task 2 sample
+had it on only 26.7% of PRs). The probe now lives in `railway-pool-probe.yml`
+(weekly Monday `37 8 * * 1` plus `workflow_dispatch`), still non-required with
+`continue-on-error`, and is removed from PR/push `ci.yml`.
 
 **Gate consolidation (limited).** Task 2 allowed collapsing duplicate work
 inside jobs, not merging bare gate names. The duplicate `scripts/tests` steps in
