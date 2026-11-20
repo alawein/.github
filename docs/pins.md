@@ -16,6 +16,7 @@ pins used in `.github/workflows/`. When a workflow changes, regenerate it from t
 | actions/setup-node | v7.1.0 | `949feb2413d6458794dcd2491c4babbbce0c15c1` | 2026-11-13 | actions/setup-node |
 | actions/setup-python | v7.1.0 | `6d4fd22b20465ccc0f7354476588e8df7c9ca0e0` | 2026-11-13 | actions/setup-python |
 | amannn/action-semantic-pull-request | v6.1.2 | `2252a14e810aa9b85c2d560bd7070c802206ecf6` | 2026-11-13 | amannn/action-semantic-pull-request |
+| anthropics/claude-code-action | v1.0.283 | `f431adaf77e0fecf918431e75a2b5b45b85af002` | 2026-11-20 | anthropics/claude-code-action |
 | astral-sh/setup-uv | v10.3.3 | `68559e99cc807c1eb7e9238fd43a15bba460eec2` | 2026-11-13 | astral-sh/setup-uv |
 | DavidAnson/markdownlint-cli2-action | v25.0.0 | `696eb3f2509270d7b882d2aa68347bc676e7af34` | 2026-11-13 | DavidAnson/markdownlint-cli2-action |
 | lycheeverse/lychee-action | v2.9.0 | `e7477775783ea5526144ba13e8db5eec57747ce8` | 2026-09-30 | lycheeverse/lychee-action |
