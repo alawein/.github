@@ -1,0 +1,9 @@
+{
+  "method": "utf8_bytes_div_4",
+  "always_load": ["AGENTS.md", "docs/system/agents.md#safety-floor"],
+  "on_demand": [
+    "docs/system/delivery.md#branches-commits-and-pull-requests",
+    "docs/system/delivery.md#merging-and-checks"
+  ],
+  "expected_max_always_tokens": 4500
+}

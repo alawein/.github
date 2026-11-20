@@ -10,12 +10,16 @@ line must prevent a mistake.
 ## Start here
 
 1. Read this file.
-2. Read the last 20 lines of `docs/lessons.md`.
-3. Run `git status` and the check command below once, before any change.
-4. Shared standards: the `alawein/.github` repo, `docs/system/agents.md` for
-   agent rules and `docs/system/delivery.md` for branches, commits, and PRs. This
-   file adds restrictions; it cannot relax owner gates or account policy.
-   Follow the shared policy precedence and cite its stable rule IDs.
+2. Read the last 5–20 lines of `docs/lessons.md`.
+3. Run `git status`. Run the check command below **only when this task edits**
+   the repo; skip for read-only / store-only work.
+4. Shared standards live in `alawein/.github`: always open
+   `docs/system/agents.md#safety-floor` (and `#model-routing` when launching
+   helpers). Load `docs/system/delivery.md` **by section** when the task
+   prepares, opens, pushes, or merges a PR (`#branches-commits-and-pull-requests`,
+   `#merging-and-checks`). Do not fully load agents.md or delivery.md by
+   default. This file adds restrictions; it cannot relax owner gates or
+   account policy. Cite stable rule IDs.
 
 Stack naming and structure guidance lives in `docs/system/repos.md#stack-conventions`
 in `alawein/.github`. Follow the current framework and package layout; do not

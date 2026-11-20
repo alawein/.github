@@ -1,0 +1,26 @@
+{
+  "must_not": [
+    {
+      "pattern": "Run `just check` before editing and again after editing",
+      "reason": "Old Start here forced check on every session including scouts"
+    },
+    {
+      "pattern": "Read \\[agent rules\\]\\(docs/system/agents\\.md\\) and\\s+\\[delivery rules\\]\\(docs/system/delivery\\.md\\) for shared policy",
+      "reason": "Old Start here forced full agents+delivery"
+    },
+    {
+      "pattern": "Run the repo check command once and report the result\\. This is the\\s+baseline",
+      "reason": "Session-start must not force baseline check for read-only scouts"
+    }
+  ],
+  "must": [
+    {
+      "pattern": "read-only|store-only|not editing",
+      "reason": "Must gate checks away from read-only work"
+    },
+    {
+      "pattern": "agents\\.md#safety-floor",
+      "reason": "Safety floor must remain in slim Start here"
+    }
+  ]
+}
