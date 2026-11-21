@@ -242,10 +242,13 @@ An agent's diff can look right and be wrong. Look for these first:
 - `pr-policy` is an additional opt-in context. The kit's always-report producer
   exists locally; settings promotion requires an eligible successful PR run and
   named owner approval. Preserve legacy consumers until their reviewed adoption.
+  Live `alawein/alawein` (class profile) requires `fleet_base` + `pr-policy`
+  only; do not add `node-ci` until that repo publishes the job (GIT-32 hold
+  2026-11-20). See [ci.md](../ci.md) near `rulesets/checks.json`.
 - A repo with code (tool, site, or lab) also requires its test check:
   `node-ci` for TypeScript tools and sites, `python-ci` for Python tools and
   labs. A check that never blocks is decoration, and code is where agents make
-  mistakes.
+  mistakes. Profile and docs have no language test check.
 - The approved hub profile uses the single required `check` job; its exact
   scope is in [CI](../ci.md). Preserve all current names and always-report
   behavior. Site E2E stays advisory pending the owner's 30-clean-day decision.

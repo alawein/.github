@@ -52,7 +52,7 @@ and the banner. Visibility is a separate choice (see "Visibility").
 
 | Class | What it is | Starter | CI stub | Test check | Banner kind |
 | --- | --- | --- | --- | --- | --- |
-| profile | The `alawein/alawein` repo. One screen: who, selected work, links. Always public | `docs` | `docs.yml` | none | docs |
+| profile | The `alawein/alawein` repo. One screen: who, selected work, links. Always public. Required checks: `fleet_base` (+ opt-in `pr-policy`); never `node-ci` until a job exists | `docs` | `docs.yml` | none | docs |
 | docs | Guides, notes, a knowledge base, or a kit of templates | `docs` | `docs.yml` | none | docs |
 | tool | A library, CLI, or app in TypeScript or Python | `typescript` or `python` | `node.yml` or `python.yml` | `node-ci` or `python-ci` | library or tool |
 | site | A website built with Astro. The host is chosen later | `site` | `site.yml` | `node-ci` | site |
