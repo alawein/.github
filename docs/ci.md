@@ -164,6 +164,15 @@ required). `tests/test_check_list.py` fails when any copy (ruleset templates,
 setup and verify scripts, the hygiene defaults, this repo's gate jobs)
 disagrees with it, so change the list there first.
 
+`language_extra` maps a language to `node-ci` or `python-ci` only when that job
+exists in the consumer's `ci.yml`. Profile and docs classes stay on `fleet_base`
+(plus opt-in `pr-policy`); they never take a language check from the catalog
+alone. Named hold (2026-11-20): `alawein/alawein` required checks are
+`fleet_base` + `pr-policy` only — do **not** require `node-ci` until a job
+publishes that context. `Get-CheckPolicy` already omits language checks for
+`profile` and `docs`; setup and Settings Apply must match that, not invent a
+language from the repo name.
+
 `hygiene.yml` accepts `expected-required-checks`, a comma-separated list defaulting
 to the original four contexts; it has no `kit-ref` input. Callers pin the reviewed
 workflow release SHA on `uses:`. Released v1.3.0 separately pins audit source to

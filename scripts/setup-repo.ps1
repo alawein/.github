@@ -31,7 +31,8 @@
 .PARAMETER Language
   typescript (default) or python. Only a tool needs it: it picks the test check
   (node-ci or python-ci). A site uses node-ci and a lab uses python-ci. The
-  profile and docs classes have no test check.
+  profile and docs classes have no test check (alawein/alawein stays fleet_base
+  + optional pr-policy; never require node-ci until ci.yml publishes it).
 
 .PARAMETER Topics
   Up to 20 topics, lowercase with hyphens. Omit to leave topics alone.
