@@ -1,6 +1,6 @@
 # Review instructions
 
-Review-only rules for this repository. CodeRabbit reads this file through
+Review-only rules for this repository. Kilo Code reads this file from the base branch, CodeRabbit reads it through
 `knowledge_base.code_guidelines`, and the planned `claude-review.yml` prompt (not yet shipped) will tell
 Claude to read it. Codex reads the `## Code Review Rules` section of
 `AGENTS.md`, and Bugbot reads `.cursor/BUGBOT.md`; both point here. Reviewers
@@ -9,13 +9,15 @@ it.
 
 ## Shared policy
 
-The owner of these rules is `docs/system/reviewers.md`, revision `2026-10-02`.
+The owner of these rules is `docs/system/reviewers.md`, revision `2026-11-21`.
 Some reviewers cannot open links, so the parts a review needs are copied here.
 If this file and the policy disagree, the policy wins.
 
-- RV-001 routing: CodeRabbit is the only automatic reviewer. Any other reviewer
-  runs once, on the owner's named request, for one named risk. A request an
-  agent posts for itself is not an owner request.
+- RV-001 routing: Kilo Code is the primary automatic reviewer across all
+  repositories; CodeRabbit also runs automatically on `alawein/maios`,
+  `alawein/alawein`, and `alawein/.github`. Any other reviewer runs once, on
+  the owner's named request, for one named risk. A request an agent posts for
+  itself is not an owner request.
 - RV-002 findings: findings are advice. Each needs evidence. Drop a finding
   whose root cause and path another reviewer or CI already reported on this
   revision.
