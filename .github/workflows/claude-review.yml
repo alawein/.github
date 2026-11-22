@@ -137,9 +137,11 @@ jobs:
             echo "::error::Refusing to run Claude review on fork PR #${PR_NUM}."
             exit 1
           fi
-          echo "pr-number=${PR_NUM}" >> "$GITHUB_OUTPUT"
-          echo "model=${MODEL}" >> "$GITHUB_OUTPUT"
-          echo "max-turns=${MAX_TURNS}" >> "$GITHUB_OUTPUT"
+          {
+            echo "pr-number=${PR_NUM}"
+            echo "model=${MODEL}"
+            echo "max-turns=${MAX_TURNS}"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Check out trusted default branch
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
