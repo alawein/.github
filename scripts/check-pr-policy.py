@@ -227,7 +227,7 @@ def check(event: dict, *, require_sections: bool = False) -> list[str]:
 
 
 def commit_errors(commits: list[dict]) -> list[str]:
-    """Return one violation per attribution line found in each commit message."""
+    """Return one violation per attribution pattern that matches each commit message."""
     return [f"Commit {commit['sha'][:7]} has an {label}."
             for commit in commits for label, pattern in ATTRIBUTION if pattern.search(commit["message"])]
 
@@ -265,6 +265,10 @@ def main():
             total = pr.get("commits") if isinstance(pr, dict) else None
             if type(total) is not int or len(commits) != total:
                 errors.append(f"Commit list has {len(commits)} of {total} PR commits.")
+            # The API lists oldest first; a force-push after the event would end the list elsewhere.
+            head = pr.get("head") if isinstance(pr, dict) else None
+            if not commits or not isinstance(head, dict) or commits[-1]["sha"] != head.get("sha"):
+                errors.append("Fetched commits do not end at the PR head.")
         except (OSError, ValueError) as error:
             errors.append(f"Cannot read commits: {error.__class__.__name__}.")
     for error in errors:

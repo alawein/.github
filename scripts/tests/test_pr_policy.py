@@ -334,9 +334,10 @@ def run_cli(event_data, commits_path):
                               capture_output=True, text=True)
 
 
-def with_commits(count):
+def with_commits(count, head="abc1234"):
     data = event()
     data["pull_request"]["commits"] = count
+    data["pull_request"]["head"]["sha"] = head
     return data
 
 
@@ -376,7 +377,7 @@ class CommitAttributionTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "commits.jsonl"
             path.write_text("\n".join(lines) + "\n", encoding="utf-8")
-            result = run_cli(with_commits(101), path)
+            result = run_cli(with_commits(101, "badc0de"), path)
         self.assertEqual(result.returncode, 1)
         self.assertIn("Commit badc0de has an AI Co-Authored-By trailer.", result.stdout)
 
@@ -396,6 +397,15 @@ class CommitAttributionTests(unittest.TestCase):
             result = run_cli(with_commits(251), path)
         self.assertEqual(result.returncode, 1)
         self.assertIn("::error::Commit list has 250 of 251 PR commits.", result.stdout)
+
+    def test_cli_head_mismatch_fails(self):
+        # A force-push between the event and the fetch must not pass on commits the event never named.
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "commits.jsonl"
+            path.write_text(json.dumps({"sha": "abc1234", "message": "feat: x"}) + "\n", encoding="utf-8")
+            result = run_cli(with_commits(1, "fff9999"), path)
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("::error::Fetched commits do not end at the PR head.", result.stdout)
 
 
 if __name__ == "__main__":
