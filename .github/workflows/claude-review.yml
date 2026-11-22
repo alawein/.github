@@ -1,0 +1,174 @@
+name: Claude PR review
+
+# Reusable, owner-gated, comment-only Claude Code review workflow.
+# Callers trigger on `pull_request` (labeled: review:claude), `issue_comment`
+# (created: @claude review on a PR), or `workflow_dispatch` (pr_number).
+# Always checks out the trusted default branch, never PR head code, and
+# refuses fork PRs and non-owner actors (RV-001).
+
+on:
+  workflow_call:
+    inputs:
+      allowed-actor:
+        description: GitHub login authorized to trigger Claude reviews.
+        type: string
+        default: alawein
+      label-trigger:
+        description: Pull request label that triggers an on-demand Claude review.
+        type: string
+        default: review:claude
+      trigger-phrase:
+        description: Comment phrase that triggers an on-demand Claude review.
+        type: string
+        default: "@claude review"
+      pr-number:
+        description: Pull request number (required for workflow_dispatch callers).
+        type: string
+        default: ""
+      model:
+        description: Claude model ID to run for the review.
+        type: string
+        default: claude-sonnet-5-5
+      max-turns:
+        description: Maximum agent turns per review run.
+        type: string
+        default: "15"
+    secrets:
+      CLAUDE_CODE_OAUTH_TOKEN:
+        description: Claude Code OAuth token (preferred for personal subscriptions).
+        required: false
+      ANTHROPIC_API_KEY:
+        description: Anthropic API key (fallback when OAuth token is not supplied).
+        required: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: claude-review-${{ github.repository }}-${{ github.event.pull_request.number || github.event.issue.number || inputs.pr-number || github.run_id }}
+  cancel-in-progress: false
+
+jobs:
+  review:
+    name: Claude review
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    if: >-
+      github.actor == inputs.allowed-actor &&
+      (
+        github.event_name == 'workflow_dispatch' ||
+        (
+          github.event_name == 'pull_request' &&
+          github.event.action == 'labeled' &&
+          github.event.label.name == inputs.label-trigger &&
+          !github.event.pull_request.head.repo.fork
+        ) ||
+        (
+          github.event_name == 'issue_comment' &&
+          github.event.action == 'created' &&
+          github.event.issue.pull_request != null &&
+          contains(github.event.comment.body, inputs.trigger-phrase)
+        )
+      )
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+      id-token: write
+    steps:
+      - name: Refuse to run in an archive repo
+        env:
+          REPO: ${{ github.repository }}
+        run: |
+          case "${REPO#*/}" in
+            ARCHIVE-*) echo "::error::${REPO} is an archive repo. Workflows never run here."; exit 1 ;;
+          esac
+
+      - name: Validate caller inputs and auth secret
+        id: guard
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          PR_NUMBER_INPUT: ${{ inputs.pr-number }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          PR_NUMBER_EVENT: ${{ github.event.pull_request.number }}
+          MODEL: ${{ inputs.model }}
+          MAX_TURNS: ${{ inputs.max-turns }}
+          HAS_OAUTH: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN != '' }}
+          HAS_API_KEY: ${{ secrets.ANTHROPIC_API_KEY != '' }}
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          if [ "$HAS_OAUTH" != "true" ] && [ "$HAS_API_KEY" != "true" ]; then
+            echo "::error::Provide either CLAUDE_CODE_OAUTH_TOKEN or ANTHROPIC_API_KEY secret."
+            exit 1
+          fi
+          if [[ ! "$MODEL" =~ ^[A-Za-z0-9._-]+$ ]]; then
+            echo "::error::Invalid model identifier."
+            exit 1
+          fi
+          if [[ ! "$MAX_TURNS" =~ ^[1-9][0-9]{0,2}$ ]]; then
+            echo "::error::max-turns must be a positive integer."
+            exit 1
+          fi
+          case "$EVENT_NAME" in
+            workflow_dispatch)
+              PR_NUM="$PR_NUMBER_INPUT"
+              ;;
+            pull_request)
+              PR_NUM="$PR_NUMBER_EVENT"
+              ;;
+            issue_comment)
+              PR_NUM="$ISSUE_NUMBER"
+              ;;
+            *)
+              echo "::error::Unsupported trigger event: ${EVENT_NAME}"
+              exit 1
+              ;;
+          esac
+          if [[ ! "$PR_NUM" =~ ^[1-9][0-9]{0,8}$ ]]; then
+            echo "::error::Missing or invalid pull request number."
+            exit 1
+          fi
+          # Verify PR is not from a fork even on issue_comment or workflow_dispatch.
+          IS_FORK="$(gh api "repos/${REPO}/pulls/${PR_NUM}" --jq '.head.repo.fork')"
+          if [ "$IS_FORK" != "false" ]; then
+            echo "::error::Refusing to run Claude review on fork PR #${PR_NUM}."
+            exit 1
+          fi
+          echo "pr-number=${PR_NUM}" >> "$GITHUB_OUTPUT"
+          echo "model=${MODEL}" >> "$GITHUB_OUTPUT"
+          echo "max-turns=${MAX_TURNS}" >> "$GITHUB_OUTPUT"
+
+      - name: Check out trusted default branch
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Run comment-only Claude review
+        uses: anthropics/claude-code-action@f431adaf77e0fecf918431e75a2b5b45b85af002 # v1.0.283
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          trigger_phrase: ${{ inputs.trigger-phrase }}
+          label_trigger: ${{ inputs.label-trigger }}
+          allowed_bots: ""
+          allow_fork_prs: "false"
+          restrict_untrusted_prs: "true"
+          display_report: "false"
+          show_full_output: "false"
+          prompt: |
+            Review pull request #${{ steps.guard.outputs.pr-number }} in ${{ github.repository }}.
+            Read REVIEW.md (and CLAUDE.md / AGENTS.md when present) from the checked-out default branch first and follow every rule verbatim.
+            Inspect the PR diff, metadata, and existing reviewer comments using read-only gh/git commands.
+            Do not restate findings already reported by CI, Kilo Code, or CodeRabbit; add only distinct evidence-backed findings.
+            Comment-only: post advisory findings on the PR. Never approve, request changes, push commits, edit files, or resolve another reviewer's thread.
+            End with the exact reviewed head SHA, model, advisory verdict, lenses applied, and any uncovered scope.
+          claude_args: >-
+            --model ${{ steps.guard.outputs.model }}
+            --max-turns ${{ steps.guard.outputs.max-turns }}
+            --permission-mode dontAsk
+            --allowedTools "Read,Grep,Glob,Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh pr comment:*),Bash(gh api repos/*/*/pulls/*:*),Bash(git diff:*),Bash(git log:*),Bash(git show:*)"
