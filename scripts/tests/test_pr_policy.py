@@ -318,5 +318,85 @@ class PolicyTests(unittest.TestCase):
         self.assertIn("PR policy compliant", result.stdout)
 
 
+def commit_errors():
+    spec = importlib.util.spec_from_file_location("pr_policy_commits", SCRIPT)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module.commit_errors
+
+
+def run_cli(event_data, commits_path):
+    with tempfile.TemporaryDirectory() as directory:
+        path = Path(directory) / "event.json"
+        path.write_text(json.dumps(event_data), encoding="utf-8")
+        return subprocess.run([sys.executable, str(SCRIPT), "--event", str(path), "--commits", str(commits_path)],
+                              env={**os.environ, "GITHUB_EVENT_NAME": "pull_request"},
+                              capture_output=True, text=True)
+
+
+def with_commits(count):
+    data = event()
+    data["pull_request"]["commits"] = count
+    return data
+
+
+class CommitAttributionTests(unittest.TestCase):
+    def test_cursor_trailer_rejected(self):
+        msg = "chore: pin\n\nCo-authored-by: Cursor Agent <cursoragent@cursor.com>"
+        self.assertEqual(commit_errors()([{"sha": "de8259c0", "message": msg}]),
+                         ["Commit de8259c has an AI Co-Authored-By trailer."])
+
+    def test_claude_trailer_rejected(self):
+        msg = "fix: x\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
+        self.assertEqual(len(commit_errors()([{"sha": "6ddbc34", "message": msg}])), 1)
+
+    def test_bot_coauthor_rejected(self):
+        msg = "ci: x\n\nCo-authored-by: github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>"
+        self.assertEqual(len(commit_errors()([{"sha": "abc1234", "message": msg}])), 1)
+
+    def test_human_coauthor_allowed(self):
+        msg = "feat: x\n\nCo-authored-by: Jane Doe <jane@example.com>"
+        self.assertEqual(commit_errors()([{"sha": "abc1234", "message": msg}]), [])
+
+    def test_generated_footer_rejected(self):
+        msg = "docs: x\n\nGenerated with some tool"
+        self.assertEqual(commit_errors()([{"sha": "abc1234", "message": msg}]),
+                         ["Commit abc1234 has an 'Generated with/by' or 'Made with' footer."])
+
+    def test_cli_missing_commits_file_fails_on_pr(self):
+        with tempfile.TemporaryDirectory() as directory:
+            result = run_cli(event(), Path(directory) / "absent.jsonl")
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("::error::Cannot read commits", result.stdout)
+        self.assertNotIn("Traceback", result.stderr)
+
+    def test_cli_101st_commit_checked(self):
+        lines = [json.dumps({"sha": f"{i:07x}", "message": "chore: ok"}) for i in range(100)]
+        lines.append(json.dumps({"sha": "badc0de", "message": "x\n\nCo-authored-by: Cursor Agent <c@cursor.com>"}))
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "commits.jsonl"
+            path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+            result = run_cli(with_commits(101), path)
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("Commit badc0de has an AI Co-Authored-By trailer.", result.stdout)
+
+    def test_cli_clean_commits_pass(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "commits.jsonl"
+            path.write_text(json.dumps({"sha": "abc1234", "message": "feat: x"}) + "\n", encoding="utf-8")
+            result = run_cli(with_commits(1), path)
+        self.assertEqual(result.returncode, 0, result.stdout)
+
+    def test_cli_truncated_commit_list_fails(self):
+        # The commits API stops at 250; a PR with more must not pass on a partial list.
+        lines = [json.dumps({"sha": f"{i:07x}", "message": "chore: ok"}) for i in range(250)]
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "commits.jsonl"
+            path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+            result = run_cli(with_commits(251), path)
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("::error::Commit list has 250 of 251 PR commits.", result.stdout)
+
+
 if __name__ == "__main__":
     unittest.main()
