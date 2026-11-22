@@ -49,7 +49,7 @@ jobs:
       pull-requests: write
       issues: write
       id-token: write
-    uses: alawein/.github/.github/workflows/claude-review.yml@cc3b595f8e9e92a9ed6fc63b3be177cc8a571965 # claude-review
+    uses: alawein/.github/.github/workflows/claude-review.yml@cc3b595f8e9e92a9ed6fc63b3be177cc8a571965 # quality gates
     with:
       allowed-actor: alawein
       label-trigger: review:claude
