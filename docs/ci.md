@@ -95,6 +95,12 @@ Context, Changes, Testing Evidence, Screenshots/Logs, and Rollback Plan with act
 prose. Drafts may defer these sections. Existing callers retain the earlier
 metadata contract until they opt in at a compatible immutable kit revision.
 
+`pr-policy.yml` also rejects any PR commit whose message carries an AI
+`Co-authored-by:` trailer or a "Generated with" footer, because squash merges
+copy every commit's trailers into the merged commit. It lists the PR's commits
+through the API, so a caller pinning a revision with this check must grant its
+`run-pr-policy` job `contents: read` and `pull-requests: read`.
+
 The metadata job also validates `default.json` with Renovate `44.238.1` on
 Node `26.13.0`, then exercises its actual update-rule and template engines.
 The cases reject minor, major, unknown, pin, and digest auto-merges and verify
