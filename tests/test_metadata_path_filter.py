@@ -29,13 +29,21 @@ class MetadataPathFilterTests(unittest.TestCase):
 
     def test_paths_require_heavy_metadata_suite_fixtures(self):
         self.assertFalse(paths_require_heavy_metadata_suite(["docs/ci.md"]))
+        self.assertFalse(paths_require_heavy_metadata_suite(["scripts/tests/test_pr_policy.py"]))
         self.assertTrue(paths_require_heavy_metadata_suite([".github/workflows/ci.yml"]))
+        self.assertTrue(paths_require_heavy_metadata_suite(["default.json"]))
+        self.assertTrue(paths_require_heavy_metadata_suite(["renovate.json"]))
+        self.assertTrue(paths_require_heavy_metadata_suite(["rulesets/checks.json"]))
+        self.assertTrue(paths_require_heavy_metadata_suite(["scripts/check-pr-policy.py"]))
 
     def test_detects_generator_paths_and_splits_suites(self):
         steps = ci_jobs()["metadata-tests"]["steps"]
         detect = next(s for s in steps if s.get("name") == "Detect generator paths")
         self.assertEqual(detect["id"], "gen")
-        self.assertIn("scripts/new-repo", detect["run"])
+        self.assertIn("scripts/[^/]+$", detect["run"])
+        self.assertIn("default\\.json", detect["run"])
+        self.assertIn("renovate\\.json", detect["run"])
+        self.assertIn("rulesets/", detect["run"])
         self.assertIn("templates/", detect["run"])
         self.assertIn("heavy=", detect["run"])
 

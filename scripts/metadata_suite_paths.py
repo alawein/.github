@@ -5,8 +5,11 @@ import re
 from collections.abc import Iterable
 
 # Must match `grep -E` in `.github/workflows/ci.yml` job `metadata-tests`, step `Detect generator paths`.
+# Top-level scripts/* and scripts/lib/ trip heavy; scripts/tests/ stays on the fast path
+# (scripts/tests always runs). default.json, renovate.json, and rulesets/ trip the
+# Renovate validator / root suite that the previous filter skipped.
 METADATA_HEAVY_PATH_GREP = (
-    r"^(scripts/new-repo\.ps1|templates/|tests/|\.github/workflows/)"
+    r"^(scripts/[^/]+$|scripts/lib/|templates/|tests/|\.github/workflows/|default\.json|renovate\.json|rulesets/)"
 )
 METADATA_HEAVY_PATH_RE = re.compile(METADATA_HEAVY_PATH_GREP)
 
