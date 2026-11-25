@@ -104,6 +104,16 @@ def validate_snapshot(data: dict[str, Any]) -> list[str]:
     else:
         errors.append("fleet_overview must be an object")
 
+    governance = data.get("governance")
+    if isinstance(governance, dict):
+        observed = governance.get("observed")
+        if isinstance(observed, dict) and any(key in observed for key in GOVERNANCE_EVIDENCE_KEYS):
+            for key in GOVERNANCE_EVIDENCE_KEYS:
+                if key not in observed:
+                    errors.append(f"governance.observed missing {key}")
+                elif observed[key] not in STATUSES:
+                    errors.append(f"governance.observed.{key} must be a known status")
+
     return errors
 
 

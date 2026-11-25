@@ -14,13 +14,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from fleet_evidence_schema import (
-    ARTIFACT,
-    GOVERNANCE_EVIDENCE_KEYS,
-    SCHEMA_VERSION,
-    STATUSES,
-    assert_valid,
-)
+from fleet_evidence_schema import ARTIFACT, SCHEMA_VERSION, STATUSES, assert_valid
 
 KIT = "alawein/.github"
 ROOT = Path(__file__).resolve().parents[1]
@@ -57,21 +51,13 @@ def classify_ci_reliability(recent_runs: list[dict[str, Any]]) -> str:
 
 def classify_ci_failure_rows(recent_runs: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """Count non-success conclusions for classification (sanitized, no secrets)."""
-    counts: dict[str, int] = {}
-    order: list[str] = []
+    counts: dict[object, int] = {}
     for run in recent_runs:
         conclusion = run.get("conclusion")
         if conclusion == _CI_SUCCESS:
             continue
-        key = "null" if conclusion is None else str(conclusion)
-        if key not in counts:
-            order.append(key)
-            counts[key] = 0
-        counts[key] += 1
-    return [
-        {"conclusion": None if key == "null" else key, "count": counts[key]}
-        for key in order
-    ]
+        counts[conclusion] = counts.get(conclusion, 0) + 1
+    return [{"conclusion": key, "count": count} for key, count in counts.items()]
 
 
 def classify_governance_from_ruleset_list(
@@ -81,14 +67,17 @@ def classify_governance_from_ruleset_list(
 
     The rulesets list endpoint can confirm API success, presence, and whether
     any ruleset reports active enforcement. It cannot verify required checks,
-    branch targets, or bypass actors — those stay LIMITED/UNKNOWN. Overall
-    governance never PASSes from list presence alone and never authorizes merge.
+    branch targets, or bypass actors. Overall is UNKNOWN with no observation,
+    otherwise LIMITED — never PASS from this endpoint, never merge authority.
+    A detail-GET path can later raise policy_compliance; do not invent a
+    general overall aggregator until then.
     """
     unknown = [
         "Bypass actors detail",
         "Ruleset list endpoint cannot verify required checks or branch targets",
     ]
     if rulesets is None:
+        overall = "UNKNOWN"
         evidence = {
             "api_observation": "UNKNOWN",
             "ruleset_presence": "UNKNOWN",
@@ -96,15 +85,8 @@ def classify_governance_from_ruleset_list(
             "policy_compliance": "UNKNOWN",
             "rulesets": [],
         }
-        return {
-            "governance_status": "UNKNOWN",
-            "governance_state": "UNKNOWN",
-            "governance_observed": evidence,
-            "governance_unknown": unknown,
-            "governance_drift": [],
-        }
-
-    if not isinstance(rulesets, list):
+    elif not isinstance(rulesets, list):
+        overall = "LIMITED"
         evidence = {
             "api_observation": "LIMITED",
             "ruleset_presence": "UNKNOWN",
@@ -112,45 +94,25 @@ def classify_governance_from_ruleset_list(
             "policy_compliance": "UNKNOWN",
             "rulesets": [],
         }
-        return {
-            "governance_status": "LIMITED",
-            "governance_state": "LIMITED",
-            "governance_observed": evidence,
-            "governance_unknown": unknown,
-            "governance_drift": [],
-        }
-
-    rows = [
-        {
-            "id": row.get("id"),
-            "name": row.get("name"),
-            "enforcement": row.get("enforcement"),
-        }
-        for row in rulesets
-        if isinstance(row, dict)
-    ]
-    active = [row for row in rows if row.get("enforcement") == _ACTIVE_ENFORCEMENT]
-    evidence = {
-        "api_observation": "PASS",
-        "ruleset_presence": "PASS" if rows else "LIMITED",
-        "active_enforcement": "PASS" if active else "LIMITED",
-        # List payload is not policy verification; detail GETs need separate auth.
-        "policy_compliance": "LIMITED",
-        "rulesets": rows,
-    }
-    # Overall: PASS only if every reported property has explicit successful evidence.
-    # policy_compliance stays LIMITED on the list endpoint, so overall cannot PASS.
-    property_statuses = [evidence[key] for key in GOVERNANCE_EVIDENCE_KEYS]
-    if any(status == "UNKNOWN" for status in property_statuses):
-        overall = "UNKNOWN"
-    elif any(status in {"FAIL", "WARN"} for status in property_statuses):
-        overall = "WARN"
-    elif any(status == "LIMITED" for status in property_statuses):
-        overall = "LIMITED"
-    elif all(status == "PASS" for status in property_statuses):
-        overall = "PASS"
     else:
         overall = "LIMITED"
+        rows = [
+            {
+                "id": row.get("id"),
+                "name": row.get("name"),
+                "enforcement": row.get("enforcement"),
+            }
+            for row in rulesets
+            if isinstance(row, dict)
+        ]
+        active = [row for row in rows if row.get("enforcement") == _ACTIVE_ENFORCEMENT]
+        evidence = {
+            "api_observation": "PASS",
+            "ruleset_presence": "PASS" if rows else "LIMITED",
+            "active_enforcement": "PASS" if active else "LIMITED",
+            "policy_compliance": "LIMITED",
+            "rulesets": rows,
+        }
 
     return {
         "governance_status": overall,

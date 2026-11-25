@@ -225,7 +225,17 @@ class FleetControlCenterTests(unittest.TestCase):
         self.fcc._gh_get = fake_gh_get
         return original
 
-    def _live_kit_for_conclusions(self, conclusions: list[object]):
+    def _live_kit(
+        self,
+        *,
+        conclusions: list[object] | None = None,
+        rulesets: list[dict] | None = None,
+    ):
+        if conclusions is None:
+            conclusions = ["success"]
+        if rulesets is None:
+            rulesets = []
+
         def fake_gh_get(path: str):
             if path == f"repos/{self.fcc.KIT}":
                 return {"private": False, "default_branch": "main"}
@@ -245,7 +255,7 @@ class FleetControlCenterTests(unittest.TestCase):
             if path.startswith(f"repos/{self.fcc.KIT}/pulls"):
                 return []
             if path.startswith(f"repos/{self.fcc.KIT}/rulesets"):
-                return []
+                return rulesets
             raise AssertionError(f"unexpected path {path}")
 
         original = self._install_gh_get(fake_gh_get)
@@ -268,56 +278,35 @@ class FleetControlCenterTests(unittest.TestCase):
         ]
         for conclusion, expected in cases:
             with self.subTest(mode="alone", conclusion=conclusion):
-                live = self._live_kit_for_conclusions([conclusion])
+                live = self._live_kit(conclusions=[conclusion])
                 self.assertEqual(live["ci_status"], expected)
                 self.assertNotEqual(live["ci_status"], "PASS")
             with self.subTest(mode="mixed_with_success", conclusion=conclusion):
-                live = self._live_kit_for_conclusions(["success", conclusion])
+                live = self._live_kit(conclusions=["success", conclusion])
                 self.assertEqual(live["ci_status"], expected)
                 self.assertNotEqual(live["ci_status"], "PASS")
 
     def test_aggregate_ci_pass_only_when_all_recent_runs_succeed(self):
-        live = self._live_kit_for_conclusions(["success", "success"])
+        live = self._live_kit(conclusions=["success", "success"])
         self.assertEqual(live["ci_status"], "PASS")
         self.assertEqual(live["latest_ci_status"], "PASS")
+
     def test_governance_not_pass_for_disabled_unrelated_ruleset(self):
         """Nonempty ruleset list with only disabled unrelated rulesets is not governance PASS."""
-
-        def fake_gh_get(path: str):
-            if path == f"repos/{self.fcc.KIT}":
-                return {"private": False, "default_branch": "main"}
-            if path.startswith(f"repos/{self.fcc.KIT}/actions/runs"):
-                return {
-                    "workflow_runs": [
-                        {
-                            "name": "CI",
-                            "conclusion": "success",
-                            "head_branch": "main",
-                            "created_at": "2026-11-25T00:00:00Z",
-                            "html_url": "https://example.test/1",
-                        }
-                    ]
+        live = self._live_kit(
+            conclusions=["success"],
+            rulesets=[
+                {
+                    "id": 1,
+                    "name": "unrelated-disabled",
+                    "enforcement": "disabled",
                 }
-            if path.startswith(f"repos/{self.fcc.KIT}/pulls"):
-                return []
-            if path.startswith(f"repos/{self.fcc.KIT}/rulesets"):
-                return [
-                    {
-                        "id": 1,
-                        "name": "unrelated-disabled",
-                        "enforcement": "disabled",
-                    }
-                ]
-            raise AssertionError(f"unexpected path {path}")
-
-        original = self._install_gh_get(fake_gh_get)
-        try:
-            live = self.fcc.collect_live_kit()
-        finally:
-            self.fcc._gh_get = original
+            ],
+        )
 
         self.assertNotEqual(live["governance_status"], "PASS")
         self.assertNotEqual(live["governance_state"], "PASS")
+        self.assertEqual(live["governance_status"], "LIMITED")
         observed = live["governance_observed"]
         self.assertEqual(observed["api_observation"], "PASS")
         self.assertEqual(observed["ruleset_presence"], "PASS")
@@ -330,36 +319,13 @@ class FleetControlCenterTests(unittest.TestCase):
 
     def test_governance_list_endpoint_never_claims_verified_policy_pass(self):
         """Active ruleset names from the list endpoint still cannot verify policy compliance."""
-
-        def fake_gh_get(path: str):
-            if path == f"repos/{self.fcc.KIT}":
-                return {"private": False, "default_branch": "main"}
-            if path.startswith(f"repos/{self.fcc.KIT}/actions/runs"):
-                return {
-                    "workflow_runs": [
-                        {
-                            "name": "CI",
-                            "conclusion": "success",
-                            "head_branch": "main",
-                            "created_at": "2026-11-25T00:00:00Z",
-                            "html_url": "https://example.test/1",
-                        }
-                    ]
-                }
-            if path.startswith(f"repos/{self.fcc.KIT}/pulls"):
-                return []
-            if path.startswith(f"repos/{self.fcc.KIT}/rulesets"):
-                return [
-                    {"id": 10, "name": "main-protection", "enforcement": "active"},
-                    {"id": 11, "name": "release-tags", "enforcement": "active"},
-                ]
-            raise AssertionError(f"unexpected path {path}")
-
-        original = self._install_gh_get(fake_gh_get)
-        try:
-            live = self.fcc.collect_live_kit()
-        finally:
-            self.fcc._gh_get = original
+        live = self._live_kit(
+            conclusions=["success"],
+            rulesets=[
+                {"id": 10, "name": "main-protection", "enforcement": "active"},
+                {"id": 11, "name": "release-tags", "enforcement": "active"},
+            ],
+        )
 
         observed = live["governance_observed"]
         self.assertEqual(observed["api_observation"], "PASS")
@@ -367,10 +333,11 @@ class FleetControlCenterTests(unittest.TestCase):
         self.assertEqual(observed["active_enforcement"], "PASS")
         self.assertNotEqual(observed["policy_compliance"], "PASS")
         # Overall governance must not upgrade list presence into verified compliance.
+        self.assertEqual(live["governance_status"], "LIMITED")
         self.assertNotEqual(live["governance_status"], "PASS")
-        self.assertIn(live["governance_status"], {"LIMITED", "UNKNOWN", "WARN"})
 
     def test_sanitized_fail_closed_fixture_builds_offline(self):
+        schema = load("fleet_evidence_schema", SCRIPTS / "fleet_evidence_schema.py")
         fixture = FIXTURES / "live-kit-fail-closed.json"
         live_kit = json.loads(fixture.read_text(encoding="utf-8"))
         snapshot = self.fcc.build_snapshot(
@@ -385,12 +352,7 @@ class FleetControlCenterTests(unittest.TestCase):
         self.assertNotEqual(snapshot["ci_reliability"]["status"], "PASS")
         self.assertNotEqual(snapshot["governance"]["status"], "PASS")
         observed = snapshot["governance"]["observed"]
-        for key in (
-            "api_observation",
-            "ruleset_presence",
-            "active_enforcement",
-            "policy_compliance",
-        ):
+        for key in schema.GOVERNANCE_EVIDENCE_KEYS:
             self.assertIn(key, observed)
             self.assertIn(observed[key], self.fcc.STATUSES)
         self.fcc.assert_valid(snapshot)
@@ -399,7 +361,6 @@ class FleetControlCenterTests(unittest.TestCase):
         self.assertNotIn("/cursor/stores/", blob)
         self.assertNotIn("github_pat", blob.lower())
         self.assertNotIn("authorization", blob.lower())
-
 
 class FleetPinAuditorTests(unittest.TestCase):
     @classmethod
