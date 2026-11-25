@@ -225,10 +225,7 @@ class FleetControlCenterTests(unittest.TestCase):
         self.fcc._gh_get = fake_gh_get
         return original
 
-    def test_aggregate_ci_not_pass_for_inconclusive_conclusions(self):
-        """null/cancelled/timed_out/skipped/action_required must not roll up to PASS."""
-        conclusions = [None, "cancelled", "timed_out", "skipped", "action_required"]
-
+    def _live_kit_for_conclusions(self, conclusions: list[object]):
         def fake_gh_get(path: str):
             if path == f"repos/{self.fcc.KIT}":
                 return {"private": False, "default_branch": "main"}
@@ -253,55 +250,36 @@ class FleetControlCenterTests(unittest.TestCase):
 
         original = self._install_gh_get(fake_gh_get)
         try:
-            live = self.fcc.collect_live_kit()
+            return self.fcc.collect_live_kit()
         finally:
             self.fcc._gh_get = original
 
-        self.assertEqual(
-            [row["conclusion"] for row in live["recent_runs"]],
-            conclusions,
-        )
-        self.assertNotEqual(live["ci_status"], "PASS")
-        self.assertIn(live["ci_status"], {"LIMITED", "WARN", "FAIL", "UNKNOWN"})
+    def test_aggregate_ci_status_per_conclusion(self):
+        """Each non-success conclusion alone (and mixed with success) must not PASS."""
+        cases = [
+            (None, "LIMITED"),
+            ("cancelled", "LIMITED"),
+            ("skipped", "LIMITED"),
+            ("neutral", "LIMITED"),
+            ("stale", "LIMITED"),
+            ("timed_out", "WARN"),
+            ("action_required", "WARN"),
+            ("failure", "WARN"),
+        ]
+        for conclusion, expected in cases:
+            with self.subTest(mode="alone", conclusion=conclusion):
+                live = self._live_kit_for_conclusions([conclusion])
+                self.assertEqual(live["ci_status"], expected)
+                self.assertNotEqual(live["ci_status"], "PASS")
+            with self.subTest(mode="mixed_with_success", conclusion=conclusion):
+                live = self._live_kit_for_conclusions(["success", conclusion])
+                self.assertEqual(live["ci_status"], expected)
+                self.assertNotEqual(live["ci_status"], "PASS")
 
     def test_aggregate_ci_pass_only_when_all_recent_runs_succeed(self):
-        def fake_gh_get(path: str):
-            if path == f"repos/{self.fcc.KIT}":
-                return {"private": False, "default_branch": "main"}
-            if path.startswith(f"repos/{self.fcc.KIT}/actions/runs"):
-                return {
-                    "workflow_runs": [
-                        {
-                            "name": "CI",
-                            "conclusion": "success",
-                            "head_branch": "main",
-                            "created_at": "2026-11-25T00:00:00Z",
-                            "html_url": "https://example.test/1",
-                        },
-                        {
-                            "name": "Policy",
-                            "conclusion": "success",
-                            "head_branch": "main",
-                            "created_at": "2026-11-25T00:00:01Z",
-                            "html_url": "https://example.test/2",
-                        },
-                    ]
-                }
-            if path.startswith(f"repos/{self.fcc.KIT}/pulls"):
-                return []
-            if path.startswith(f"repos/{self.fcc.KIT}/rulesets"):
-                return []
-            raise AssertionError(f"unexpected path {path}")
-
-        original = self._install_gh_get(fake_gh_get)
-        try:
-            live = self.fcc.collect_live_kit()
-        finally:
-            self.fcc._gh_get = original
-
+        live = self._live_kit_for_conclusions(["success", "success"])
         self.assertEqual(live["ci_status"], "PASS")
         self.assertEqual(live["latest_ci_status"], "PASS")
-
     def test_governance_not_pass_for_disabled_unrelated_ruleset(self):
         """Nonempty ruleset list with only disabled unrelated rulesets is not governance PASS."""
 
