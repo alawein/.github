@@ -7,8 +7,8 @@
   "active_workflows": ["CI", "Policy"],
   "governance_state": "LIMITED",
   "status": "LIMITED",
-  "notes": "Sanitized offline fixture: inconclusive CI conclusions and disabled-only rulesets",
-  "ci_status": "LIMITED",
+  "notes": "Sanitized offline fixture: non-success CI conclusions and disabled-only rulesets",
+  "ci_status": "WARN",
   "recent_runs": [
     {
       "name": "CI",
@@ -66,6 +66,7 @@
     "Bypass actors detail",
     "Ruleset list endpoint cannot verify required checks or branch targets"
   ],
+  "governance_drift": [],
   "failure_classification": [
     {
       "conclusion": "timed_out",
