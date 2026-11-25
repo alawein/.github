@@ -14,14 +14,151 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from fleet_evidence_schema import ARTIFACT, SCHEMA_VERSION, STATUSES, assert_valid
+from fleet_evidence_schema import (
+    ARTIFACT,
+    GOVERNANCE_EVIDENCE_KEYS,
+    SCHEMA_VERSION,
+    STATUSES,
+    assert_valid,
+)
 
 KIT = "alawein/.github"
 ROOT = Path(__file__).resolve().parents[1]
 
+# GitHub Actions conclusions that explicitly succeed.
+_CI_SUCCESS = "success"
+# Conclusions that are explicit failure signals (not mere absence of success).
+_CI_WARN = frozenset({"failure", "timed_out", "action_required"})
+# List-endpoint ruleset enforcement that counts as active protection signal.
+_ACTIVE_ENFORCEMENT = "active"
+
 
 def utc_now() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def classify_ci_reliability(recent_runs: list[dict[str, Any]]) -> str:
+    """Roll up recent workflow conclusions fail-closed.
+
+    PASS only when every observed run explicitly concludes success.
+    Empty observations stay LIMITED (empty-CI guard). Missing success is
+    never treated as PASS.
+    """
+    if not recent_runs:
+        return "LIMITED"
+    conclusions = [run.get("conclusion") for run in recent_runs]
+    if any(conclusion in _CI_WARN for conclusion in conclusions):
+        return "WARN"
+    if all(conclusion == _CI_SUCCESS for conclusion in conclusions):
+        return "PASS"
+    # null / cancelled / skipped / neutral / stale / other → not successful evidence
+    return "LIMITED"
+
+
+def classify_ci_failure_rows(recent_runs: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Count non-success conclusions for classification (sanitized, no secrets)."""
+    counts: dict[str, int] = {}
+    order: list[str] = []
+    for run in recent_runs:
+        conclusion = run.get("conclusion")
+        if conclusion == _CI_SUCCESS:
+            continue
+        key = "null" if conclusion is None else str(conclusion)
+        if key not in counts:
+            order.append(key)
+            counts[key] = 0
+        counts[key] += 1
+    return [
+        {"conclusion": None if key == "null" else key, "count": counts[key]}
+        for key in order
+    ]
+
+
+def classify_governance_from_ruleset_list(
+    rulesets: Any | None,
+) -> dict[str, Any]:
+    """Separate list-endpoint evidence from verified policy compliance.
+
+    The rulesets list endpoint can confirm API success, presence, and whether
+    any ruleset reports active enforcement. It cannot verify required checks,
+    branch targets, or bypass actors — those stay LIMITED/UNKNOWN. Overall
+    governance never PASSes from list presence alone and never authorizes merge.
+    """
+    unknown = [
+        "Bypass actors detail",
+        "Ruleset list endpoint cannot verify required checks or branch targets",
+    ]
+    if rulesets is None:
+        evidence = {
+            "api_observation": "UNKNOWN",
+            "ruleset_presence": "UNKNOWN",
+            "active_enforcement": "UNKNOWN",
+            "policy_compliance": "UNKNOWN",
+            "rulesets": [],
+        }
+        return {
+            "governance_status": "UNKNOWN",
+            "governance_state": "UNKNOWN",
+            "governance_observed": evidence,
+            "governance_unknown": unknown,
+            "governance_drift": [],
+        }
+
+    if not isinstance(rulesets, list):
+        evidence = {
+            "api_observation": "LIMITED",
+            "ruleset_presence": "UNKNOWN",
+            "active_enforcement": "UNKNOWN",
+            "policy_compliance": "UNKNOWN",
+            "rulesets": [],
+        }
+        return {
+            "governance_status": "LIMITED",
+            "governance_state": "LIMITED",
+            "governance_observed": evidence,
+            "governance_unknown": unknown,
+            "governance_drift": [],
+        }
+
+    rows = [
+        {
+            "id": row.get("id"),
+            "name": row.get("name"),
+            "enforcement": row.get("enforcement"),
+        }
+        for row in rulesets
+        if isinstance(row, dict)
+    ]
+    active = [row for row in rows if row.get("enforcement") == _ACTIVE_ENFORCEMENT]
+    evidence = {
+        "api_observation": "PASS",
+        "ruleset_presence": "PASS" if rows else "LIMITED",
+        "active_enforcement": "PASS" if active else "LIMITED",
+        # List payload is not policy verification; detail GETs need separate auth.
+        "policy_compliance": "LIMITED",
+        "rulesets": rows,
+    }
+    # Overall: PASS only if every reported property has explicit successful evidence.
+    # policy_compliance stays LIMITED on the list endpoint, so overall cannot PASS.
+    property_statuses = [evidence[key] for key in GOVERNANCE_EVIDENCE_KEYS]
+    if any(status == "UNKNOWN" for status in property_statuses):
+        overall = "UNKNOWN"
+    elif any(status in {"FAIL", "WARN"} for status in property_statuses):
+        overall = "WARN"
+    elif any(status == "LIMITED" for status in property_statuses):
+        overall = "LIMITED"
+    elif all(status == "PASS" for status in property_statuses):
+        overall = "PASS"
+    else:
+        overall = "LIMITED"
+
+    return {
+        "governance_status": overall,
+        "governance_state": overall,
+        "governance_observed": evidence,
+        "governance_unknown": unknown,
+        "governance_drift": [],
+    }
 
 
 def load_checks(kit_root: Path) -> dict[str, Any]:
@@ -319,12 +456,9 @@ def collect_live_kit() -> dict[str, Any]:
         or not recent
     )
 
-    if not recent:
-        ci_status = "LIMITED"
-    elif any(r.get("conclusion") == "failure" for r in recent):
-        ci_status = "WARN"
-    else:
-        ci_status = "PASS"
+    ci_status = classify_ci_reliability(recent)
+    failure_classification = classify_ci_failure_rows(recent)
+    governance = classify_governance_from_ruleset_list(rulesets)
 
     return {
         "visibility": (
@@ -332,34 +466,23 @@ def collect_live_kit() -> dict[str, Any]:
         ),
         "default_branch": repo.get("default_branch", "main") if repo else "UNKNOWN",
         "latest_ci_status": "PASS"
-        if recent and recent[0].get("conclusion") == "success"
+        if recent and recent[0].get("conclusion") == _CI_SUCCESS
         else "UNKNOWN",
         "open_pr_count": len(prs),
         "blocked_pr_count": len(prs),
         "active_workflows": sorted({str(r.get("name")) for r in recent if r.get("name")}),
-        "governance_state": "PASS"
-        if isinstance(rulesets, list) and rulesets
-        else "UNKNOWN",
+        "governance_state": governance["governance_state"],
         "status": "LIMITED" if partial else ("WARN" if prs else "PASS"),
         "notes": "Live gh snapshot (partial)" if partial else "Live gh snapshot",
         "ci_status": ci_status,
         "recent_runs": recent,
         "prs": prs,
         "partial": partial,
-        "governance_status": "PASS"
-        if isinstance(rulesets, list) and rulesets
-        else "UNKNOWN",
-        "governance_observed": {
-            "rulesets": [
-                {
-                    "id": r.get("id"),
-                    "name": r.get("name"),
-                    "enforcement": r.get("enforcement"),
-                }
-                for r in (rulesets if isinstance(rulesets, list) else [])
-            ]
-        },
-        "governance_unknown": ["Bypass actors detail"],
+        "failure_classification": failure_classification,
+        "governance_status": governance["governance_status"],
+        "governance_observed": governance["governance_observed"],
+        "governance_unknown": governance["governance_unknown"],
+        "governance_drift": governance["governance_drift"],
     }
 
 

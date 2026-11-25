@@ -220,6 +220,208 @@ class FleetControlCenterTests(unittest.TestCase):
         self.assertNotEqual(live["ci_status"], "PASS")
         self.assertGreaterEqual(calls["n"], 1)
 
+    def _install_gh_get(self, fake_gh_get):
+        original = self.fcc._gh_get
+        self.fcc._gh_get = fake_gh_get
+        return original
+
+    def test_aggregate_ci_not_pass_for_inconclusive_conclusions(self):
+        """null/cancelled/timed_out/skipped/action_required must not roll up to PASS."""
+        conclusions = [None, "cancelled", "timed_out", "skipped", "action_required"]
+
+        def fake_gh_get(path: str):
+            if path == f"repos/{self.fcc.KIT}":
+                return {"private": False, "default_branch": "main"}
+            if path.startswith(f"repos/{self.fcc.KIT}/actions/runs"):
+                return {
+                    "workflow_runs": [
+                        {
+                            "name": f"run-{index}",
+                            "conclusion": conclusion,
+                            "head_branch": "main",
+                            "created_at": "2026-11-25T00:00:00Z",
+                            "html_url": f"https://example.test/{index}",
+                        }
+                        for index, conclusion in enumerate(conclusions)
+                    ]
+                }
+            if path.startswith(f"repos/{self.fcc.KIT}/pulls"):
+                return []
+            if path.startswith(f"repos/{self.fcc.KIT}/rulesets"):
+                return []
+            raise AssertionError(f"unexpected path {path}")
+
+        original = self._install_gh_get(fake_gh_get)
+        try:
+            live = self.fcc.collect_live_kit()
+        finally:
+            self.fcc._gh_get = original
+
+        self.assertEqual(
+            [row["conclusion"] for row in live["recent_runs"]],
+            conclusions,
+        )
+        self.assertNotEqual(live["ci_status"], "PASS")
+        self.assertIn(live["ci_status"], {"LIMITED", "WARN", "FAIL", "UNKNOWN"})
+
+    def test_aggregate_ci_pass_only_when_all_recent_runs_succeed(self):
+        def fake_gh_get(path: str):
+            if path == f"repos/{self.fcc.KIT}":
+                return {"private": False, "default_branch": "main"}
+            if path.startswith(f"repos/{self.fcc.KIT}/actions/runs"):
+                return {
+                    "workflow_runs": [
+                        {
+                            "name": "CI",
+                            "conclusion": "success",
+                            "head_branch": "main",
+                            "created_at": "2026-11-25T00:00:00Z",
+                            "html_url": "https://example.test/1",
+                        },
+                        {
+                            "name": "Policy",
+                            "conclusion": "success",
+                            "head_branch": "main",
+                            "created_at": "2026-11-25T00:00:01Z",
+                            "html_url": "https://example.test/2",
+                        },
+                    ]
+                }
+            if path.startswith(f"repos/{self.fcc.KIT}/pulls"):
+                return []
+            if path.startswith(f"repos/{self.fcc.KIT}/rulesets"):
+                return []
+            raise AssertionError(f"unexpected path {path}")
+
+        original = self._install_gh_get(fake_gh_get)
+        try:
+            live = self.fcc.collect_live_kit()
+        finally:
+            self.fcc._gh_get = original
+
+        self.assertEqual(live["ci_status"], "PASS")
+        self.assertEqual(live["latest_ci_status"], "PASS")
+
+    def test_governance_not_pass_for_disabled_unrelated_ruleset(self):
+        """Nonempty ruleset list with only disabled unrelated rulesets is not governance PASS."""
+
+        def fake_gh_get(path: str):
+            if path == f"repos/{self.fcc.KIT}":
+                return {"private": False, "default_branch": "main"}
+            if path.startswith(f"repos/{self.fcc.KIT}/actions/runs"):
+                return {
+                    "workflow_runs": [
+                        {
+                            "name": "CI",
+                            "conclusion": "success",
+                            "head_branch": "main",
+                            "created_at": "2026-11-25T00:00:00Z",
+                            "html_url": "https://example.test/1",
+                        }
+                    ]
+                }
+            if path.startswith(f"repos/{self.fcc.KIT}/pulls"):
+                return []
+            if path.startswith(f"repos/{self.fcc.KIT}/rulesets"):
+                return [
+                    {
+                        "id": 1,
+                        "name": "unrelated-disabled",
+                        "enforcement": "disabled",
+                    }
+                ]
+            raise AssertionError(f"unexpected path {path}")
+
+        original = self._install_gh_get(fake_gh_get)
+        try:
+            live = self.fcc.collect_live_kit()
+        finally:
+            self.fcc._gh_get = original
+
+        self.assertNotEqual(live["governance_status"], "PASS")
+        self.assertNotEqual(live["governance_state"], "PASS")
+        observed = live["governance_observed"]
+        self.assertEqual(observed["api_observation"], "PASS")
+        self.assertEqual(observed["ruleset_presence"], "PASS")
+        self.assertNotEqual(observed["active_enforcement"], "PASS")
+        self.assertNotEqual(observed["policy_compliance"], "PASS")
+        self.assertIn(
+            observed["policy_compliance"],
+            {"LIMITED", "UNKNOWN", "WARN", "FAIL"},
+        )
+
+    def test_governance_list_endpoint_never_claims_verified_policy_pass(self):
+        """Active ruleset names from the list endpoint still cannot verify policy compliance."""
+
+        def fake_gh_get(path: str):
+            if path == f"repos/{self.fcc.KIT}":
+                return {"private": False, "default_branch": "main"}
+            if path.startswith(f"repos/{self.fcc.KIT}/actions/runs"):
+                return {
+                    "workflow_runs": [
+                        {
+                            "name": "CI",
+                            "conclusion": "success",
+                            "head_branch": "main",
+                            "created_at": "2026-11-25T00:00:00Z",
+                            "html_url": "https://example.test/1",
+                        }
+                    ]
+                }
+            if path.startswith(f"repos/{self.fcc.KIT}/pulls"):
+                return []
+            if path.startswith(f"repos/{self.fcc.KIT}/rulesets"):
+                return [
+                    {"id": 10, "name": "main-protection", "enforcement": "active"},
+                    {"id": 11, "name": "release-tags", "enforcement": "active"},
+                ]
+            raise AssertionError(f"unexpected path {path}")
+
+        original = self._install_gh_get(fake_gh_get)
+        try:
+            live = self.fcc.collect_live_kit()
+        finally:
+            self.fcc._gh_get = original
+
+        observed = live["governance_observed"]
+        self.assertEqual(observed["api_observation"], "PASS")
+        self.assertEqual(observed["ruleset_presence"], "PASS")
+        self.assertEqual(observed["active_enforcement"], "PASS")
+        self.assertNotEqual(observed["policy_compliance"], "PASS")
+        # Overall governance must not upgrade list presence into verified compliance.
+        self.assertNotEqual(live["governance_status"], "PASS")
+        self.assertIn(live["governance_status"], {"LIMITED", "UNKNOWN", "WARN"})
+
+    def test_sanitized_fail_closed_fixture_builds_offline(self):
+        fixture = FIXTURES / "live-kit-fail-closed.json"
+        live_kit = json.loads(fixture.read_text(encoding="utf-8"))
+        snapshot = self.fcc.build_snapshot(
+            kit_root=KIT_ROOT,
+            pin_rows=[],
+            kit_commit="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            observed_at="2026-11-25T12:00:00Z",
+            scope="LIMITED",
+            sources=["fixture-fail-closed"],
+            live_kit=live_kit,
+        )
+        self.assertNotEqual(snapshot["ci_reliability"]["status"], "PASS")
+        self.assertNotEqual(snapshot["governance"]["status"], "PASS")
+        observed = snapshot["governance"]["observed"]
+        for key in (
+            "api_observation",
+            "ruleset_presence",
+            "active_enforcement",
+            "policy_compliance",
+        ):
+            self.assertIn(key, observed)
+            self.assertIn(observed[key], self.fcc.STATUSES)
+        self.fcc.assert_valid(snapshot)
+        # No private store paths or secret-shaped fields in fixture-driven output.
+        blob = json.dumps(snapshot)
+        self.assertNotIn("/cursor/stores/", blob)
+        self.assertNotIn("github_pat", blob.lower())
+        self.assertNotIn("authorization", blob.lower())
+
 
 class FleetPinAuditorTests(unittest.TestCase):
     @classmethod
