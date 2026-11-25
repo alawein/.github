@@ -501,15 +501,16 @@ existing dependency policy. Publish the preset before its consumers and activate
 the integration only within the named publishing and account-access scope.
 
 Renovate uses normal house branches and the required PR evidence sections.
-Only patch updates may qualify for automatic squash merging; checks and required
-reviews still apply. Workflow, container, schema, signing, and selected build-tool
-updates remain manual. Major, minor, unknown, failed, and skipped results never
-become passing patch updates. Local configuration does not prove hosted activation.
+Every update requires explicit owner merge. Checks, independent review, and
+hosted auto-merge settings do not substitute for that approval. Workflow,
+container, schema, signing, and selected build-tool updates keep digest pins and
+stay manual. Patch, minor, major, pin, digest, unknown, failed, and skipped
+results never auto-merge. Local configuration does not prove hosted activation.
 
-The prepared consumers override patch auto-merge to `false` until effective
-required independent-review enforcement is observed for each repository. Zero
-required approvals or a green basic-check list does not establish that review.
-Activating update PRs and enabling eligible merges remain separate outcomes.
+The exported preset and kit `renovate.json` keep Renovate `automerge` off for
+every update type. Zero required approvals, a green check list, or enabling
+repository auto-merge does not grant merge permission. Activating update PRs and
+any later owner-authorized merge remain separate outcomes.
 
 - Review release notes and the lockfile diff, including changed install scripts
   and new transitive dependencies; run affected consumer checks before promoting
@@ -533,15 +534,17 @@ Activating update PRs and enabling eligible merges remain separate outcomes.
 
 1. Patch or minor group: read the PR's release notes summary and the lockfile
    diff. Look for new packages that were not there before. After checks and
-   current review, follow the selected task mode before merge or auto-merge.
+   current review, wait for explicit owner merge approval for that update.
 2. Major: read the release notes for breaking changes. Run the app or the
-   tests locally. Check that the preview works. Merge alone, not with others.
+   tests locally. Check that the preview works. Merge alone, not with others,
+   and only after explicit owner merge approval.
 3. Any bump with an install script, a new maintainer, or a sudden size jump:
    stop and look at the package's page before merging.
 4. Stuck for a week: propose closure or a documented pin for owner approval.
 
-Decision: an update never grants merge permission. Each update needs
-checks, current review and a selected task mode covering its scope.
+Decision: an update never grants merge permission. Each update needs checks,
+current review, and explicit owner merge approval for its scope. Green checks,
+review activation, and auto-merge configuration do not replace that approval.
 
 ## Security baseline
 
