@@ -64,7 +64,7 @@ jobs:
             exit 0
           fi
           if git diff --name-only "$BASE" HEAD \
-            | grep -E '^(scripts/new-repo\.ps1|templates/|tests/|\.github/workflows/)'; then
+            | grep -E '^(scripts/[^/]+$|scripts/lib/|templates/|tests/|\.github/workflows/|default\.json|renovate\.json|rulesets/)'; then
             echo "heavy=true" >> "$GITHUB_OUTPUT"
           else
             echo "heavy=false" >> "$GITHUB_OUTPUT"

@@ -146,8 +146,9 @@ cancels a CI run on the same SHA. The always-report `pr-policy` gate requires a
 successful policy producer, including on push to main; cancellation, failure or
 a skipped producer cannot pass it. `ci.yml`'s `metadata-tests` job is its own
 required context. It always runs `scripts/tests` once, then on the heavy path
-runs the root `tests` suite after
-installing PyYAML from the hash-pinned wheels in `tests/requirements.txt`
+runs the pinned Renovate config validator and offline matcher cases, then the
+root `tests` suite after installing PyYAML from the hash-pinned wheels in
+`tests/requirements.txt`
 (Renovate's pip_requirements manager updates that file's version and hashes together) and the pinned
 actionlint, just and lychee archives. It exports `LYCHEE_BIN`; with `CI=true`
 the lychee tests fail instead of skipping when it is unset. The metadata
@@ -466,10 +467,12 @@ allowed them; YAML on this branch reflects that scope.
 in-job `Detect generator paths` step, not workflow-level `paths` filters.
 Required producers must always report, so `ci.yml` and `policy.yml` have no
 `on.pull_request.paths` / `paths-ignore`. The heavy-path regex is frozen to
-`^(scripts/new-repo\.ps1|templates/|tests/|\.github/workflows/)`; unresolved
-base SHA fails closed to heavy. Fast path runs `scripts/tests` only; heavy path
-adds pinned tool installs and the root `tests/` suite (see `metadata-tests`
-above).
+`^(scripts/[^/]+$|scripts/lib/|templates/|tests/|\.github/workflows/|default\.json|renovate\.json|rulesets/)`;
+unresolved base SHA fails closed to heavy. Fast path runs `scripts/tests` only
+(docs-only and `scripts/tests/**` edits stay here). Heavy path adds the pinned
+Renovate validator, offline matcher cases, tool installs, and the root `tests/`
+suite whenever dependency policy, rulesets, top-level scripts, templates,
+workflows, or root tests change (see `metadata-tests` above).
 
 **Policy vs CI split preserved.** SHA and metadata gates stay in `ci.yml`
 without `edited`. Title, body, and `pr-policy` gates stay in `policy.yml`, the

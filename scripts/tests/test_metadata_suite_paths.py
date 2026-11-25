@@ -19,6 +19,11 @@ class MetadataSuitePathTests(unittest.TestCase):
             (["README.md"], False),
             (["scripts/tests/test_pr_policy.py"], False),
             (["scripts/new-repo.ps1"], True),
+            (["scripts/check-pr-policy.py"], True),
+            (["scripts/lib/check-policy.ps1"], True),
+            (["default.json"], True),
+            (["renovate.json"], True),
+            (["rulesets/checks.json"], True),
             (["templates/workflows/docs.yml"], True),
             (["tests/test_check_list.py"], True),
             ([".github/workflows/ci.yml"], True),
@@ -31,7 +36,7 @@ class MetadataSuitePathTests(unittest.TestCase):
     def test_grep_pattern_is_frozen(self):
         self.assertEqual(
             METADATA_HEAVY_PATH_GREP,
-            r"^(scripts/new-repo\.ps1|templates/|tests/|\.github/workflows/)",
+            r"^(scripts/[^/]+$|scripts/lib/|templates/|tests/|\.github/workflows/|default\.json|renovate\.json|rulesets/)",
         )
 
 
