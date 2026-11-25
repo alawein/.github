@@ -103,12 +103,14 @@ through the API, so a caller pinning a revision with this check must grant its
 
 The metadata job also validates `default.json` with Renovate `44.238.1` on
 Node `26.13.0`, then exercises its actual update-rule and template engines.
-The cases reject minor, major, unknown, pin, and digest auto-merges and verify
-manual-review exceptions. Generated update PRs must pass the ordinary evidence
-gate. npm's download cache is keyed by the preset; the 15-minute timeout includes
-cold validator installation and generated-starter tests. These tests do not
-prove app installation, repository permissions, hosted reviews, or actual merges.
-Consumer merge holds are also exercised through Renovate's actual merged rules.
+The cases reject ordinary patch, minor, major, unknown, pin, and digest
+auto-merges, keep digest pins on Actions and Docker managers, and verify
+protected-tool exceptions. Generated update PRs must pass the ordinary evidence
+gate and state the owner merge requirement. npm's download cache is keyed by the
+preset; the 15-minute timeout includes cold validator installation and
+generated-starter tests. These tests do not prove app installation, repository
+permissions, hosted reviews, or actual merges. Kit consumer merge holds are also
+exercised through Renovate's actual merged rules.
 Metadata events use distinct run groups and always-report wrappers, so cancelling
 a latest producer cannot silently skip its required success check.
 

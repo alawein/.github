@@ -5,7 +5,7 @@
   ],
   "packageRules": [
     {
-      "description": "Keep merges manual until effective required independent review is verified.",
+      "description": "Kit-local hold: keep ordinary patches off auto-merge even if a published preset pin still enables them.",
       "matchUpdateTypes": [
         "patch"
       ],
