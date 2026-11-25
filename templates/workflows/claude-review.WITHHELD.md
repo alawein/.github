@@ -34,8 +34,8 @@ returns 404.
 4. Run `python3 scripts/check-publication-contract.py` (offline) before
    publishing the template.
 
-A proposed coherent freeze (not applied) lives with the Task 1 evidence under
-the Project store `internal/kit-contract-repairs/task1-proposed/`.
+Restore steps and freeze policy live in [pins.md](../../docs/pins.md) and
+[ci.md](../../docs/ci.md) (publication contract / quality-gates narrative).
 
 See [reviewers](../../docs/system/reviewers.md) (Claude row) and
 [REVIEW.md](../../REVIEW.md).

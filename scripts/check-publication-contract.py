@@ -12,6 +12,7 @@ import argparse
 import re
 import subprocess
 import sys
+from collections.abc import Iterator
 from pathlib import Path
 
 try:
@@ -25,19 +26,31 @@ FREEZE_RE = re.compile(
     r"(?:[ \t]+#[ \t]*([^\r\n]*))?"
 )
 KIT_REF_RE = re.compile(r"(?m)^[ \t]*kit-ref:[ \t]*([0-9a-f]{40})\b")
-SAME_REPO_USES_RE = re.compile(
-    r"(?m)^[ \t]*uses:[ \t]*(?:\$|\.)/\.github/workflows/([\w.-]+)\s*$"
+USES_PIN_RE = re.compile(
+    r"alawein/\.github/\.github/workflows/([\w.-]+)@([0-9a-f]{40})"
 )
-PERM_KEYS = ("contents", "actions", "checks", "deployments", "id-token",
-             "issues", "discussions", "packages", "pages", "pull-requests",
-             "repository-projects", "security-events", "statuses")
+PERM_KEYS = (
+    "contents",
+    "actions",
+    "checks",
+    "deployments",
+    "id-token",
+    "issues",
+    "discussions",
+    "packages",
+    "pages",
+    "pull-requests",
+    "repository-projects",
+    "security-events",
+    "statuses",
+)
 
 
 def ready_to_copy_yamls() -> list[Path]:
     paths: list[Path] = []
     workflows = ROOT / "templates" / "workflows"
     for path in sorted(workflows.glob("*.yml")):
-        if path.name.upper().endswith(".WITHHELD.YML") or "WITHHELD" in path.name:
+        if "WITHHELD" in path.name.upper():
             continue
         paths.append(path)
     starters = ROOT / "templates" / "starters"
@@ -108,7 +121,40 @@ def permission_covers(granted: dict[str, str], needed: dict[str, str]) -> list[s
 
 
 def collect_calls(text: str) -> list[tuple[str, str, str]]:
-    return [(m.group(1), m.group(2), (m.group(3) or "").strip()) for m in FREEZE_RE.finditer(text)]
+    return [
+        (m.group(1), m.group(2), (m.group(3) or "").strip())
+        for m in FREEZE_RE.finditer(text)
+    ]
+
+
+def caller_jobs(doc: dict) -> tuple[dict, dict[str, str]]:
+    """Return (jobs_map, workflow_level_permissions) for a workflow or jobs fragment."""
+    if "jobs" in doc and isinstance(doc["jobs"], dict):
+        return doc["jobs"], top_level_permissions(doc)
+    # Jobs fragment (for example pr-policy.jobs.yml): jobs sit at the top level.
+    jobs = {
+        name: job
+        for name, job in doc.items()
+        if isinstance(job, dict) and "uses" in job
+    }
+    return jobs, {}
+
+
+def iter_ready_caller_jobs() -> Iterator[tuple[Path, str, dict, str, str, dict]]:
+    """Yield (path, job_name, job, workflow, sha, workflow_perms) for kit pins."""
+    for path in ready_to_copy_yamls():
+        text = path.read_text(encoding="utf-8")
+        doc = load_yaml(text)
+        if not isinstance(doc, dict):
+            continue
+        jobs, workflow_perms = caller_jobs(doc)
+        for name, job in jobs.items():
+            if not isinstance(job, dict) or "uses" not in job:
+                continue
+            match = USES_PIN_RE.search(str(job["uses"]))
+            if not match:
+                continue
+            yield path, name, job, match.group(1), match.group(2), workflow_perms
 
 
 def check_target_existence(problems: list[str]) -> set[str]:
@@ -133,20 +179,16 @@ def check_uses_kit_ref_lockstep(problems: list[str]) -> None:
         if not kit_refs:
             continue
         call_shas = {sha for _wf, sha, _c in calls}
-        for ref in kit_refs:
+        distinct = set(kit_refs)
+        if len(distinct) != 1:
+            problems.append(
+                f"{path.relative_to(ROOT)}: multiple kit-ref values {sorted(distinct)}"
+            )
+        for ref in distinct:
             if ref not in call_shas:
                 problems.append(
                     f"{path.relative_to(ROOT)}: kit-ref {ref} has no matching uses: pin"
                 )
-        if path.name == "pr-policy.jobs.yml":
-            if len(set(kit_refs)) != 1:
-                problems.append(f"{path.relative_to(ROOT)}: multiple kit-ref values")
-            for workflow, sha, _c in calls:
-                if workflow == "pr-policy.yml" and sha != kit_refs[0]:
-                    problems.append(
-                        f"{path.relative_to(ROOT)}: uses/kit-ref lockstep broken "
-                        f"({sha} vs {kit_refs[0]})"
-                    )
 
 
 def check_single_freeze(problems: list[str], expected: str | None) -> str | None:
@@ -167,145 +209,86 @@ def check_single_freeze(problems: list[str], expected: str | None) -> str | None
     pin = next(iter(pins)) if len(pins) == 1 else None
     if expected and pin and pin != expected:
         problems.append(f"ready-to-copy pin {pin} != documented freeze {expected}")
+    # Pin comments must be either all `# quality gates` or all `# vX.Y.Z`.
     if comments and comments != {"quality gates"} and not all(
         c.startswith("v") for c in comments
     ):
-        # Allow either the pre-tag freeze comment or release-tag comments, not a mix with other text.
-        if "quality gates" in comments and any(c != "quality gates" for c in comments):
-            problems.append(f"mixed pin comments: {sorted(comments)}")
+        problems.append(
+            f"pin comments must be '# quality gates' or all '# v*'; got {sorted(comments)}"
+        )
     return pin
 
 
 def check_caller_permissions(problems: list[str]) -> None:
-    for path in ready_to_copy_yamls():
-        text = path.read_text(encoding="utf-8")
-        doc = load_yaml(text)
-        if not isinstance(doc, dict):
+    for path, name, job, workflow, sha, workflow_perms in iter_ready_caller_jobs():
+        try:
+            callee_text = git_show(sha, f".github/workflows/{workflow}")
+        except FileNotFoundError:
             continue
-        # Jobs fragment (pr-policy.jobs.yml) has jobs at the top level.
-        if "jobs" in doc:
-            jobs = doc["jobs"]
-            workflow_perms = top_level_permissions(doc)
-        else:
-            jobs = {k: v for k, v in doc.items() if isinstance(v, dict) and "uses" in v}
-            workflow_perms = {}
-        if not isinstance(jobs, dict):
-            continue
-        for name, job in jobs.items():
-            if not isinstance(job, dict) or "uses" not in job:
-                continue
-            uses = str(job["uses"])
-            match = re.search(
-                r"alawein/\.github/\.github/workflows/([\w.-]+)@([0-9a-f]{40})",
-                uses,
+        callee = load_yaml(callee_text)
+        needed = top_level_permissions(callee if isinstance(callee, dict) else {})
+        granted = job_permissions(job)
+        if granted is None:
+            granted = workflow_perms
+        missing = permission_covers(granted, needed)
+        if missing:
+            problems.append(
+                f"{path.relative_to(ROOT)} job {name}: caller permissions "
+                f"missing {', '.join(missing)} for {workflow}@{sha[:7]}"
             )
-            if not match:
-                continue
-            workflow, sha = match.group(1), match.group(2)
-            try:
-                callee_text = git_show(sha, f".github/workflows/{workflow}")
-            except FileNotFoundError:
-                # Existence check already reported.
-                continue
-            callee = load_yaml(callee_text)
-            needed = top_level_permissions(callee if isinstance(callee, dict) else {})
-            granted = job_permissions(job)
-            if granted is None:
-                granted = workflow_perms
-            missing = permission_covers(granted, needed)
-            if missing:
-                problems.append(
-                    f"{path.relative_to(ROOT)} job {name}: caller permissions "
-                    f"missing {', '.join(missing)} for {workflow}@{sha[:7]}"
-                )
 
 
 def check_workflow_call_inputs(problems: list[str]) -> None:
-    for path in ready_to_copy_yamls():
-        text = path.read_text(encoding="utf-8")
-        doc = load_yaml(text)
-        if not isinstance(doc, dict):
+    for path, name, job, workflow, sha, _workflow_perms in iter_ready_caller_jobs():
+        try:
+            callee_text = git_show(sha, f".github/workflows/{workflow}")
+        except FileNotFoundError:
             continue
-        jobs = doc.get("jobs", doc)
-        if not isinstance(jobs, dict):
+        callee = load_yaml(callee_text)
+        if not isinstance(callee, dict):
             continue
-        for name, job in jobs.items():
-            if not isinstance(job, dict) or "uses" not in job:
-                continue
-            uses = str(job["uses"])
-            match = re.search(
-                r"alawein/\.github/\.github/workflows/([\w.-]+)@([0-9a-f]{40})",
-                uses,
+        on = callee.get(True, callee.get("on", {}))
+        if not isinstance(on, dict) or "workflow_call" not in on:
+            problems.append(
+                f"{path.relative_to(ROOT)} job {name}: {workflow}@{sha[:7]} "
+                "is not a workflow_call reusable"
             )
-            if not match:
-                continue
-            workflow, sha = match.group(1), match.group(2)
-            try:
-                callee_text = git_show(sha, f".github/workflows/{workflow}")
-            except FileNotFoundError:
-                continue
-            callee = load_yaml(callee_text)
-            if not isinstance(callee, dict):
-                continue
-            on = callee.get(True, callee.get("on", {}))
-            if not isinstance(on, dict) or "workflow_call" not in on:
-                problems.append(
-                    f"{path.relative_to(ROOT)} job {name}: {workflow}@{sha[:7]} "
-                    "is not a workflow_call reusable"
-                )
-                continue
-            # Empty `workflow_call:` loads as None; treat as no inputs/secrets.
-            call = on.get("workflow_call") or {}
-            if not isinstance(call, dict):
-                problems.append(
-                    f"{path.relative_to(ROOT)} job {name}: {workflow}@{sha[:7]} "
-                    "has a malformed workflow_call block"
-                )
-                continue
-            declared_inputs = set((call.get("inputs") or {}).keys())
-            declared_secrets = set((call.get("secrets") or {}).keys())
-            passed_inputs = set((job.get("with") or {}).keys())
-            passed_secrets = set((job.get("secrets") or {}).keys())
-            unknown_inputs = sorted(passed_inputs - declared_inputs)
-            unknown_secrets = sorted(passed_secrets - declared_secrets)
-            if unknown_inputs:
-                problems.append(
-                    f"{path.relative_to(ROOT)} job {name}: unknown inputs "
-                    f"{unknown_inputs} for {workflow}@{sha[:7]}"
-                )
-            if unknown_secrets:
-                problems.append(
-                    f"{path.relative_to(ROOT)} job {name}: unknown secrets "
-                    f"{unknown_secrets} for {workflow}@{sha[:7]}"
-                )
-            required_secrets = {
-                key
-                for key, meta in (call.get("secrets") or {}).items()
-                if isinstance(meta, dict) and meta.get("required")
-            }
-            missing_secrets = sorted(required_secrets - passed_secrets)
-            if missing_secrets:
-                problems.append(
-                    f"{path.relative_to(ROOT)} job {name}: missing required secrets "
-                    f"{missing_secrets} for {workflow}@{sha[:7]}"
-                )
-
-
-def check_withheld_claude(problems: list[str]) -> None:
-    broken = ROOT / "templates" / "workflows" / "claude-review.yml"
-    note = ROOT / "templates" / "workflows" / "claude-review.WITHHELD.md"
-    if broken.exists():
-        text = broken.read_text(encoding="utf-8")
-        for workflow, sha, _c in collect_calls(text):
-            if workflow == "claude-review.yml" and not git_path_exists(
-                sha, ".github/workflows/claude-review.yml"
-            ):
-                problems.append(
-                    "templates/workflows/claude-review.yml pins a missing "
-                    f"claude-review.yml at {sha}; withhold or advance freeze"
-                )
-    if not note.exists():
-        problems.append("templates/workflows/claude-review.WITHHELD.md missing")
+            continue
+        # Empty `workflow_call:` loads as None; treat as no inputs/secrets.
+        call = on.get("workflow_call") or {}
+        if not isinstance(call, dict):
+            problems.append(
+                f"{path.relative_to(ROOT)} job {name}: {workflow}@{sha[:7]} "
+                "has a malformed workflow_call block"
+            )
+            continue
+        declared_inputs = set((call.get("inputs") or {}).keys())
+        declared_secrets = set((call.get("secrets") or {}).keys())
+        passed_inputs = set((job.get("with") or {}).keys())
+        passed_secrets = set((job.get("secrets") or {}).keys())
+        unknown_inputs = sorted(passed_inputs - declared_inputs)
+        unknown_secrets = sorted(passed_secrets - declared_secrets)
+        if unknown_inputs:
+            problems.append(
+                f"{path.relative_to(ROOT)} job {name}: unknown inputs "
+                f"{unknown_inputs} for {workflow}@{sha[:7]}"
+            )
+        if unknown_secrets:
+            problems.append(
+                f"{path.relative_to(ROOT)} job {name}: unknown secrets "
+                f"{unknown_secrets} for {workflow}@{sha[:7]}"
+            )
+        required_secrets = {
+            key
+            for key, meta in (call.get("secrets") or {}).items()
+            if isinstance(meta, dict) and meta.get("required")
+        }
+        missing_secrets = sorted(required_secrets - passed_secrets)
+        if missing_secrets:
+            problems.append(
+                f"{path.relative_to(ROOT)} job {name}: missing required secrets "
+                f"{missing_secrets} for {workflow}@{sha[:7]}"
+            )
 
 
 def documented_freeze_sha() -> str | None:
@@ -329,12 +312,13 @@ def remote_preflight(problems: list[str], pin: str | None) -> None:
         check=False,
     )
     if result.returncode != 0:
-        problems.append(f"remote preflight: gh api failed for {pin}: {result.stderr.strip()}")
+        problems.append(
+            f"remote preflight: gh api failed for {pin}: {result.stderr.strip()}"
+        )
         return
     remote = result.stdout.strip()
     if remote != pin:
         problems.append(f"remote preflight: expected {pin}, got {remote}")
-    # Confirm each ready-to-copy workflow path exists on the remote tree.
     for path in ready_to_copy_yamls():
         text = path.read_text(encoding="utf-8")
         for workflow, sha, _c in collect_calls(text):
@@ -358,7 +342,6 @@ def remote_preflight(problems: list[str], pin: str | None) -> None:
 
 def run(remote: bool = False) -> int:
     problems: list[str] = []
-    check_withheld_claude(problems)
     check_target_existence(problems)
     expected = documented_freeze_sha()
     if expected is None:

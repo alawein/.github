@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import re
 import subprocess
 import sys
 import unittest
@@ -29,13 +28,19 @@ class PublicationContractTests(unittest.TestCase):
         code = pub.run(remote=False)
         self.assertEqual(code, 0)
 
-    def test_ready_to_copy_excludes_withheld_claude_template(self):
+    def test_ready_to_copy_skips_withheld_named_yamls(self):
         names = {path.name for path in pub.ready_to_copy_yamls()}
         self.assertNotIn("claude-review.yml", names)
+        self.assertFalse((ROOT / "templates/workflows/claude-review.yml").exists())
         self.assertTrue(
             (ROOT / "templates/workflows/claude-review.WITHHELD.md").exists()
         )
-        self.assertFalse((ROOT / "templates/workflows/claude-review.yml").exists())
+        note = (ROOT / "templates/workflows/claude-review.WITHHELD.md").read_text(
+            encoding="utf-8"
+        )
+        self.assertNotIn("kit-contract-repairs", note)
+        self.assertNotIn("/cursor/stores/", note)
+        self.assertIn("docs/pins.md", note)
 
     def test_freeze_targets_exist_locally(self):
         problems: list[str] = []
@@ -113,15 +118,59 @@ class PublicationContractTests(unittest.TestCase):
 
 class PublicationContractScriptSurfaceTests(unittest.TestCase):
     def test_remote_flag_is_opt_in_only(self):
+        self.assertEqual(pub.main([]), 0)
+        # Default path must not invoke remote_preflight; stub it to fail if called.
+        called = {"remote": False}
+
+        def boom(problems, pin):
+            called["remote"] = True
+            problems.append("remote should not run")
+
+        original = pub.remote_preflight
+        pub.remote_preflight = boom
+        try:
+            self.assertEqual(pub.run(remote=False), 0)
+            self.assertFalse(called["remote"])
+            self.assertEqual(pub.run(remote=True), 1)
+            self.assertTrue(called["remote"])
+        finally:
+            pub.remote_preflight = original
+
+    def test_pin_comment_gate_reports_invalid_comments(self):
+        problems: list[str] = []
+        # Drive the gate with a synthetic comment set via monkeypatch of collect.
+        original = pub.ready_to_copy_yamls
+        sample = ROOT / "templates/workflows/pr-policy.jobs.yml"
+
+        def one_file():
+            return [sample]
+
+        pub.ready_to_copy_yamls = one_file
+        original_collect = pub.collect_calls
+
+        def bad_comments(text):
+            calls = original_collect(text)
+            if not calls:
+                return calls
+            workflow, sha, _comment = calls[0]
+            return [(workflow, sha, "random")]
+
+        pub.collect_calls = bad_comments
+        try:
+            pub.check_single_freeze(problems, KIT_SHA)
+        finally:
+            pub.ready_to_copy_yamls = original
+            pub.collect_calls = original_collect
+        self.assertTrue(any("pin comments must be" in item for item in problems))
+
+    def test_checker_has_no_claude_hardcode(self):
         source = (ROOT / "scripts/check-publication-contract.py").read_text(
             encoding="utf-8"
         )
-        self.assertIn('"--remote"', source)
-        self.assertIn("off by default", source)
-        self.assertRegex(
-            source,
-            re.compile(r"remote preflight", re.I),
-        )
+        self.assertNotIn("claude-review", source)
+        self.assertNotIn("check_withheld_claude", source)
+        self.assertNotIn("SAME_REPO_USES_RE", source)
+        self.assertIn("iter_ready_caller_jobs", source)
 
 
 if __name__ == "__main__":
