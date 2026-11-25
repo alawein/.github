@@ -1,0 +1,92 @@
+{
+  "visibility": "public",
+  "default_branch": "main",
+  "latest_ci_status": "UNKNOWN",
+  "open_pr_count": 0,
+  "blocked_pr_count": 0,
+  "active_workflows": ["CI", "Policy"],
+  "governance_state": "LIMITED",
+  "status": "LIMITED",
+  "notes": "Sanitized offline fixture: non-success CI conclusions and disabled-only rulesets",
+  "ci_status": "WARN",
+  "recent_runs": [
+    {
+      "name": "CI",
+      "conclusion": null,
+      "branch": "main",
+      "created_at": "2026-11-25T00:00:00Z",
+      "url": "https://example.test/runs/1"
+    },
+    {
+      "name": "Policy",
+      "conclusion": "cancelled",
+      "branch": "main",
+      "created_at": "2026-11-25T00:00:01Z",
+      "url": "https://example.test/runs/2"
+    },
+    {
+      "name": "CI",
+      "conclusion": "timed_out",
+      "branch": "main",
+      "created_at": "2026-11-25T00:00:02Z",
+      "url": "https://example.test/runs/3"
+    },
+    {
+      "name": "Policy",
+      "conclusion": "skipped",
+      "branch": "main",
+      "created_at": "2026-11-25T00:00:03Z",
+      "url": "https://example.test/runs/4"
+    },
+    {
+      "name": "CI",
+      "conclusion": "action_required",
+      "branch": "main",
+      "created_at": "2026-11-25T00:00:04Z",
+      "url": "https://example.test/runs/5"
+    }
+  ],
+  "prs": [],
+  "partial": false,
+  "governance_status": "LIMITED",
+  "governance_observed": {
+    "api_observation": "PASS",
+    "ruleset_presence": "PASS",
+    "active_enforcement": "LIMITED",
+    "policy_compliance": "LIMITED",
+    "rulesets": [
+      {
+        "id": 1,
+        "name": "unrelated-disabled",
+        "enforcement": "disabled"
+      }
+    ]
+  },
+  "governance_unknown": [
+    "Bypass actors detail",
+    "Ruleset list endpoint cannot verify required checks or branch targets"
+  ],
+  "governance_drift": [],
+  "failure_classification": [
+    {
+      "conclusion": null,
+      "count": 1
+    },
+    {
+      "conclusion": "cancelled",
+      "count": 1
+    },
+    {
+      "conclusion": "timed_out",
+      "count": 1
+    },
+    {
+      "conclusion": "skipped",
+      "count": 1
+    },
+    {
+      "conclusion": "action_required",
+      "count": 1
+    }
+  ]
+}

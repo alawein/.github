@@ -8,9 +8,18 @@ from __future__ import annotations
 
 from typing import Any
 
-SCHEMA_VERSION = "1.0.0"
+# 1.1.0: governance.status no longer PASSes from ruleset list presence alone;
+# ci_reliability.status PASSes only when every recent run concludes success.
+# Consumers that accept schema 1.x remain compatible (additive observed fields).
+SCHEMA_VERSION = "1.1.0"
 ARTIFACT = "github-fleet-control-center"
 STATUSES = frozenset({"PASS", "WARN", "FAIL", "UNKNOWN", "LIMITED", "STALE"})
+GOVERNANCE_EVIDENCE_KEYS = (
+    "api_observation",
+    "ruleset_presence",
+    "active_enforcement",
+    "policy_compliance",
+)
 REQUIRED_TOP = (
     "schema_version",
     "artifact",
@@ -94,6 +103,16 @@ def validate_snapshot(data: dict[str, Any]) -> list[str]:
                     errors.append(f"fleet_overview.repositories[{index}].status invalid")
     else:
         errors.append("fleet_overview must be an object")
+
+    governance = data.get("governance")
+    if isinstance(governance, dict):
+        observed = governance.get("observed")
+        if isinstance(observed, dict) and any(key in observed for key in GOVERNANCE_EVIDENCE_KEYS):
+            for key in GOVERNANCE_EVIDENCE_KEYS:
+                if key not in observed:
+                    errors.append(f"governance.observed missing {key}")
+                elif observed[key] not in STATUSES:
+                    errors.append(f"governance.observed.{key} must be a known status")
 
     return errors
 
