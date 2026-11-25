@@ -99,7 +99,10 @@ metadata contract until they opt in at a compatible immutable kit revision.
 `Co-authored-by:` trailer or a "Generated with" footer, because squash merges
 copy every commit's trailers into the merged commit. It lists the PR's commits
 through the API, so a caller pinning a revision with this check must grant its
-`run-pr-policy` job `contents: read` and `pull-requests: read`.
+`run-pr-policy` job `contents: read` and `pull-requests: read`. The distributed
+`pr-policy.jobs.yml` fragment already grants both so opt-in callers stay valid
+when the freeze advances past that revision; older freeze pins that only declare
+`contents: read` simply do not use the extra grant.
 
 The metadata job also validates `default.json` with Renovate `44.238.1` on
 Node `26.13.0`, then exercises its actual update-rule and template engines.
@@ -331,6 +334,25 @@ Current distributed template pins freeze to reviewed `main`
 `# quality gates` until a release tag exists. Prior published callers may still use
 signed `v1.4.0` at `f5dbd4d7656e286e20d2aa24463253c32a56521b` until they repin.
 v1.4.0 added the separate policy gates, `::error::` policy annotations, wider branch types, checksum-pinned zizmor and the `ubuntu-24.04` runner pins; it keeps `require-test` and the paired local/external link inputs.
+
+Claude review is **not** ready-to-copy at this freeze: see
+`templates/workflows/claude-review.WITHHELD.md`. The reusable workflow exists on
+later `main` commits, but a consumer pin at the freeze SHA 404s. Do not copy a
+Claude starter, invent a SHA, pin `@main`, or activate Claude until a freeze or
+release that contains the workflow is published and the owner names activation.
+
+### Publication contract (offline + remote preflight)
+
+Before cutting a kit freeze advance or release tag that redistributes templates:
+
+1. Run `python3 scripts/check-publication-contract.py` (offline, deterministic).
+   It checks ready-to-copy `uses:` targets exist at the locally available pinned
+   commit, `workflow_call` inputs/secrets match callers, caller permissions cover
+   each pinned callee, generated starters stay on one freeze, and `uses:`/`kit-ref`
+   stay lockstep. Root suite: `tests/test_publication_contract.py`.
+2. Remote confirmation is separate and explicit:
+   `python3 scripts/check-publication-contract.py --remote` (needs `gh` auth).
+   Do not treat offline PASS as hosted existence proof.
 
 ## Permission rules
 

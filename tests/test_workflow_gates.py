@@ -424,6 +424,10 @@ class DistributedGateTests(unittest.TestCase):
                 for name, job in original_jobs.items():
                     self.assertEqual(ci["jobs"][name], job)
                 self.assertEqual(ci["jobs"]["run-pr-policy"]["with"]["kit-ref"], KIT_SHA)
+                self.assertEqual(
+                    ci["jobs"]["run-pr-policy"]["permissions"],
+                    {"contents": "read", "pull-requests": "read"},
+                )
                 self.assertEqual(ci["jobs"]["pr-policy"]["permissions"], {})
                 self.assertEqual(ci["permissions"], {"contents": "read"})
                 self.assertEqual(hygiene["jobs"]["hygiene"]["with"], {"expected-required-checks": checks})

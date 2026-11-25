@@ -48,8 +48,15 @@ Distributed callers and starters freeze to reviewed `main` commit
 the reusable workflow SHA. Trailing comments remain `# quality gates` until a release
 tag is cut; then switch comments to `# vX.Y.Z`. Code starters opt into mandatory lint;
 the policy fragment opts into complete review evidence. `tests/test_workflow_gates.py`
-checks that templates pin one revision, so caller pins and `kit-ref` values change
-together.
+and `tests/test_publication_contract.py` check that ready-to-copy templates pin one
+revision, so caller pins and `kit-ref` values change together.
+
+`templates/workflows/claude-review.yml` is **withheld** from ready-to-copy
+distribution (`claude-review.WITHHELD.md`): the freeze SHA has no
+`.github/workflows/claude-review.yml` (that path landed later on `main`). Do not
+invent a pin, pin `@main`, or self-pin. Restore a consumer template only when a
+reviewed freeze or release tag contains the reusable workflow. Claude review stays
+inactive until the owner names activation.
 
 Existing published callers on older pins (including signed `v1.4.0` at
 `f5dbd4d7656e286e20d2aa24463253c32a56521b`) retain their old behavior until they
