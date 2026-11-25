@@ -131,8 +131,17 @@ class MetadataWorkflowTests(unittest.TestCase):
         self.assertRegex(policy, r"(?m)^    require-sections: true$")
         self.assertIn("needs: [run-pr-policy]", policy)
         self.assertIn("if: ${{ always() }}", policy)
+        # Gate job stays tokenless; producer grants what current pr-policy.yml needs
+        # (contents + pull-requests read) without write or inherited secrets.
+        self.assertRegex(
+            policy,
+            r"(?m)^run-pr-policy:\n"
+            r"  permissions:\n"
+            r"    contents: read\n"
+            r"    pull-requests: read\n"
+            r"  uses:",
+        )
         self.assertIn("permissions: {}", policy)
-        self.assertNotIn("pull-requests:", policy)
         # Fragment stays a policy.yml merge target; Mode A carve-out guidance stays documented.
         self.assertIn("Never copy this fragment as a standalone workflow", policy)
         self.assertIn("carve-out", policy)
@@ -142,7 +151,7 @@ class MetadataWorkflowTests(unittest.TestCase):
         self.assertNotIn("kit-ref:", hygiene)
         for caller in (policy, hygiene):
             self.assertNotIn("secrets:", caller)
-            self.assertNotIn("write", caller)
+            self.assertNotRegex(caller, r"(?m)^[ \t]*[\w-]+:[ \t]*write\s*$")
 
 
 if __name__ == "__main__":
