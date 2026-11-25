@@ -340,6 +340,14 @@ class FleetControlCenterTests(unittest.TestCase):
         schema = load("fleet_evidence_schema", SCRIPTS / "fleet_evidence_schema.py")
         fixture = FIXTURES / "live-kit-fail-closed.json"
         live_kit = json.loads(fixture.read_text(encoding="utf-8"))
+        self.assertEqual(
+            live_kit["failure_classification"],
+            self.fcc.classify_ci_failure_rows(live_kit["recent_runs"]),
+        )
+        self.assertEqual(
+            live_kit["ci_status"],
+            self.fcc.classify_ci_reliability(live_kit["recent_runs"]),
+        )
         snapshot = self.fcc.build_snapshot(
             kit_root=KIT_ROOT,
             pin_rows=[],
@@ -361,6 +369,7 @@ class FleetControlCenterTests(unittest.TestCase):
         self.assertNotIn("/cursor/stores/", blob)
         self.assertNotIn("github_pat", blob.lower())
         self.assertNotIn("authorization", blob.lower())
+
 
 class FleetPinAuditorTests(unittest.TestCase):
     @classmethod

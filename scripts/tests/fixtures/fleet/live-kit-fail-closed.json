@@ -69,11 +69,7 @@
   "governance_drift": [],
   "failure_classification": [
     {
-      "conclusion": "timed_out",
-      "count": 1
-    },
-    {
-      "conclusion": "action_required",
+      "conclusion": null,
       "count": 1
     },
     {
@@ -81,11 +77,15 @@
       "count": 1
     },
     {
+      "conclusion": "timed_out",
+      "count": 1
+    },
+    {
       "conclusion": "skipped",
       "count": 1
     },
     {
-      "conclusion": null,
+      "conclusion": "action_required",
       "count": 1
     }
   ]
