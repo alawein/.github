@@ -734,7 +734,8 @@ the owner's separate approval for each remote rollback.
 
 ## Review tools
 
-Follow [reviewers.md](reviewers.md): CodeRabbit is the sole automatic reviewer
-after named owner activation; secondary review is scoped and manual. Review
-findings are advisory. Preserve required checks, selected-mode merge permission,
-three waiting PRs, no stacks, no queue and no bypass actors.
+Follow [reviewers.md](reviewers.md): Kilo Code is the primary free automatic
+reviewer; CodeRabbit is selective automatic on an owner-named allow-list;
+Bugbot, Codex, Claude review, and Copilot are on-demand. Review findings are
+advisory. Preserve required checks, selected-mode merge permission, three
+waiting PRs, no stacks, no queue and no bypass actors.

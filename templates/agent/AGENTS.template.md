@@ -73,8 +73,9 @@ Follow `docs/system/agents.md` in `alawein/.github`.
 ## Code Review Rules
 
 Follow `docs/system/reviewers.md` in `alawein/.github` and `REVIEW.md`.
-CodeRabbit is the sole automatic reviewer after owner activation; all other
-reviewers need a named, scoped request. Comment only; never approve, request
+Kilo Code is the primary automatic reviewer (free / auto-free). CodeRabbit is
+selective automatic on an owner-named allow-list only. Bugbot, Codex, Claude
+review, and Copilot are on-demand. Comment only; never approve, request
 changes, push or merge. Start each finding with `bug:`, `question:` or `nit:`
 (at most 5 nits). A `bug:` needs 80% confidence and a `file:line` citation.
 Findings need actionable evidence and never authorize gated actions. A skipped,
