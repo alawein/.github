@@ -31,9 +31,10 @@ From this repo's root, run `just check` for Markdown lint, offline local links,
 and the docs build step. `just lint`, `just test`, `just build`, and `just fix`
 run the individual tasks. The Markdown runner is pinned to
 `markdownlint-cli2@0.23.2`; install lychee for the link check. In CI,
-`ci.yml` runs `markdown-lint`, `link-check`, `actionlint`, `zizmor`, and
-`metadata-tests`, and `policy.yml` runs `pr-title` and `pr-policy`, as described
-in [CI](docs/ci.md).
+`ci.yml` requires the reusable slash producers (`run-markdown-lint / lint`,
+`run-link-check / lint`, `run-actionlint / lint`, `run-zizmor / lint`) plus
+`metadata-tests`, and `policy.yml` runs bare `pr-title` and `pr-policy` gates,
+as described in [CI](docs/ci.md).
 
 ## Where files belong
 
