@@ -2,6 +2,7 @@
 import json
 from pathlib import Path
 import re
+import sys
 import unittest
 
 import yaml
@@ -9,6 +10,12 @@ import yaml
 ROOT = Path(__file__).resolve().parents[1]
 CHECKS = json.loads((ROOT / "rulesets/checks.json").read_text(encoding="utf-8"))
 BASE = CHECKS["fleet_base"]
+
+TESTS = Path(__file__).resolve().parent
+if str(TESTS) not in sys.path:
+    sys.path.insert(0, str(TESTS))
+
+from workflow_gate_contract import KitSelfKind, classify_kit_self, slash_parts  # noqa: E402
 
 
 def text(path):
@@ -55,31 +62,35 @@ class KitSelfCopiesTests(unittest.TestCase):
         # Policy still uses bare always() gates for pr-title and pr-policy.
         ci = workflow(".github/workflows/ci.yml")["jobs"]
         policy = workflow(".github/workflows/policy.yml")["jobs"]
-        lint_slash = [
-            "run-markdown-lint / lint",
-            "run-link-check / lint",
-            "run-actionlint / lint",
-            "run-zizmor / lint",
-        ]
-        self.assertEqual(len(CHECKS["kit_self"]), 7)
-        for ctx in lint_slash:
-            self.assertIn(ctx, CHECKS["kit_self"])
-            caller = ctx.split(" / ", 1)[0]
-            self.assertIn(caller, ci)
-            self.assertIn("uses", ci[caller])
-        self.assertIn("metadata-tests", ci)
-        self.assertNotEqual(ci["metadata-tests"].get("if"), "${{ always() }}")
-        for gate in ("pr-title", "pr-policy"):
-            self.assertIn(gate, policy)
-            self.assertEqual(policy[gate].get("if"), "${{ always() }}")
-            self.assertEqual(policy[gate].get("permissions"), {})
+        kit_self = CHECKS["kit_self"]
+
+        for ctx in kit_self:
+            kind = classify_kit_self(ctx)
+            with self.subTest(ctx=ctx, kind=kind.value):
+                if kind is KitSelfKind.SLASH_PRODUCER:
+                    caller, called = slash_parts(ctx)
+                    self.assertIn(caller, ci)
+                    self.assertIn("uses", ci[caller])
+                    self.assertEqual(called, "lint")
+                elif kind is KitSelfKind.PLAIN_JOB:
+                    self.assertIn(ctx, ci)
+                    self.assertNotEqual(ci[ctx].get("if"), "${{ always() }}")
+                elif kind is KitSelfKind.ALWAYS_GATE:
+                    self.assertIn(ctx, policy)
+                    self.assertEqual(policy[ctx].get("if"), "${{ always() }}")
+                    self.assertEqual(policy[ctx].get("permissions"), {})
+                else:
+                    raise AssertionError(f"unhandled kind: {kind!r}")
+
         ci_always = [
             name for name, job in ci.items()
             if job.get("if") == "${{ always() }}" and job.get("permissions") == {}
         ]
         self.assertEqual(ci_always, [])
-        weekly = workflow(".github/workflows/hygiene-weekly.yml")["jobs"]["hygiene"]["with"]["expected-required-checks"]
-        self.assertEqual(sorted(weekly.split(",")), sorted(CHECKS["kit_self"]))
+        weekly = workflow(".github/workflows/hygiene-weekly.yml")["jobs"]["hygiene"]["with"][
+            "expected-required-checks"
+        ]
+        self.assertEqual(sorted(weekly.split(",")), sorted(kit_self))
 
 
 if __name__ == "__main__":

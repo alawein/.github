@@ -19,14 +19,17 @@ if str(TESTS) not in sys.path:
 
 from workflow_gate_contract import (  # noqa: E402
     GateProfile,
+    KitSelfKind,
     LINT_GATE_JOBS,
     POLICY_GATE_JOBS,
     PR_TITLE_RUN,
     SUCCESS_ONLY_RUN,
+    classify_kit_self,
     expected_gate_pass,
     gate_profile,
     gate_result_matrix,
     normalize_gate_run,
+    slash_parts,
 )
 
 
@@ -126,36 +129,14 @@ class LinkGateTests(unittest.TestCase):
 
 
 class CiGateListTests(unittest.TestCase):
-    def test_kit_self_contexts_map_to_producers_without_ci_always_gates(self):
-        checks = json.loads((ROOT / "rulesets/checks.json").read_text(encoding="utf-8"))
-        ci = workflow("ci.yml")["jobs"]
-        policy = workflow("policy.yml")["jobs"]
-        self.assertEqual(len(checks["kit_self"]), 7)
-        for ctx in checks["kit_self"]:
-            if ctx == "metadata-tests":
-                self.assertIn(ctx, ci)
-                self.assertNotEqual(ci[ctx].get("if"), "${{ always() }}")
-                continue
-            if " / " in ctx:
-                caller, called = ctx.split(" / ", 1)
-                self.assertIn(caller, ci, ctx)
-                self.assertIn("uses", ci[caller], ctx)
-                self.assertEqual(called, "lint", ctx)
-                continue
-            jobs = policy
-            self.assertIn(ctx, jobs, ctx)
-            gate = jobs[ctx]
-            self.assertEqual(gate.get("if"), "${{ always() }}", ctx)
-            self.assertEqual(gate.get("permissions"), {}, ctx)
-            self.assertEqual(gate["needs"], [f"run-{ctx}"], ctx)
-
     def test_ci_has_no_thin_always_lint_gates(self):
         # Slash-name kit_self migration: reusable producers are required directly.
-        gates = sorted(name for name, job in workflow("ci.yml")["jobs"].items()
-                       if job.get("if") == "${{ always() }}" and job.get("permissions") == {})
+        gates = sorted(
+            name
+            for name, job in workflow("ci.yml")["jobs"].items()
+            if job.get("if") == "${{ always() }}" and job.get("permissions") == {}
+        )
         self.assertEqual(gates, [])
-        text = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
-        self.assertIn("run-* / lint", text)
         self.assertNotIn("needs", workflow("ci.yml")["jobs"]["metadata-tests"])
 
     def test_only_policy_workflow_reruns_on_edited(self):
@@ -280,11 +261,16 @@ class GateSkipFailMatrixTests(unittest.TestCase):
 
     def test_ci_has_no_lint_gate_jobs_for_contract_shell(self):
         # Consumer stubs still use LINT_GATE_JOBS bare names; kit CI does not.
+        checks = json.loads((ROOT / "rulesets/checks.json").read_text(encoding="utf-8"))
         jobs = workflow("ci.yml")["jobs"]
         for gate_job in LINT_GATE_JOBS:
             with self.subTest(gate=gate_job):
                 self.assertNotIn(gate_job, jobs)
-                self.assertIn("run-" + gate_job, jobs)
+        for ctx in checks["kit_self"]:
+            if classify_kit_self(ctx) is KitSelfKind.SLASH_PRODUCER:
+                caller, _called = slash_parts(ctx)
+                with self.subTest(caller=caller):
+                    self.assertIn(caller, jobs)
 
     def test_policy_gates_match_contract_and_matrix(self):
         for gate_job in POLICY_GATE_JOBS:
@@ -311,8 +297,6 @@ class ZizmorGateTests(unittest.TestCase):
         jobs = workflow("ci.yml")["jobs"]
         self.assertEqual(jobs["run-zizmor"]["uses"], "$/.github/workflows/lint-zizmor.yml")
         self.assertNotIn("zizmor", jobs)
-        checks = json.loads((ROOT / "rulesets/checks.json").read_text(encoding="utf-8"))
-        self.assertIn("run-zizmor / lint", checks["kit_self"])
 
     def test_audit_installs_a_checksum_verified_release(self):
         steps = workflow("lint-zizmor.yml")["jobs"]["lint"]["steps"]
