@@ -25,10 +25,11 @@ and starters for alawein repositories. This is the root agent instruction file;
 - `just test`: lychee checks local Markdown links offline.
 - `just build`: no build output in this docs repo.
 - `just check`: lint, test, build; `just fix` applies Markdown fixes.
-- `ci.yml` runs `markdown-lint`, `link-check`, `actionlint`, `zizmor` and
-  `metadata-tests` (the `scripts/tests` and root `tests` suites); `policy.yml`
-  runs `pr-title` and `pr-policy`, the only gates that rerun on PR edits.
-  See [CI](docs/ci.md) for the exact workflow behavior and pins.
+- `ci.yml` runs reusable lint producers (required as `run-* / lint` slash
+  names), plus `metadata-tests` (the `scripts/tests` and root `tests` suites);
+  `policy.yml` runs bare `pr-title` and `pr-policy` gates, the only ones that
+  rerun on PR edits. See [CI](docs/ci.md) for the exact workflow behavior and
+  pins.
 - Dependency-policy changes also run the pinned Renovate validator and offline
   matcher/template cases listed in `ci.yml`; these perform no repository writes.
 

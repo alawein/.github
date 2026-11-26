@@ -2,5 +2,13 @@
   "fleet_base": ["markdown-lint", "link-check", "actionlint", "pr-title"],
   "language_extra": {"node": "node-ci", "python": "python-ci"},
   "opt_in": ["pr-policy"],
-  "kit_self": ["markdown-lint", "link-check", "actionlint", "zizmor", "metadata-tests", "pr-title", "pr-policy"]
+  "kit_self": [
+    "run-markdown-lint / lint",
+    "run-link-check / lint",
+    "run-actionlint / lint",
+    "run-zizmor / lint",
+    "metadata-tests",
+    "pr-title",
+    "pr-policy"
+  ]
 }
