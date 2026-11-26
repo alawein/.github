@@ -15,4 +15,4 @@ jobs:
       pull-requests: read
     uses: $/.github/workflows/hygiene.yml
     with:
-      expected-required-checks: markdown-lint,link-check,actionlint,pr-title,pr-policy,zizmor,metadata-tests
+      expected-required-checks: run-markdown-lint / lint,run-link-check / lint,run-actionlint / lint,run-zizmor / lint,metadata-tests,pr-title,pr-policy

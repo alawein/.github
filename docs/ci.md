@@ -298,13 +298,18 @@ Record measured results and source evidence; no automated writes or spend.
 ## Check names and gate jobs
 
 A called workflow reports its checks as `<caller job> / <called job>`, for
-example `run-markdown-lint / lint`. A ruleset needs the bare name. So each
-caller file ends with small gate jobs named exactly `markdown-lint`,
+example `run-markdown-lint / lint`. Consumer rulesets need the bare name, so
+each distributed caller ends with small gate jobs named exactly `markdown-lint`,
 `link-check`, `actionlint`, and `pr-title` (plus `node-ci` or `python-ci`). A
 gate passes only if the job it waits on passed. `pr-title` also passes when the
 title check is skipped, which happens on push to `main`.
 
-The names are identical in `ci.yml`, every stub, the rulesets,
+This kit repo is different: its live ruleset requires the slash names for the
+four lint producers (see `kit_self` in `rulesets/checks.json`) and does not run
+thin CI gate jobs. Policy still uses bare always-report gates for `pr-title`
+and `pr-policy`.
+
+Consumer bare names stay identical in every stub, the `fleet_base` rulesets,
 `setup-repo.ps1`, and `verify-repo.ps1`. The profile repo runs the same four
 checks inline.
 
@@ -509,12 +514,14 @@ had it on only 26.7% of PRs). The probe now lives in `railway-pool-probe.yml`
 (weekly Monday `37 8 * * 1` plus `workflow_dispatch`), still non-required with
 `continue-on-error`, and is removed from PR/push `ci.yml`.
 
-**Gate consolidation (limited).** Task 2 allowed collapsing duplicate work
-inside jobs, not merging bare gate names. The duplicate `scripts/tests` steps in
-`metadata-tests` became one unconditional step; six thin `if: ${{ always() }}`
-gate jobs plus the `metadata-tests` producer remain, matching `kit_self` in
-`rulesets/checks.json`. Renaming or deleting gates still needs a ruleset
-migration in the same change set.
+**Gate consolidation (kit slash-name migration).** Task 2 allowed collapsing
+duplicate work inside jobs; a later ruleset migration dropped the four thin
+`if: ${{ always() }}` CI lint gates. Kit `kit_self` now requires the reusable
+producer slash names (`run-markdown-lint / lint`, `run-link-check / lint`,
+`run-actionlint / lint`, `run-zizmor / lint`) plus `metadata-tests`, and keeps
+`pr-title` / `pr-policy` as always-report gates in `policy.yml`. That is still
+exactly seven required contexts. Consumer stubs keep bare `fleet_base` gate
+names; only this repo's live ruleset uses the slash form.
 
 **Caching unchanged.** Task 2 had no per-step install median ≥30s across jobs;
 dependency caches in reusables and the heavy-path npm cache on `default.json`
@@ -564,8 +571,10 @@ rules apply to any caller of the kit.
 
 ## Decisions
 
-- Decision: gate jobs carry the required check names. Why: a called job reports
-  as `caller / called`, and the ruleset needs the bare names.
+- Decision: consumer gate jobs carry the required bare check names. Why: a
+  called job reports as `caller / called`, and consumer rulesets need the bare
+  names. The kit itself requires the slash names so it can drop four thin
+  always() CI gates.
 - Decision: `pr-title.yml` sets no custom regex. Why: the profile repo uses the
   action's defaults, and this kit must match it.
 - Decision: npm only in `node-ci.yml`. Why: every current repo uses npm, and

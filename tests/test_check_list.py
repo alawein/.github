@@ -50,12 +50,34 @@ class FleetBaseCopiesTests(unittest.TestCase):
 
 
 class KitSelfCopiesTests(unittest.TestCase):
-    def test_kit_gates_and_hygiene_match_checks_json(self):
-        ci, policy = workflow(".github/workflows/ci.yml")["jobs"], workflow(".github/workflows/policy.yml")["jobs"]
-        gates = [name for name, job in ci.items() if job.get("if") == "${{ always() }}" and job.get("permissions") == {}]
-        gates += ["metadata-tests"] if "metadata-tests" in ci else []
-        gates += [name for name, job in policy.items() if job.get("if") == "${{ always() }}" and job.get("permissions") == {}]
-        self.assertEqual(sorted(gates), sorted(CHECKS["kit_self"]))
+    def test_kit_contexts_and_hygiene_match_checks_json(self):
+        # Kit CI requires reusable-workflow slash names (no thin always() lint gates).
+        # Policy still uses bare always() gates for pr-title and pr-policy.
+        ci = workflow(".github/workflows/ci.yml")["jobs"]
+        policy = workflow(".github/workflows/policy.yml")["jobs"]
+        lint_slash = [
+            "run-markdown-lint / lint",
+            "run-link-check / lint",
+            "run-actionlint / lint",
+            "run-zizmor / lint",
+        ]
+        self.assertEqual(len(CHECKS["kit_self"]), 7)
+        for ctx in lint_slash:
+            self.assertIn(ctx, CHECKS["kit_self"])
+            caller = ctx.split(" / ", 1)[0]
+            self.assertIn(caller, ci)
+            self.assertIn("uses", ci[caller])
+        self.assertIn("metadata-tests", ci)
+        self.assertNotEqual(ci["metadata-tests"].get("if"), "${{ always() }}")
+        for gate in ("pr-title", "pr-policy"):
+            self.assertIn(gate, policy)
+            self.assertEqual(policy[gate].get("if"), "${{ always() }}")
+            self.assertEqual(policy[gate].get("permissions"), {})
+        ci_always = [
+            name for name, job in ci.items()
+            if job.get("if") == "${{ always() }}" and job.get("permissions") == {}
+        ]
+        self.assertEqual(ci_always, [])
         weekly = workflow(".github/workflows/hygiene-weekly.yml")["jobs"]["hygiene"]["with"]["expected-required-checks"]
         self.assertEqual(sorted(weekly.split(",")), sorted(CHECKS["kit_self"]))
 

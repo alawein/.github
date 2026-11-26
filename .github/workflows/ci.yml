@@ -1,11 +1,11 @@
 name: CI
 
 # This repo tests its own reusable workflows by calling them from the same commit.
-# A called job reports as "<caller job> / <called job>", so small gate jobs below
-# carry stable check names; metadata-tests reports its own check. The ruleset requires:
-#   markdown-lint, link-check, actionlint, zizmor, metadata-tests
-# plus pr-title and pr-policy from policy.yml. No `edited` trigger here: a PR body edit
-# would start a run on the same SHA that cancels this one and fails its gates.
+# A called job reports as "<caller job> / <called job>". Kit ruleset kit_self requires
+# those slash names for the four lint producers (no thin always() wrappers), plus
+# metadata-tests here and pr-title / pr-policy from policy.yml. Consumers still use
+# bare gate names via fleet_base. No `edited` trigger here: a PR body edit would
+# start a run on the same SHA that cancels this one and fails its checks.
 
 on:
   pull_request:
@@ -130,51 +130,4 @@ jobs:
         run: python -m unittest discover -s tests -p 'test_*.py' -v
 
   # Railway pool probe moved to railway-pool-probe.yml (weekly + workflow_dispatch).
-
-  markdown-lint:
-    needs: [run-markdown-lint]
-    if: ${{ always() }}
-    runs-on: ubuntu-24.04
-    timeout-minutes: 1
-    permissions: {}
-    steps:
-      - name: Require success
-        env:
-          RESULT: ${{ needs.run-markdown-lint.result }}
-        run: test "$RESULT" = "success"
-
-  link-check:
-    needs: [run-link-check]
-    if: ${{ always() }}
-    runs-on: ubuntu-24.04
-    timeout-minutes: 1
-    permissions: {}
-    steps:
-      - name: Require success
-        env:
-          RESULT: ${{ needs.run-link-check.result }}
-        run: test "$RESULT" = "success"
-
-  actionlint:
-    needs: [run-actionlint]
-    if: ${{ always() }}
-    runs-on: ubuntu-24.04
-    timeout-minutes: 1
-    permissions: {}
-    steps:
-      - name: Require success
-        env:
-          RESULT: ${{ needs.run-actionlint.result }}
-        run: test "$RESULT" = "success"
-
-  zizmor:
-    needs: [run-zizmor]
-    if: ${{ always() }}
-    runs-on: ubuntu-24.04
-    timeout-minutes: 1
-    permissions: {}
-    steps:
-      - name: Require success
-        env:
-          RESULT: ${{ needs.run-zizmor.result }}
-        run: test "$RESULT" = "success"
+  # Thin always() lint gates removed: kit_self requires run-* / lint slash names.

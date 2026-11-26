@@ -236,9 +236,12 @@ An agent's diff can look right and be wrong. Look for these first:
   immediate restoration of enforcement; do not add a bot bypass.
 - Required approvals: 0. GitHub does not let an author approve their own PR, so
   any higher number would block every merge.
-- Required checks for the kit, profile and standard full ruleset:
-  `markdown-lint`, `link-check`, `actionlint`, `pr-title`. They are the job
-  names in each repo's `ci.yml`, so a rename there would block every PR.
+- Required checks for profile and standard full rulesets (`fleet_base`):
+  `markdown-lint`, `link-check`, `actionlint`, `pr-title`. They are the bare
+  gate job names in each consumer's `ci.yml`, so a rename there would block
+  every PR. This kit's own ruleset uses `kit_self` from `rulesets/checks.json`
+  (seven contexts: four `run-* / lint` slash names, `metadata-tests`, plus
+  `pr-title` and `pr-policy`).
 - `pr-policy` is an additional opt-in context. The kit's always-report producer
   exists locally; settings promotion requires an eligible successful PR run and
   named owner approval. Preserve legacy consumers until their reviewed adoption.
