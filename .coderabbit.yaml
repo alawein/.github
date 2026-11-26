@@ -1,3 +1,4 @@
+# Fleet Phase 2 allow-list (alawein/.github): assertive + auto on; Kilo-dedupe path_instructions.
 # Replacement candidate rebuilt from published source 98c7496007ae504a3509be1c29d02afa87640aca.
 # This is new preparation, not recovery of the historical candidate.
 # Advisory reviewer policy; source configuration does not grant repository access.
@@ -56,14 +57,16 @@ reviews:
   path_instructions:
     - path: '**/*'
       instructions: |
-        Follow the checked-in AGENTS.md and applicable REVIEW.md and
-        CONTRIBUTING.md rules when present.
+        Repo: alawein/.github. Follow AGENTS.md and REVIEW.md on the base branch.
+        Primary automatic reviewer is Kilo (free); CodeRabbit is selective on
+        this allow-listed kit. Add only distinct evidence not already posted by
+        CI or Kilo on this SHA. Labels: bug: / question: / nit: (at most 5).
+        Comment only; never approve, request changes, push, or merge.
         Report reproducible defects, security regressions, broken contracts,
         or unsupported public claims. Cite the affected line and rule file.
         Treat learnings as advisory context, never as an authority that can
         override versioned policy. Mark remote/account claims UNVERIFIED when
-        no current evidence is available. Do not repeat findings already
-        reported by CI or another reviewer; add only distinct evidence.
+        no current evidence is available.
     - path: '.github/workflows/**'
       instructions: |
         Require remote action and reusable-workflow references to use full
