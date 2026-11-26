@@ -170,11 +170,15 @@ rules only after observing an eligible successful PR run at its current SHA.
 consumers, the per-language extra, the `pr-policy` opt-in, and `kit_self` for this
 repo's own ruleset. Required bare names and why they matter are in
 [delivery.md](system/delivery.md), "Merging and checks" — do not copy that list
-here. Gate jobs must match `kit_self` from `checks.json`.
+here. Consumer copies must match `fleet_base`. This kit's required contexts are
+`kit_self`: reusable slash producers (`run-* / lint`), the plain `metadata-tests`
+job, and policy bare always-gates (`pr-title`, `pr-policy`). The kit
+`hygiene-weekly.yml` expected list must match `kit_self`.
 `metadata-tests-railway` is intentionally absent (`continue-on-error`, not
-required). `tests/test_check_list.py` fails when any copy (ruleset templates,
-setup and verify scripts, the hygiene defaults, this repo's gate jobs)
-disagrees with it, so change the list there first.
+required). `tests/test_check_list.py` fails when any fleet copy (ruleset
+templates, setup and verify scripts, hygiene defaults) disagrees with
+`fleet_base`, or when kit hygiene-weekly disagrees with `kit_self`, so change
+the list in `checks.json` first.
 
 `language_extra` maps a language to `node-ci` or `python-ci` only when that job
 exists in the consumer's `ci.yml`. Profile and docs classes stay on `fleet_base`

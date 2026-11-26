@@ -1,7 +1,17 @@
-"""Reference predicates for required workflow gate jobs (fail-closed matrix)."""
+"""Reference predicates for required workflow gate jobs (fail-closed matrix).
+
+Also classifies kit_self required-context strings from rulesets/checks.json:
+
+- contains ``" / "`` → slash_producer (caller / called job, e.g. ``run-* / lint``)
+- member of PLAIN_JOB_IDS (today: ``metadata-tests``) → plain_job
+- else → always_gate (policy bare names such as ``pr-title`` / ``pr-policy``)
+
+checks.json remains the only literal list; callers must not hardcode slash arrays.
+"""
 
 from __future__ import annotations
 
+from collections.abc import Iterable, Iterator
 from dataclasses import dataclass
 from enum import Enum
 
@@ -81,3 +91,46 @@ def gate_result_matrix() -> tuple[MatrixCell, ...]:
                 accepted = expected_gate_pass(profile, result, event=event, ref=ref)
                 cells.append(MatrixCell(result, event, ref, profile, accepted))
     return tuple(cells)
+
+
+class KitSelfKind(Enum):
+    SLASH_PRODUCER = "slash_producer"
+    PLAIN_JOB = "plain_job"
+    ALWAYS_GATE = "always_gate"
+
+
+PLAIN_JOB_IDS: frozenset[str] = frozenset({"metadata-tests"})
+
+
+def classify_kit_self(context: str) -> KitSelfKind:
+    """Classify one kit_self context string. Deterministic; no I/O."""
+    if " / " in context:
+        return KitSelfKind.SLASH_PRODUCER
+    if context in PLAIN_JOB_IDS:
+        return KitSelfKind.PLAIN_JOB
+    return KitSelfKind.ALWAYS_GATE
+
+
+def slash_parts(context: str) -> tuple[str, str]:
+    """Split a slash_producer context into (caller_job_id, called_job_id)."""
+    if classify_kit_self(context) is not KitSelfKind.SLASH_PRODUCER:
+        raise ValueError(f"not a slash_producer context: {context!r}")
+    caller, called = context.split(" / ", 1)
+    return caller, called
+
+
+def iter_kit_self(contexts: Iterable[str]) -> Iterator[tuple[str, KitSelfKind]]:
+    for context in contexts:
+        yield context, classify_kit_self(context)
+
+
+def slash_contexts(contexts: Iterable[str]) -> list[str]:
+    return [c for c, kind in iter_kit_self(contexts) if kind is KitSelfKind.SLASH_PRODUCER]
+
+
+def plain_jobs(contexts: Iterable[str]) -> list[str]:
+    return [c for c, kind in iter_kit_self(contexts) if kind is KitSelfKind.PLAIN_JOB]
+
+
+def always_gates(contexts: Iterable[str]) -> list[str]:
+    return [c for c, kind in iter_kit_self(contexts) if kind is KitSelfKind.ALWAYS_GATE]
