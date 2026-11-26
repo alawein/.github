@@ -10,15 +10,15 @@ the base branch, so merge a change here before relying on it.
 
 ## Shared policy
 
-The owner of these rules is `docs/system/reviewers.md`, revision `2026-11-21`.
+The owner of these rules is `docs/system/reviewers.md`, revision `2026-11-25`.
 Some reviewers cannot open links, so the parts a review needs are copied here.
 If this file and the policy disagree, the policy wins.
 
-- RV-001 routing: Kilo Code is the primary automatic reviewer across all
-  repositories; CodeRabbit also runs automatically on `alawein/maios`,
-  `alawein/alawein`, and `alawein/.github`. Any other reviewer runs once, on
-  the owner's named request, for one named risk. A request an agent posts for
-  itself is not an owner request.
+- RV-001 routing: Kilo Code is the primary free automatic reviewer across
+  in-scope repositories. CodeRabbit is selective automatic on an
+  owner-named allow-list only (default off). Bugbot, Codex, Claude review,
+  and Copilot run on demand on the owner's named request for one named
+  risk. A request an agent posts for itself is not an owner request.
 - RV-002 findings: findings are advice. Each needs evidence. Drop a finding
   whose root cause and path another reviewer or CI already reported on this
   revision.

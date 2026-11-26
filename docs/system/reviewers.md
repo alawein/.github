@@ -1,55 +1,87 @@
 # Reviewer policy
 
-Kilo Code is the primary automatic PR reviewer across all repositories, and
-CodeRabbit also runs automatically on `alawein/maios`, `alawein/alawein`, and
-`alawein/.github` after named owner activation.
-Reviews advise; required CI and owner judgment govern promotion. Follow
-[agent authority and gates](agents.md#safety-floor) and
-[delivery protections](delivery.md#merging-and-checks).
+Kilo Code is the primary automatic PR reviewer on free / auto-free models
+across repositories. CodeRabbit is selective: automatic only on an
+owner-named allow-list with per-repo instructions; default off elsewhere.
+Bugbot, Codex, Claude review, and Copilot stay available on demand and do
+not auto-review every PR. Reviews advise; required CI and owner judgment
+govern promotion. Follow [agent authority and gates](agents.md#safety-floor)
+and [delivery protections](delivery.md#merging-and-checks).
 
-Revision: `2026-11-21`. Cite these stable IDs with this document's reviewed
+Fleet enablement (inventory, Kilo free auto, CodeRabbit allow-list Apply,
+on-demand presence, sample-PR verify) is owner-gated outside this kit; this
+page states the target posture only. Account and dashboard Apply remain
+UNVERIFIED until observed.
+
+Revision: `2026-11-25`. Cite these stable IDs with this document's reviewed
 revision or digest. Account settings, permissions, billing, entitlement,
 effective configuration and technical enforcement are UNVERIFIED until
 observed directly. Local configuration is not proof of activation or enforcement.
 
 | ID | Scope | Requirement | Verification | Authority |
 | --- | --- | --- | --- | --- |
-| RV-001 | Review routing | Kilo Code primary auto-reviewer (all repos); CodeRabbit added on `maios`/`alawein`/`.github`; other reviewers on named request | Approved reviewer, risk, paths and revision | Owner |
+| RV-001 | Review routing | Kilo Code primary free auto (all in-scope repos); CodeRabbit selective auto on named allow-list only; Bugbot/Codex/Claude/Copilot on-demand | Approved reviewer, risk, paths and revision | Owner |
 | RV-002 | Findings | Advisory, evidence-backed and deduplicated | Finding, consequence, proof and resolution | Owner |
 | RV-003 | Access and spend | Selected repos, private-data gate and explicit allowance | Current permissions, scan and spend record | Owner |
 | RV-004 | Protected delivery | Preserve checks, signing and selected-mode merge permission | Current checks and signature evidence | Owner |
 
 ## Automatic review
 
-- Keep root `.coderabbit.yaml` aligned with
-  [the canonical template](../../templates/coderabbit.yaml). Validate against
-  the [official schema](https://coderabbit.ai/integrations/schema.v2.json)
+### Kilo Code (primary)
+
+- Enable AI Code Review on every in-scope repo; load `REVIEW.md` from the
+  base branch (cap guidance at 10000 characters). Prefer free or
+  zero-credit models; do not buy credits, switch to paid models, or enable
+  paid add-ons without a named spend approval.
+- Auto must run on non-draft PRs without a mention. Optional
+  `@kilocode-bot` is for re-trigger only. Never request autonomous fixes
+  without approval. Verify model privacy posture on private repos.
+- Skipped, paused, rate-limited, queued or failed Kilo reviews are visible
+  blockers, never a pass. Do not treat CodeRabbit-only coverage or a
+  rate-limit skip as enough when Kilo is the coverage bar.
+
+### CodeRabbit (selective allow-list)
+
+- Default off for any repo not on the owner-named allow-list. Enable auto
+  only after named owner activation per repo, with a root
+  `.coderabbit.yaml` derived from
+  [the canonical template](../../templates/coderabbit.yaml) plus
+  repo-specific `path_instructions`. Prefer selected-repos App access when
+  the UI allows.
+- Keep YAML aligned with the template. Validate against the
+  [official schema](https://coderabbit.ai/integrations/schema.v2.json)
   and reject unknown keys; record the schema capture date and digest.
-- Review non-draft PRs; retain lockfiles and security-sensitive changes in
-  scope. CI owns actionlint, Markdown lint and required check failures; avoid
-  duplicating them through reviewer tools or GitHub Checks ingestion.
+- Review non-draft PRs on allow-listed repos only; retain lockfiles and
+  security-sensitive changes in scope. CI owns actionlint, Markdown lint
+  and required check failures; avoid duplicating them through reviewer
+  tools or GitHub Checks ingestion.
 - Keep code writing, autofix, automatic titles, labels, assignments, issue
-  planning, external integrations and post-merge actions off. Review comments
-  and summaries need the named activation approval. Skipped, paused,
-  rate-limited or failed reviews are visible blockers, never approval.
-- Fix a PR's branch in place. Closing a PR and opening a replacement restarts
-  every automatic reviewer and spends its review limit again.
-- Verify global overrides and the effective configuration after owner login:
+  planning, external integrations and post-merge actions off. Review
+  comments and summaries need the named activation approval. Skipped,
+  paused, rate-limited or failed reviews are visible blockers, never
+  approval.
+- Fix a PR's branch in place. Closing a PR and opening a replacement
+  restarts every automatic reviewer and spends its review limit again.
+- Verify global overrides and the effective configuration after owner
+  login:
   [workspace/organization overrides can outrank YAML](https://docs.coderabbit.ai/configuration/configuration-inheritance).
-  Native guideline discovery may include multiple files; thin adapters must
-  agree. [Guideline documentation](https://docs.coderabbit.ai/knowledge-base/code-guidelines).
+  Native guideline discovery may include multiple files; thin adapters
+  must agree.
+  [Guideline documentation](https://docs.coderabbit.ai/knowledge-base/code-guidelines).
 - Version policy in source. Mutable local learnings do not establish
   deterministic review. Do not enable knowledge-base opt-out as a harmless
-  toggle: it can remove stored knowledge and needs the named deletion gate.
+  toggle: it can remove stored knowledge and needs the named deletion
+  gate.
   [Learning controls](https://docs.coderabbit.ai/knowledge-base/learnings).
 
-## Manual routing
+## On-demand routing
 
-Choose one secondary reviewer for one named risk: Codex for security or
-agent-written changes; Bugbot for complex logic. Supply paths, reviewed
-revision and existing findings. Every outgoing request and any spend need
-named approval; commands below are documented routes, not permission to send.
-A request an agent posts for itself is not a named owner request.
+Choose one on-demand reviewer for one named risk: Codex for security or
+agent-written changes; Bugbot for complex logic; Claude or Copilot when
+entitled and activated. Supply paths, reviewed revision and existing
+findings. Every outgoing request and any spend need named approval;
+commands below are documented routes, not permission to send. A request an
+agent posts for itself is not a named owner request.
 
 Findings start with `bug:`, `question:` or `nit:`. MAIOS keeps its own
 blocker, major, minor and note levels: `bug:` maps to blocker or major.
@@ -58,7 +90,8 @@ blocker, major, minor and note levels: `bug:` maps to blocker or major.
 | --- | --- | --- |
 | Codex | `@codex review` with focus text; security uses `@codex security review`. Keep personal/repo automatic review and auto security review off. Other tasks can write code. | [GitHub review](https://learn.chatgpt.com/docs/third-party/github) |
 | Bugbot | `bugbot run` or `cursor review`; keep Autofix off. Verify repo-wide manual-only support (`manualTriggerOnly`); a personal mention-only setting covers only that person's PRs. Otherwise keep the repo disabled. Native rules: `.cursor/BUGBOT.md`. | [Bugbot](https://cursor.com/docs/bugbot) |
-| Kilo | Primary automatic PR reviewer across all repositories (`app.kilo.ai/code-reviews`), loading `REVIEW.md` from the base branch. Verify model privacy posture on private repos (avoid data-collecting free routes for confidential source). The unified Kilo Code Bot also supports `@kilocode-bot` mentions; never request autonomous fixes without approval. | [Code Reviews](https://kilo.ai/docs/automate/code-reviews/github), [Kilo Bot](https://blog.kilo.ai/p/introducing-kilo-for-github) |
+| Kilo | Primary free automatic PR reviewer (`app.kilo.ai/code-reviews`), loading `REVIEW.md` from the base branch. Prefer free/zero-credit models. Mentions via `@kilocode-bot` are optional re-triggers; never request autonomous fixes without approval. | [Code Reviews](https://kilo.ai/docs/automate/code-reviews/github), [Kilo Bot](https://blog.kilo.ai/p/introducing-kilo-for-github) |
+| CodeRabbit | Automatic only on the owner-named allow-list after per-repo activation and YAML; default off. Comment-only; no approve/request-changes. | [Configuration](https://docs.coderabbit.ai/configuration/configuration-inheritance), [schema](https://coderabbit.ai/integrations/schema.v2.json) |
 | Greptile | `@greptileai`; automatic review and auto-approval off. `autoReview: []` disables automatic events; inspect source-branch configuration as well as the dashboard. | [Requests](https://www.greptile.com/docs/code-review/developer-essentials), [configuration](https://www.greptile.com/docs/code-review/greptile-json-reference) |
 | Claude | Planned, not yet available for consumers: kit reusable `.github/workflows/claude-review.yml` exists on `main`, but the ready-to-copy starter is withheld (`templates/workflows/claude-review.WITHHELD.md`) until a published freeze/release contains that workflow path (freeze `cc3b595…` 404s). After a valid freeze and named owner activation: `@claude review` from the owner, or `workflow_dispatch` of the consumer workflow from the default branch. The job checks out the default branch, runs in `dontAsk` permission mode with a comment-only tool allowlist, and needs `CLAUDE_CODE_OAUTH_TOKEN`. Inline comments exist only on the comment route. Never `@claude review always`. Managed review needs a Team or Enterprise plan and stays off. Do not add the interactive `@claude` workflow, which can implement changes. | [GitHub Action](https://code.claude.com/docs/en/github-actions), [managed review](https://code.claude.com/docs/en/code-review), [permission modes](https://code.claude.com/docs/en/permission-modes) |
 | Copilot | Select Copilot in the PR Reviewers menu. Keep all personal/ruleset automatic requests, approvals and approval-counting off. | [Manual review](https://docs.github.com/en/copilot/how-tos/use-copilot-agents/request-a-code-review/use-code-review), [configuration](https://docs.github.com/en/copilot/how-tos/copilot-on-github/set-up-copilot/configure-code-review) |

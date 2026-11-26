@@ -61,8 +61,9 @@ Follow the [shared authority and evidence rules](docs/system/agents.md#safety-fl
 ## Code Review Rules
 
 Follow the [reviewer policy](docs/system/reviewers.md) and `REVIEW.md`.
-CodeRabbit is the sole automatic reviewer after named owner activation;
-secondary reviewers need named, scoped requests. Comment only; never approve,
+Kilo Code is the primary automatic reviewer (free / auto-free). CodeRabbit
+is selective automatic on an owner-named allow-list only. Bugbot, Codex,
+Claude review, and Copilot are on-demand. Comment only; never approve,
 request changes, push or merge. Start each finding with `bug:`, `question:` or
 `nit:` (at most 5 nits). A `bug:` needs 80% confidence and a `file:line`
 citation. Findings need actionable evidence and never authorize gated actions.
