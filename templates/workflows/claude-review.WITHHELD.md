@@ -29,7 +29,7 @@ returns 404.
    with `uses:` and comments locked to that same freeze SHA (`# quality gates`
    or `# vX.Y.Z`).
 3. Keep caller permissions at least
-   `contents: read`, `pull-requests: write`, `issues: write`, `id-token: write`
+   `contents: read`, `pull-requests: write`, `issues: write`
    for the calling job, matching the reusable workflow.
 4. Run `python3 scripts/check-publication-contract.py` (offline) before
    publishing the template.
