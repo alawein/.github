@@ -4,7 +4,7 @@ Review-only rules for this repository. Kilo Code reads this file from the base b
 `knowledge_base.code_guidelines`, and the planned `claude-review.yml` prompt
 (reusable workflow on `main`, consumer template withheld until a freeze contains
 it — see `templates/workflows/claude-review.WITHHELD.md`) will tell Claude to
-read it. Codex reads the `## Code Review Rules` section of `AGENTS.md`, and
+read it. Codex reads the `## Review guidelines` section of `AGENTS.md`, and
 Bugbot reads `.cursor/BUGBOT.md`; both point here. Reviewers read this file from
 the base branch, so merge a change here before relying on it.
 

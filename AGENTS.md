@@ -58,7 +58,7 @@ not supply owner merge permission. Other gated actions need named approval;
 never expose secrets.
 Follow the [shared authority and evidence rules](docs/system/agents.md#safety-floor).
 
-## Code Review Rules
+## Review guidelines
 
 Follow the [reviewer policy](docs/system/reviewers.md) and `REVIEW.md`.
 Kilo Code is the primary automatic reviewer (free / auto-free). CodeRabbit
