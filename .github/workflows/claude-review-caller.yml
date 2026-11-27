@@ -16,6 +16,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: claude-review-caller-${{ github.repository }}-${{ github.event.pull_request.number || github.event.issue.number || inputs.pr_number || github.run_id }}
+  cancel-in-progress: true
+
 jobs:
   claude-review:
     if: github.event_name != 'issue_comment' || contains(github.event.comment.body, '@claude review')
