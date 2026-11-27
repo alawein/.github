@@ -168,6 +168,22 @@ jobs:
           printf '#!/bin/sh\nunset CLAUDE_CODE_ENTRYPOINT CLAUDE_CODE_ACTION\nexec "%s" "$@"\n' "$HOME/.local/bin/claude" > "$RUNNER_TEMP/claude"
           chmod +x "$RUNNER_TEMP/claude"
 
+      # CLAUDE_CODE_SUBPROCESS_ENV_SCRUB refuses to start without bubblewrap. Mirrors the
+      # action's own setup, which runs only for allowed_non_write_users.
+      - name: Install the subprocess sandbox
+        run: |
+          set -euo pipefail
+          for i in 1 2 3; do
+            sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends bubblewrap socat && break
+            echo "apt-get attempt $i failed, retrying"; sleep 5
+          done
+          command -v bwrap || { echo "::error::bubblewrap did not install after 3 attempts"; exit 1; }
+          # Ubuntu 24.04 restricts unprivileged user namespaces through AppArmor; bwrap needs
+          # them. Lifted for this ephemeral runner only, as the action does for its own mode.
+          if [ -f /proc/sys/kernel/apparmor_restrict_unprivileged_userns ]; then
+            sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+          fi
+
       - name: Run comment-only Claude review
         id: claude
         uses: anthropics/claude-code-action@f431adaf77e0fecf918431e75a2b5b45b85af002 # v1.0.283

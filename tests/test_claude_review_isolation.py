@@ -21,6 +21,14 @@ class ClaudeReviewIsolation(unittest.TestCase):
         step = claude_step(yaml.safe_load(WORKFLOW.read_text(encoding="utf-8")))
         self.assertEqual(str(step.get("env", {}).get("CLAUDE_CODE_SUBPROCESS_ENV_SCRUB")), "1")
 
+    def test_sandbox_is_installed_before_claude(self):
+        steps = next(iter(yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))["jobs"].values()))["steps"]
+        names = [s.get("name", "") for s in steps]
+        claude = next(i for i, s in enumerate(steps) if str(s.get("uses", "")).startswith("anthropics/claude-code-action@"))
+        sandbox = names.index("Install the subprocess sandbox")
+        self.assertLess(sandbox, claude)
+        self.assertRegex(steps[sandbox]["run"], r"apt-get install [^\n]*bubblewrap")
+
     def test_bad_change_is_caught(self):
         doc = yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))
         claude_step(doc).pop("env", None)
