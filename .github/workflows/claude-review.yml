@@ -133,13 +133,18 @@ jobs:
             exit 1
           fi
           # Verify PR is not from a fork even on issue_comment or workflow_dispatch.
-          IS_FORK="$(gh api "repos/${REPO}/pulls/${PR_NUM}" --jq '.head.repo.fork')"
+          read -r IS_FORK HEAD_SHA < <(gh api "repos/${REPO}/pulls/${PR_NUM}" --jq '"\(.head.repo.fork) \(.head.sha)"')
           if [ "$IS_FORK" != "false" ]; then
             echo "::error::Refusing to run Claude review on fork PR #${PR_NUM}."
             exit 1
           fi
+          if [[ ! "$HEAD_SHA" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "::error::Could not read the head SHA of PR #${PR_NUM}."
+            exit 1
+          fi
           {
             echo "pr-number=${PR_NUM}"
+            echo "head-sha=${HEAD_SHA}"
             echo "model=${MODEL}"
             echo "max-turns=${MAX_TURNS}"
           } >> "$GITHUB_OUTPUT"
@@ -186,6 +191,7 @@ jobs:
             Run each shell command on its own, starting with `gh pr view`, `gh pr diff`, `gh pr comment`, `git diff`, `git log` or `git show`: no `cd`, pipes, loops, redirection, `;` or `&&`. Use the Read, Grep and Glob tools for files. If a call is denied, retry it as a single allowed command; never stop without posting the review comment.
             Do not restate findings already reported by CI, Kilo Code, or CodeRabbit; add only distinct evidence-backed findings.
             Comment-only: post advisory findings on the PR. Never approve, request changes, push commits, edit files, or resolve another reviewer's thread.
+            The PR head SHA at trigger time is ${{ steps.guard.outputs.head-sha }}; confirm it with `gh pr view ${{ steps.guard.outputs.pr-number }} --json headRefOid` and say so if it changed.
             End with the exact reviewed head SHA, model, advisory verdict, lenses applied, and any uncovered scope.
           claude_args: >-
             --model ${{ steps.guard.outputs.model }}
