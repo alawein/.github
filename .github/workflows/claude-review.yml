@@ -177,8 +177,9 @@ jobs:
             sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends bubblewrap socat && break
             echo "apt-get attempt $i failed, retrying"; sleep 5
           done
-          command -v bwrap
-          # Ubuntu 24.04 restricts unprivileged user namespaces through AppArmor.
+          command -v bwrap || { echo "::error::bubblewrap did not install after 3 attempts"; exit 1; }
+          # Ubuntu 24.04 restricts unprivileged user namespaces through AppArmor; bwrap needs
+          # them. Lifted for this ephemeral runner only, as the action does for its own mode.
           if [ -f /proc/sys/kernel/apparmor_restrict_unprivileged_userns ]; then
             sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
           fi
