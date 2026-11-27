@@ -373,7 +373,12 @@ Before cutting a kit freeze advance or release tag that redistributes templates:
   `pull-requests: read` for `pr-title.yml`.
 - Checkout always uses `persist-credentials: false`. No workflow needs to push.
 - No secrets in these workflows. The automatic `secrets.GITHUB_TOKEN` is the
-  only credential.
+  only credential. Scoped exception (owner-activated 2026-11-26): the on-demand
+  Claude review caller
+  (`.github/workflows/claude-review-caller.yml`) may forward repository secret
+  `CLAUDE_CODE_OAUTH_TOKEN` to the pinned reusable `claude-review.yml` only.
+  That secret is never printed, never written to logs or artifacts, and does not
+  authorize any other workflow.
 - Every job has `timeout-minutes`.
 - Kit jobs and distributed templates use `ubuntu-24.04`, never `ubuntu-latest`
   (a root test enforces it); hosted image software still changes.
