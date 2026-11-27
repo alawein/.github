@@ -30,7 +30,7 @@ jobs:
       contents: read
       pull-requests: write
       issues: write
-    uses: alawein/.github/.github/workflows/claude-review.yml@0268e7cfc6382b83a97c562fa74bdb7b4a7ed550 # test only, reverted before merge
+    uses: alawein/.github/.github/workflows/claude-review.yml@79443ddc0fea07e7f9668af4aa6f5720315a90e5 # test only, reverted before merge
     with:
       pr-number: ${{ inputs.pr_number }}
     secrets:
