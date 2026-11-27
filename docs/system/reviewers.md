@@ -42,6 +42,9 @@ observed directly. Local configuration is not proof of activation or enforcement
 
 ### CodeRabbit (selective allow-list)
 
+- Allow-list (owner 2026-11-26, kept 2026-11-27): `alawein/.github`,
+  `alawein/maios`, `alawein/meshal-site` and `alawein/prompt-source`.
+  Every other repository keeps automatic review off.
 - Default off for any repo not on the owner-named allow-list. Enable auto
   only after named owner activation per repo, with a root
   `.coderabbit.yaml` derived from

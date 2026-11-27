@@ -70,7 +70,7 @@ not supply owner merge permission. Other gated actions need named approval;
 never expose secrets.
 Follow `docs/system/agents.md` in `alawein/.github`.
 
-## Code Review Rules
+## Review guidelines
 
 Follow `docs/system/reviewers.md` in `alawein/.github` and `REVIEW.md`.
 Kilo Code is the primary automatic reviewer (free / auto-free). CodeRabbit is

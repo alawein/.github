@@ -2,7 +2,7 @@
 
 Bugbot reads this file, not `.cursor/rules`. Follow `REVIEW.md` at the repo
 root for the shared policy, labels, evidence bar and skip list, and the
-`## Code Review Rules` section of `AGENTS.md`. Do not duplicate those rules
+`## Review guidelines` section of `AGENTS.md`. Do not duplicate those rules
 here.
 
 - Run only on the owner's named request. Comment only; never push, open a
