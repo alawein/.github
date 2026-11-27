@@ -27,7 +27,7 @@ class ClaudeReviewIsolation(unittest.TestCase):
         claude = next(i for i, s in enumerate(steps) if str(s.get("uses", "")).startswith("anthropics/claude-code-action@"))
         sandbox = names.index("Install the subprocess sandbox")
         self.assertLess(sandbox, claude)
-        self.assertIn("bubblewrap", steps[sandbox]["run"])
+        self.assertRegex(steps[sandbox]["run"], r"apt-get install [^\n]*bubblewrap")
 
     def test_bad_change_is_caught(self):
         doc = yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))
