@@ -171,6 +171,11 @@ jobs:
       - name: Run comment-only Claude review
         id: claude
         uses: anthropics/claude-code-action@f431adaf77e0fecf918431e75a2b5b45b85af002 # v1.0.283
+        env:
+          # Scrub Anthropic, cloud and Actions secrets from tool subprocesses, so an
+          # injected `gh pr comment` cannot print CLAUDE_CODE_OAUTH_TOKEN. The action
+          # enables this only for allowed_non_write_users runs, which this job never uses.
+          CLAUDE_CODE_SUBPROCESS_ENV_SCRUB: "1"
         with:
           path_to_claude_code_executable: ${{ runner.temp }}/claude
           github_token: ${{ github.token }}
