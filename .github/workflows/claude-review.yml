@@ -151,9 +151,22 @@ jobs:
           fetch-depth: 1
           persist-credentials: false
 
+      # shortcut: works around anthropics/claude-code-action#2047, where the action's
+      # CLAUDE_CODE_ENTRYPOINT/CLAUDE_CODE_ACTION markers make the CLI fail with
+      # "Credit balance is too low" at $0; drop this step once upstream fixes it.
+      - name: Install Claude Code without the action markers
+        env:
+          CLAUDE_CODE_VERSION: "2.1.328" # the version action v1.0.283 installs
+        run: |
+          set -euo pipefail
+          curl -fsSL https://claude.ai/install.sh | bash -s -- "$CLAUDE_CODE_VERSION"
+          printf '#!/bin/sh\nunset CLAUDE_CODE_ENTRYPOINT CLAUDE_CODE_ACTION\nexec "%s" "$@"\n' "$HOME/.local/bin/claude" > "$RUNNER_TEMP/claude"
+          chmod +x "$RUNNER_TEMP/claude"
+
       - name: Run comment-only Claude review
         uses: anthropics/claude-code-action@f431adaf77e0fecf918431e75a2b5b45b85af002 # v1.0.283
         with:
+          path_to_claude_code_executable: ${{ runner.temp }}/claude
           github_token: ${{ github.token }}
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
