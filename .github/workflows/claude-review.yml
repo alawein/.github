@@ -164,6 +164,7 @@ jobs:
           chmod +x "$RUNNER_TEMP/claude"
 
       - name: Run comment-only Claude review
+        id: claude
         uses: anthropics/claude-code-action@f431adaf77e0fecf918431e75a2b5b45b85af002 # v1.0.283
         with:
           path_to_claude_code_executable: ${{ runner.temp }}/claude
@@ -190,3 +191,13 @@ jobs:
             --max-turns ${{ steps.guard.outputs.max-turns }}
             --permission-mode dontAsk
             --allowedTools "Read,Grep,Glob,Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh pr comment:*),Bash(git diff:*),Bash(git log:*),Bash(git show:*)"
+
+      # Full output stays hidden; print only which tool calls were denied, so a
+      # review that ends early without a comment can be diagnosed.
+      - name: Report denied tool calls
+        if: always() && steps.claude.outputs.execution_file != ''
+        env:
+          EXECUTION_FILE: ${{ steps.claude.outputs.execution_file }}
+        run: |
+          jq -r '.[] | select(.type == "result") | .permission_denials[]?
+            | "::warning::Denied \(.tool_name): \((.tool_input.command // .tool_input.file_path // .tool_input.pattern // "") | tostring | .[0:200])"' "$EXECUTION_FILE"
