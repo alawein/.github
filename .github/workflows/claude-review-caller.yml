@@ -16,11 +16,9 @@ on:
 permissions:
   contents: read
 
-# Broad issue_comment / labeled triggers join this group before job `if` filters.
-# Never cancel-in-progress here: an unrelated comment or label would abort a live review.
-concurrency:
-  group: claude-review-caller-${{ github.repository }}-${{ github.event.pull_request.number || github.event.issue.number || inputs.pr_number || github.run_id }}
-  cancel-in-progress: false
+# No caller concurrency: broad issue_comment / labeled triggers fire before job
+# `if` filters, so a workflow-level group would still replace pending review runs.
+# The reusable callee owns per-PR concurrency with cancel-in-progress: false.
 
 jobs:
   claude-review:
