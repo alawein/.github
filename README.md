@@ -47,7 +47,7 @@ as described in [CI](docs/ci.md).
 | [Vercel](docs/vercel.md) | Site deployment and domain guidance |
 | [Starters](templates/starters) | Minimal docs, TypeScript, Python, site, and lab repos |
 | [Templates](templates) | Workflows, ownership, README, and review files |
-| [Issue forms](.github/ISSUE_TEMPLATE) | Shared bug, documentation, feature, task, and tech-debt forms with chooser settings |
+| [Issue forms](.github/ISSUE_TEMPLATE) | Shared bug and task forms with chooser settings |
 | [Scripts](scripts) and [rulesets](rulesets) | Local setup and GitHub policy definitions |
 | [.github/workflows](.github/workflows) | Reusable checks and this kit's own CI |
 | [assets](assets) | Approved repository artwork |
