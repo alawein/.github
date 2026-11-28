@@ -12,7 +12,6 @@ DATE = re.compile(r"(?:\d{4}-\d{2}-\d{2}|\d{2}-\d{2}-\d{4}|(?:19|20)\d{6})")
 ISSUE = re.compile(r"(?<![\w/])(?:[\w.-]+/[\w.-]+)?#[1-9]\d*(?![\w])|"
                    r"https://github\.com/[\w.-]+/[\w.-]+/issues/[1-9]\d*(?![\w/])")
 PLACEHOLDERS = {"n/a", "na", "none", "todo", "tbd", "reason", "specific reason", "no issue"}
-REQUIRED_SECTIONS = ("Context", "Changes", "Testing Evidence", "Screenshots/Logs", "Rollback Plan")
 # Squash merges append every commit's Co-authored-by line, so commit messages are checked, not only the PR body.
 # Mirrors maios operations/conduct_review/rules/d8.py AI_ATTRIBUTION (trailer and footer patterns).
 ATTRIBUTION = (
@@ -157,40 +156,7 @@ def linked(body):
     return False
 
 
-def section_errors(body: str) -> list[str]:
-    sections = {}
-    heading = None
-    html_code = None
-    for line, _, kind in fenced_lines(strip_comments(body), respect_html=True):
-        if kind not in ("text", "html"):
-            if kind == "inside" and heading is not None:
-                sections[heading].append(line)
-            continue
-        opening = re.search(r"<(pre|code)\b[^>]*>", line, re.I)
-        if html_code or opening:
-            tag = html_code or opening[1]
-            html_code = None if re.search(rf"</{tag}\s*>", line, re.I) else tag
-            if heading is not None:
-                sections[heading].append(line)
-            continue
-        match = re.fullmatch(r" {0,3}##[ \t]+(.+?)\s*#*\s*", line)
-        if match:
-            heading = match[1].casefold()
-            sections.setdefault(heading, [])
-        elif heading is not None:
-            sections[heading].append(line)
-    errors = []
-    for name in REQUIRED_SECTIONS:
-        content = "\n".join(sections.get(name.casefold(), []))
-        content = re.sub(r"(?m)^\s*[-*]\s*\[ \].*$", "", content)
-        content = re.sub(r"<[^>]*>", "", content)
-        lines = [line.strip(" \t#>*_`-.:\r") for line in content.splitlines()]
-        if not any(re.search(r"[A-Za-z0-9]", line) and line.casefold() not in PLACEHOLDERS for line in lines):
-            errors.append(f"Ready PR needs meaningful content in {name}.")
-    return errors
-
-
-def check(event: dict, *, require_sections: bool = False) -> list[str]:
+def check(event: dict) -> list[str]:
     """Return violations; only a validated PR or explicit push can succeed."""
     if not isinstance(event, dict):
         return ["Event must be an object."]
@@ -221,8 +187,6 @@ def check(event: dict, *, require_sections: bool = False) -> list[str]:
         errors.append("Branch must use a house type and a lowercase hyphenated topic without dates.")
     if not pr["draft"] and not linked(pr["body"] or ""):
         errors.append("Ready PR needs an issue reference or No-issue: followed by a specific reason.")
-    if require_sections and not pr["draft"]:
-        errors.extend(section_errors(pr["body"] or ""))
     return errors
 
 
@@ -245,15 +209,15 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--event", required=True, type=Path)
     parser.add_argument("--commits", type=Path, help="JSON Lines of {sha, message} fetched by the workflow")
-    parser.add_argument("--require-sections", action="store_true",
-                        default=os.environ.get("REQUIRE_SECTIONS") == "true")
+    # Accepted and ignored: callers pinned to older revisions still pass it. Body sections are guidance only.
+    parser.add_argument("--require-sections", action="store_true")
     args = parser.parse_args()
     event = None
     try:
         event = json.loads(args.event.read_text(encoding="utf-8"))
         if isinstance(event, dict) and os.environ.get("GITHUB_EVENT_NAME"):
             event["_event_name"] = os.environ["GITHUB_EVENT_NAME"]
-        errors = check(event, require_sections=args.require_sections)
+        errors = check(event)
     except (OSError, ValueError) as error:
         errors = [f"Cannot read event: {error.__class__.__name__}."]
     if args.commits is not None:

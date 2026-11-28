@@ -128,7 +128,7 @@ class MetadataWorkflowTests(unittest.TestCase):
         policy = (ROOT / "templates/workflows/pr-policy.jobs.yml").read_text(encoding="utf-8")
         self.assertIn("pr-policy.yml@" + KIT_SHA + " # quality gates", policy)
         self.assertRegex(policy, r"(?m)^    kit-ref: " + KIT_SHA + "$")
-        self.assertRegex(policy, r"(?m)^    require-sections: true$")
+        self.assertNotIn("require-sections", policy)
         self.assertIn("needs: [run-pr-policy]", policy)
         self.assertIn("if: ${{ always() }}", policy)
         # Gate job stays tokenless; producer grants what current pr-policy.yml needs

@@ -22,7 +22,6 @@ jobs:
     uses: alawein/.github/.github/workflows/pr-policy.yml@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
     with:
       kit-ref: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
-      require-sections: true
   pr-title:
     needs: [run-pr-title]
     if: ${{ always() }}
@@ -43,8 +42,6 @@ foreach ($bad in @(
   $metadata.Replace('edited, ', ''),
   $metadata.Replace('@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', '@main'),
   $metadata.Replace('kit-ref: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'kit-ref: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb'),
-  $metadata.Replace('require-sections: true', 'require-sections: false'),
-  $metadata.Replace('      require-sections: true', ''),
   $metadata.Replace('always()', '!cancelled()'),
   $metadata.Replace('github.run_id', 'github.ref')
 )) {

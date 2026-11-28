@@ -27,96 +27,20 @@ def event(branch="feat/policy-hygiene", body="Closes #12", draft=False):
                              "head": {"ref": branch}}}
 
 
-def complete_body():
-    return "\n\n".join([
-        "## Context\nCloses #12\nPrevent incomplete release evidence.",
-        "## Changes\nValidate the supplied manifest.",
-        "## Testing Evidence\npytest: exit 0, all tests passed.",
-        "## Screenshots/Logs\nNot applicable: this change has no visual output.",
-        "## Rollback Plan\nRevert the change.",
-    ])
+class SectionGuidanceTests(unittest.TestCase):
+    def test_body_without_sections_passes(self):
+        # Sections are template guidance; only linkage, branch and attribution are enforced.
+        self.assertEqual(load()(event(body="Closes #12")), [])
 
-
-class RequiredSectionTests(unittest.TestCase):
-    def test_ready_pr_requires_meaningful_evidence_in_each_section(self):
-        check = load()
-        self.assertEqual(check(event(body=complete_body()), require_sections=True), [])
-        for replacement in ("", "<!-- Fill this in -->", "TBD", "- [ ]"):
-            with self.subTest(replacement=replacement):
-                body = complete_body().replace("pytest: exit 0, all tests passed.", replacement)
-                self.assertTrue(check(event(body=body), require_sections=True))
-
-    def test_example_headings_do_not_satisfy_required_sections(self):
-        for opening, closing in (("```markdown", "```"), ("<pre>", "</pre>"), ("<code>", "</code>")):
-            with self.subTest(opening=opening):
-                body = "Closes #12\n" + opening + "\n" + complete_body() + "\n" + closing
-                self.assertTrue(load()(event(body=body), require_sections=True))
-
-    def test_list_fenced_examples_cannot_satisfy_required_sections(self):
-        for opening, closing, indent in (("- ```markdown", "  ```", 2), ("1. ~~~markdown", "   ~~~", 3)):
-            with self.subTest(opening=opening):
-                example = "\n".join(" " * indent + line for line in complete_body().splitlines())
-                body = f"Closes #12\n{opening}\n{example}\n{closing}"
-                errors = load()(event(body=body), require_sections=True)
-                self.assertEqual(len(errors), 5, errors)
-
-    def test_list_fence_headings_do_not_replace_real_empty_sections(self):
-        empty = "\n".join("## " + name + "\nTBD" for name in (
-            "Context", "Changes", "Testing Evidence", "Screenshots/Logs", "Rollback Plan"))
-        example = "\n".join("  " + line for line in complete_body().splitlines())
-        body = f"Closes #12\n{empty}\n- ```markdown\n{example}\n  ```"
-        errors = load()(event(body=body), require_sections=True)
-        self.assertEqual(len(errors), 4, errors)
-        self.assertTrue(all("Rollback Plan" not in error for error in errors))
-
-    def test_nested_fence_then_real_sections_and_fenced_evidence(self):
-        example = "\n".join("  > " + line for line in complete_body().splitlines())
-        evidence = "- ```text\n  pytest: 42 passed\n  ```"
-        body = (f"- > ```markdown\n{example}\n  > ```\n\n" +
-                complete_body().replace("pytest: exit 0, all tests passed.", evidence))
-        self.assertEqual(load()(event(body=body), require_sections=True), [])
-
-    def test_html_code_with_fence_like_text_does_not_hide_later_sections(self):
-        for tag in ("pre", "code"):
-            for opening in ("- ```", "1. ~~~"):
-                with self.subTest(tag=tag, opening=opening):
-                    body = f"Closes #12\n<{tag}>\n{opening}\n  </{tag}>\n" + complete_body()
-                    self.assertEqual(load()(event(body=body), require_sections=True), [])
-
-    def test_html_code_after_a_list_fence_scope_ends_keeps_real_sections(self):
-        body = "Closes #12\n- ```\n  example\n<pre>\n- ```\n  </pre>\n" + complete_body()
-        self.assertEqual(load()(event(body=body), require_sections=True), [])
-
-    def test_unclosed_comment_in_code_does_not_hide_later_sections(self):
-        for block in ("```html\n<!--\n```", "- ```html\n  <!--\n  ```", "<pre>\n<!--\n</pre>"):
-            with self.subTest(block=block):
-                body = "Closes #12\n" + block + "\n" + complete_body()
-                self.assertEqual(load()(event(body=body), require_sections=True), [])
-
-    def test_fence_in_closed_comment_does_not_hide_later_sections(self):
-        body = "<!--\n```\n-->\n" + complete_body()
-        self.assertEqual(load()(event(body=body), require_sections=True), [])
-
-    def test_real_comment_or_fence_cannot_supply_section_headings(self):
-        for block in ("<!--\n" + complete_body() + "\n-->",
-                      "```html\n<!--\n" + complete_body() + "\n```"):
-            with self.subTest(block=block):
-                self.assertEqual(len(load()(event(body="Closes #12\n" + block), require_sections=True)), 5)
-
-    def test_drafts_can_defer_sections(self):
-        self.assertEqual(load()(event(body="", draft=True), require_sections=True), [])
-
-    def test_fenced_and_inline_command_results_count_as_evidence(self):
-        for evidence in ("```text\npytest tests/test_cli.py\n42 passed\n```", "`pytest`: 42 passed"):
-            with self.subTest(evidence=evidence):
-                body = complete_body().replace("pytest: exit 0, all tests passed.", evidence)
-                self.assertEqual(load()(event(body=body), require_sections=True), [])
-
-    def test_undone_tasks_markup_and_multiline_placeholders_do_not_count(self):
-        for evidence in ("- [ ] Run the checks", "TBD\nTODO", "<br>", "**TODO**"):
-            with self.subTest(evidence=evidence):
-                body = complete_body().replace("pytest: exit 0, all tests passed.", evidence)
-                self.assertTrue(load()(event(body=body), require_sections=True))
+    def test_pinned_callers_may_still_pass_require_sections(self):
+        fixture = {**event(body="Closes #12"), "_event_name": "pull_request"}
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "event.json"
+            path.write_text(json.dumps(fixture), encoding="utf-8")
+            result = subprocess.run([sys.executable, str(SCRIPT), "--event", str(path), "--require-sections"],
+                                    env={**os.environ, "GITHUB_EVENT_NAME": "pull_request"},
+                                    capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
 
 class PolicyTests(unittest.TestCase):
@@ -306,7 +230,7 @@ class PolicyTests(unittest.TestCase):
                 self.assertNotEqual(result.returncode, 0)
                 self.assertNotIn("Traceback", result.stderr)
 
-    def test_dependabot_style_fixture_passes_with_house_branch_and_sections(self):
+    def test_dependabot_style_fixture_passes_with_house_branch(self):
         fixture = Path(__file__).resolve().parent / "fixtures" / "dependabot-pr-valid.json"
         result = subprocess.run(
             [sys.executable, str(SCRIPT), "--event", str(fixture)],

@@ -20,7 +20,6 @@ run-pr-policy:
     pull-requests: read
   uses: alawein/.github/.github/workflows/pr-policy.yml@cc3b595f8e9e92a9ed6fc63b3be177cc8a571965 # quality gates
   with:
-    require-sections: true
     kit-ref: cc3b595f8e9e92a9ed6fc63b3be177cc8a571965
 
 pr-policy:
