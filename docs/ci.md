@@ -90,10 +90,8 @@ It refuses a missing or blank lint script before installation, runs `npm run lin
 without optional-script suppression, and propagates its exit code. Code repositories
 use zero-warning lint scripts and include formatting and type checks.
 
-`pr-policy.yml` supports `require-sections: true` for ready PRs. It requires
-Context, Changes, Testing Evidence, Screenshots/Logs, and Rollback Plan with actual
-prose. Drafts may defer these sections. Existing callers retain the earlier
-metadata contract until they opt in at a compatible immutable kit revision.
+The PR template's sections are guidance; `pr-policy.yml` does not check them. It still
+accepts `require-sections` and ignores it, so callers pinned to older revisions keep working.
 
 `pr-policy.yml` also rejects any PR commit whose message carries an AI
 `Co-authored-by:` trailer or a "Generated with" footer, because squash merges
@@ -403,9 +401,8 @@ Before cutting a kit freeze advance or release tag that redistributes templates:
 
 ### Dependency update bots and `pr-policy`
 
-Ready PRs must use a house branch (`chore/deps-…`) and the five evidence sections
-(Context, Changes, Testing Evidence, Screenshots/Logs, Rollback Plan), or stay
-draft until those are filled. A fixture for a compliant bot PR lives at
+Ready PRs must use a house branch (`chore/deps-…`) and an issue link or a
+`No-issue:` reason, or stay draft. A fixture for a compliant bot PR lives at
 `scripts/tests/fixtures/dependabot-pr-valid.json`.
 
 - Prefer Renovate with `default.json`: `branchPrefix` is `chore/deps-` and
