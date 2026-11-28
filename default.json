@@ -15,7 +15,7 @@
   "automergeStrategy": "squash",
   "ignoreTests": false,
   "platformAutomerge": false,
-  "prBodyTemplate": "## Context\n\nNo-issue: scheduled dependency maintenance for this repository.\n\n## Changes\n\n{{{table}}}\n\n{{{warnings}}}\n\n## Testing Evidence\n\nSee the checks on this PR for commands and results on the current revision. Checks and reviews do not grant merge permission; every update needs explicit owner merge.\n\n## Screenshots/Logs\n\nCI logs are linked from this PR's checks. Inspect visual output when a dependency changes rendering.\n\n{{{notes}}}\n\n## Rollback Plan\n\nRevert the dependency and lockfile commit, then run the repository check command.\n\n{{{changelogs}}}",
+  "prBodyTemplate": "## Summary\n\nNo-issue: scheduled dependency maintenance for this repository.\n\n{{{table}}}\n\n{{{warnings}}}\n\n## Testing\n\nSee the checks on this PR for commands and results on the current revision. Checks and reviews do not grant merge permission; every update needs explicit owner merge.\n\n{{{notes}}}\n\n## Risks\n\nRevert the dependency and lockfile commit, then run the repository check command. Inspect visual output when a dependency changes rendering.\n\n## Open problems\n\nNone.\n\n## Next steps\n\nNone.\n\n## Recommendations\n\nNone.\n\n{{{changelogs}}}",
   "packageRules": [
     {
       "description": "Every update needs explicit owner merge; checks and review never auto-merge.",

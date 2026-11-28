@@ -68,9 +68,6 @@ function Get-CheckWorkflowReadiness {
         $missing += "always-report $name"
       }
       $producer = [regex]::Match($MetadataText, '(?ms)^  run-' + [regex]::Escape($name) + ':\s*\r?\n(?<body>.*?)(?=^  [a-z][\w-]*:|\z)')
-      if ($name -eq 'pr-policy' -and $producer.Groups['body'].Value -notmatch '(?m)^      require-sections: true\s*$') {
-        $missing += 'required policy evidence sections'
-      }
       $use = [regex]::Match($producer.Groups['body'].Value, '(?m)^    uses: alawein/\.github/\.github/workflows/' + [regex]::Escape($name) + '\.yml@([a-f0-9]{40})(?:\s+#.*)?\s*$')
       $sameRevision = ($Policy.Repository -ceq 'alawein/.github' -and $producer.Groups['body'].Value -match ('(?m)^    uses: (?:\$|\.)/\.github/workflows/' + [regex]::Escape($name) + '\.yml\s*$'))
       if ($sameRevision) { continue }

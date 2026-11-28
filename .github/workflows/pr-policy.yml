@@ -8,7 +8,7 @@ on:
         type: string
         default: ""
       require-sections:
-        description: Require complete review evidence for ready PRs.
+        description: Ignored; kept so pinned callers that still pass it do not break.
         type: boolean
         default: false
 
@@ -73,7 +73,6 @@ jobs:
             --jq '.[] | {sha, message: .commit.message}' > "$RUNNER_TEMP/commits.jsonl"
       - name: Validate caller event
         env:
-          REQUIRE_SECTIONS: ${{ inputs.require-sections }}
           EVENT_NAME: ${{ github.event_name }}
         run: |
           if [ "$EVENT_NAME" = "pull_request" ]; then

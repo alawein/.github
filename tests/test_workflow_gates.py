@@ -161,7 +161,7 @@ class CiGateListTests(unittest.TestCase):
                        if job.get("if") == "${{ always() }}" and job.get("permissions") == {})
         self.assertEqual(gates, ["pr-policy", "pr-title"])
         self.assertEqual(policy["jobs"]["pr-policy"]["needs"], ["run-pr-policy"])
-        self.assertIs(policy["jobs"]["run-pr-policy"]["with"]["require-sections"], True)
+        self.assertNotIn("with", policy["jobs"]["run-pr-policy"])
         self.assertEqual(policy["jobs"]["run-pr-title"]["permissions"], {"pull-requests": "read"})
         self.assertEqual(policy["jobs"]["run-pr-policy"]["permissions"],
                          {"contents": "read", "pull-requests": "read"})

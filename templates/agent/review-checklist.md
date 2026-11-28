@@ -9,9 +9,9 @@ gated action.
 
 ## Before you read the diff
 
-- [ ] Read the repo's `AGENTS.md` and the PR Context.
+- [ ] Read the repo's `AGENTS.md` and the PR Summary.
 - [ ] Run the repo's check command yourself. Do not trust the author's
-      Testing Evidence.
+      Testing section.
 - [ ] Record the base revision and exact reviewed digest, including new files.
       Confirm the diff shows only the intended change.
 - [ ] Record this separate reviewer session and its scope; an author cannot

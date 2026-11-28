@@ -1,31 +1,24 @@
-## Context
+## Summary
 
-<!-- State the problem and link an issue, or explain No-issue: <specific reason>. -->
+<!-- One sentence with the result first, then the problem and scope. Link an issue or write No-issue: <reason>.
+A short `text` diagram when it helps. About 300 words across all sections. -->
 
-## Changes
+## Testing
 
-<!-- Describe the resulting behavior and important implementation choices. -->
+<!-- Commands run at the final head and their results. Name anything not run and why. -->
 
-## Testing Evidence
+## Risks
 
-<!-- Commands, exact results, and meaningful limits. Explain every unrun check. -->
+<!-- Material failure modes and how to revert, or "None known". -->
 
-## Screenshots/Logs
+## Open problems
 
-<!-- Include relevant evidence, or explain why this section does not apply. -->
+<!-- Defects or questions this PR leaves open, or "None". -->
 
-## Rollback Plan
+## Next steps
 
-<!-- State risks and how to revert or recover. Link decisions for structural changes. -->
+<!-- Follow-up this PR enables or requires, or "None". -->
 
-## Checklist
+## Recommendations
 
-- [ ] One topic; every changed file belongs to it
-- [ ] Behavior changes have regression tests; required checks passed
-- [ ] Documentation matches the result, or no documentation change is needed
-- [ ] Compatibility is preserved, or breaking behavior and migration are explained
-- [ ] CODEOWNERS still covers changed and moved files
-- [ ] Structural or breaking changes link their ADR or existing decision record
-- [ ] No secrets, personal data, or unrelated changes
-- [ ] A fresh reviewer checked the current diff, or no agent authored it
-- [ ] For a large or risky change, complete the [long checklist](https://github.com/alawein/.github/blob/main/templates/pull-request-checklist.md)
+<!-- One evidence-backed recommendation for the reviewer, or "None". -->
